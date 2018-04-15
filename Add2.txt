@@ -6,3 +6,4 @@ Add first 5
 Add first 6( for local commit)
 Add first 7( for diff with staged)
 Add first 7( for remote#local commit, local commit#current)
+-----------
