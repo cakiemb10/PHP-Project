@@ -1,3 +1,7 @@
 Add first 2
 Add first 3
 Add first 4
+Add first 5
+-----------
+Add first 6( for local commit)
+Add first 7( for diff with staged)
