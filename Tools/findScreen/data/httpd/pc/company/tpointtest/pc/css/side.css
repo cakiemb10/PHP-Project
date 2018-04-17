@@ -1,0 +1,312 @@
+@charset "shift_jis";
+
+/* Side Menu */
+#top #side_menu {
+	width: 250px;
+	float:left;
+	margin-left:15px;
+	_margin-left:10px;
+}
+/*バナー */
+#top #side_menu .rec_bnr {
+	width: 250px;
+	margin-bottom: 10px;
+	height: 250px;
+}
+/*ログインボックス */
+#top #side_menu .login {
+	background-color: #FFFFCC;
+	border: 1px solid #CCCCCC;
+	margin-bottom: 10px;
+	position: relative;
+	padding-bottom: 10px;
+}
+#top #side_menu .login .login_b {
+	background-color: #FFFFFF;
+	font-weight:bold;
+	width: 230px;
+	margin:25px auto 10px auto;
+	_margin-left: 10px;
+	text-align: center;
+	padding: 8px 0;
+}
+
+#top #side_menu .login .tid_logo {
+	position:absolute;
+	margin: 0;
+	padding: 0;
+	left: 10px;
+	top: 3px;
+}
+#top #side_menu .login .w_id {
+	top: 3px;
+	left: 120px;
+	position:absolute;
+}
+#top #side_menu .login .w_id a {
+	font-size: 10px;
+	background: url("../image/side_login_arrow_hatena.gif") center left no-repeat;
+	padding-left: 13px;
+	display:block;
+	width:115px;
+	height:18px;
+}
+
+#top #side_menu .login .login_b .id_sq {
+	background: url("../image/sq_id.gif") 1px 2px no-repeat;
+	padding-left: 16px;
+	text-align: left;
+	font-size: 10px;
+	color: #666666;
+	height: 18px;
+	padding-top: 2px;
+}
+#top #side_menu .login .login_b .id_nosq {
+	padding-left: 16px;
+	text-align: left;
+}
+#top #side_menu .login .login_b .l_new {
+	border-bottom: #CCCCCC 2px dotted;
+	width:185px;
+	padding-bottom:5px;
+	margin:0 auto;
+	text-align: center;
+}
+
+#top #side_menu .login .login_b .l_in {
+	width:185px;
+	margin:5px auto 0 auto;
+	text-align: center;
+}
+
+/*ログインボタン*/
+
+#top #side_menu .login .logbt01 {
+	height: 36px;
+	width: 180px;
+	background-image:url(../image/side_button_entry_c3.gif);
+	text-indent:-9999px;
+	display:block;
+	margin-left:0;
+}
+#top #side_menu .login .logbt01 a {
+	background-image:url(../image/side_button_entry_c3.gif);
+	text-indent:-9999px;
+	height: 36px;
+	width: 180px;
+	display:block;
+	overflow: hidden;
+    outline: none;}
+#top #side_menu .login .logbt01 a:hover {
+	background-image:url(../image/side_button_entry_c3_on.gif);
+	text-indent:-9999px;
+	height: 36px;
+	width: 180px;
+	display:block;
+}
+#top #side_menu .login .logbt02 {
+	height: 36px;
+	width: 180px;
+	background-image:url(../image/side_button_login_c3.gif);
+	text-indent:-9999px;
+	display:block;
+	margin-left:0;
+}
+#top #side_menu .login .logbt02 a {
+	background-image:url(../image/side_button_login_c3.gif);
+	text-indent:-9999px;
+	height: 36px;
+	width: 180px;
+	display:block;
+	overflow: hidden;
+    outline: none;
+	}
+#top #side_menu .login .logbt02 a:hover {
+	background-image:url(../image/side_button_login_c3_on.gif);
+	text-indent:-9999px;
+	height: 36px;
+	width: 180px;
+	display:block;
+}
+#top #side_menu .login .logbt03 {
+	height: 36px;
+	width: 180px;
+	background-image:url(../image/side_button_history.gif);
+	text-indent:-9999px;
+	display:block;
+	text-align:center;
+	}
+#top #side_menu .login .logbt03 a {
+	background-image:url(../image/side_button_history.gif);
+	text-indent:-9999px;
+	height: 36px;
+	width: 180px;
+	display:block;
+	overflow: hidden;
+    outline: none;
+}
+#top #side_menu .login .logbt03 a:hover {
+	background-image:url(../image/side_button_history_on.gif);
+	text-indent:-9999px;
+	height: 36px;
+	width: 180px;
+	display:block;
+	overflow: hidden;
+    outline: none;
+}
+/*ログイン後 */
+#top #side_menu .login .name {
+	margin: 5px 0 5px 15px;
+	font-size:10px;
+	font-weight:bold;
+}
+#top #side_menu .login .logout_b {
+	background-color: #FFFFFF;
+	margin: 0 auto;
+	text-align: center;
+	width: 230px;
+	padding: 8px 0;
+	_margin:0 10px;
+}
+#top #side_menu .login .logout_b .detail {
+	margin-bottom: 5px;
+	width: 185px;
+	margin: 0 auto;
+	text-align: center;
+}
+
+#top #side_menu .login .logout_b .detail dt,
+#top #side_menu .login .logout_b .detail dd {
+	margin-bottom: 5px;
+	margin-left:0;s
+}
+#top #side_menu .login .logout_b .detail .number {
+	font-size: 25px;
+	font-weight: bold;
+	text-align: center;
+	line-height: 80%;
+}
+#top #side_menu .login .logout_b .detail .point {
+	text-align: right;
+	font-size: 10px;
+	margin-right: 20px;
+}
+#top #side_menu .login .logout_b .c_period {
+	width: 210px;
+	_width: 200px;
+	border: 1px solid #CCCCCC;
+	font-size: 10px;
+	text-align: left;
+	margin: 0 auto;
+	_margin:0 10px;
+}
+#top #side_menu .login .logout_b .c_period li {
+	font-size: 10px;
+	padding:2px;
+}
+#top #side_menu .login .logout_b .c_period .bg_gray {
+	background-color: #F2F2F2;
+}
+
+#top #side_menu .login .logout_b .info_period {
+	width: 200px;
+	text-align: left;
+	background: url("../image/side_login_arrow_hatena.gif") center left no-repeat;
+	padding-left: 13px;
+	font-size:10px;
+	margin: 5px auto 0 auto;
+}
+#top #side_menu .login .new_info {
+	margin:8px 0 0 15px;
+}
+#top #side_menu .login .new_info dt  {
+	font-size: 10px;
+	background: url("../image/check.gif") center left no-repeat;
+	padding-left: 13px;
+	line-height:100%;
+	font-weight:bold;
+}
+#top #side_menu .login .new_info dd  {
+	margin:0;
+	}
+#top #side_menu .login .new_info a {
+	font-size: 10px;
+	color: #FF3300;
+	font-weight:bold;
+	text-decoration: underline;
+}
+
+/*初めての方～ */
+#top #side_menu .info {
+	width: 250px;
+	border: 1px solid #CCCCCC;
+	background-color:#FFFFFF;
+	margin-bottom: 10px;
+}
+#top #side_menu .info h3 {
+	width: 240px;
+	font-weight:bold;
+	border-bottom: 1px solid #CCCCCC;
+	background: url(../image/bg_info.jpg) no-repeat;
+	padding: 5px;
+	font-size: 12px;
+	height: 20px;
+	line-height: 140%;
+}
+
+#top #side_menu .info .i_01 {
+	background: url(../image/bg_icon.png) left -400px no-repeat;
+	padding-left:24px;
+	height:19px;
+	display:block;
+	margin:1px 0 0 3px;
+}
+#top #side_menu .info .i_02 {
+	background: url(../image/bg_icon.png) left -422px no-repeat;
+	padding-left:24px;
+	height:20px;
+	display:block;
+	margin:1px 0 0 3px;
+}
+#top #side_menu .info .i_03 {
+	background: url(../image/bg_icon.png) left -442px no-repeat;
+	padding-left:24px;
+	height:20px;
+	display:block;
+	margin:1px 0 0 3px;
+}
+#top #side_menu .info .b_text {
+	margin: 5px 0 5px 15px;
+}
+#top #side_menu .info .border_top {
+	border-top: 1px solid #CCCCCC;
+	border-bottom:none;
+}
+#top #side_menu .info .s_info {
+	width: 220px;
+	border-bottom: #CCCCCC 2px dotted;
+	margin:5px 0 5px 12px;
+	padding-bottom: 5px;
+}
+#top #side_menu .info .s_info .s_day {
+	font-size: 10px;
+	font-weight: bold;
+}
+#top #side_menu .info .s_info .text {
+	margin-left:0;
+}
+#top #side_menu .info .info_end {
+	border-bottom: none;
+}
+
+/*バナー類 */
+#top #side_menu .wcard {
+	margin-bottom: 10px;
+}
+#top #side_menu .a_bnr ul {
+	margin-bottom: 10px;
+}
+#top #side_menu .a_bnr li {
+	margin-bottom: 5px;
+}
+

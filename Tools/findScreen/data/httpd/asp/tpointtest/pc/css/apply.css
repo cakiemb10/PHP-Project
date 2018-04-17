@@ -1,0 +1,18 @@
+@charset "shift_jis";
+
+/* Side Menu */
+
+#top #content #applicationArea {
+	margin-left: 15px;
+	border: 1px #CCCCCC solid;
+	padding-bottom: 10px;
+}
+#top #content #applicationArea .apply_btn li {
+	float: left;
+	margin: 15px 13px;
+}
+#top #content #applicationArea p {
+	width: 620px;
+	margin: 0 auto;
+	margin-top: 10px;
+}

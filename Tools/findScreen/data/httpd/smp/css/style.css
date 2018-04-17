@@ -1,0 +1,51 @@
+@charset "utf-8";
+
+#top {
+	width: 100%
+}
+
+#top .searchBlock{
+	margin: 0 0 30px;
+}
+
+#top .searchBlock .searchTitle{
+	margin: 0 0 20px;
+	text-align: center;
+}
+
+#top .searchBlock .searchTitle img{
+	width: 100%;
+}
+
+#top .searchBlock .searchButton {
+	text-align: center;
+}
+
+#top .searchBlock .searchButton img{
+	width: 180px;
+}
+
+#top .searchBlock .femaleCheck{
+	margin:0 3% 5px;
+	width: 94%;
+}
+
+#top .searchBlock .serchSelect{
+	margin:0 3% 10px;
+	width: 94%;
+}
+
+#top .searchBlock .serchSelect select{
+    width: 100%;
+    height: 30px;
+}
+
+#top .searchBlock .searchArea{
+	margin:0 3% 10px;
+	width: 94%;
+}
+
+#top .searchBlock .searchArea input{
+    width: 100%;
+    height: 30px;
+}

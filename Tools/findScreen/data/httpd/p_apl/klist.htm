@@ -1,0 +1,186 @@
+<?PHP
+// ------------------------------------------------------------
+// 検索
+//
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2011/12/05 Y.Matsukawa	別CID参照
+// 2011/12/21 H.osamoto		セブンミール業務支援用処理追加
+// 2012/01/10 Y.Matsukawa	【不具合修正】POSTの場合、遷移履歴のリンクからパラメータが消える
+// 2012/03/12 Y.Matsukawa	スマホリダイレクト（各種接続I/F対応）
+// 2012/05/11 Y.Matsukawa	全件一覧ページング
+// 2012/08/03 H.Osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// 2015/12/22 F.Yokoi		HTMLエンティティ文字の表示対応（別変数に追加）  
+// 2016/07/27 Y.Uesugi		SSL許可時のアイコンCGI SSL対応
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// パンくず追加
+//-------------------
+ZdcHistoryAdd('kl', $D_HISTORY_NAME['KList'], ZdcGetRequestURI(), (isset($his) ? $his : ''));
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	// add 2012/03/12 Y.Matsukawa
+	//-------------------
+	// UA判定でリダイレクト
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_redirect_ua.inc');
+
+	// add 2012/05/11 Y.Matsukawa
+	//-------------------
+	// ページ制御
+	//-------------------
+	if (!isset($page)) $page = 0;
+	if ($D_KLIST_PAGING) {
+		$pos = $page * $D_KLIST_PAGE + 1;
+		$kcnt = $D_KLIST_PAGE;
+	} else {
+		$pos = 1;
+		$kcnt = 10000;
+	}
+
+	//-------------------
+	// 条件取得
+	//-------------------
+	$arr_col = explode(',', $col);
+	$col_cnt = count($arr_col);
+	$arr_sort = explode(',', $sort);
+	//ソートキー（複数カラム）を指定されたらそちらを優先
+	if (isset($sortkeys) && $sortkeys != '') {
+		$arr_sort = explode(';', $sortkeys);
+	}
+
+	//--------------------------------------------------------------------------------
+	//
+	// 検索CGI
+	//
+	//--------------------------------------------------------------------------------
+	//-------------------
+	// データ取得
+	//-------------------
+	for($k = 0; $k < $col_cnt; $k++) {
+		$cgi = $D_SSAPI['kyotenlist'];
+		$prm = '';
+		$prm .= sprintf("&jkn=%s", urlencode($arr_col[$k]));
+		$prm .= sprintf("&sort=%s", urlencode($arr_sort[$k]));
+		$prm .= sprintf("&pos=%d&cnt=%d", $pos, $kcnt);		// add 2012/05/11 Y.Matsukawa
+		$url = sprintf('%s?cid=%s&key=%s&opt=%s%s', $cgi, $D_DATA_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+		$dat = ZdcHttpRead($url, false, 5);
+		$cnt = 0;	//初期化
+		if (isset($dat) && $dat != "") {
+			$status = explode("\t", $dat[0]);
+			$cnt = count($dat) - 1;
+		}
+
+		//-------------------
+		// データなし
+		//-------------------
+		if($cnt == 0){
+			$err = $D_MSG_SEARCH_NODATA['KL'];
+		//-------------------
+		// データあり
+		//-------------------
+		} else {
+			for($i = 0;$i < $cnt;$i ++) {
+				$rec = explode("\t",$dat[$i + 1]);
+				// 拠点縮尺（PC）
+				$kyoten_lvl = $rec[count($rec)-2];
+				if (ctype_digit($kyoten_lvl) && 1 <= $kyoten_lvl && $kyoten_lvl <= 18) {
+				} else $kyoten_lvl = 0;
+				$tpl["list"][$k][$i]["no"] = $page * $D_SEARCH_SHOPLIST_PAGE + $i + 1;
+				$tpl["list"][$k][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+				$tpl["list"][$k][$i]["cid"] = $rec[0];
+				$tpl["list"][$k][$i]["lat"] = $rec[1];
+				$tpl["list"][$k][$i]["lon"] = $rec[2];
+				$tpl["list"][$k][$i]["icon"] = $rec[3];
+				$tpl["list"][$k][$i]["new"]  = $rec[4];
+				for($j = 0;$j < 202;$j ++) {
+					$tmp = $D_KYO_COL_NAME[0][$j];
+					if ($tmp != '') {
+						$d = $rec[5+$j];
+						//	$tpl["list"][$k][$i][$tmp] = $d;	2012/08/03 H.Osamoto mod
+						$tpl["list"][$k][$i][$tmp] = zdcHtmlspecialchars($d, $tmp);
+						$tpl["list"][$k][$i][$tmp."_raw"] = zdcHtmlspecialchars_raw($d, $tmp);
+						if($d) $tpl["list"][$k][$i][$tmp."l".$d] = "1";
+						if(intval($d) == 1) $tpl["list"][$k][$i][$tmp."b"] = "1";
+						// 日時項目を分割
+						if (isset($D_KYOTEN_ITEM_DATETIME[$tmp]) && $D_KYOTEN_ITEM_DATETIME[$tmp]) {
+							splitDateTimeCol($tmp, $d, &$tpl['list'][$k][$i]);
+						}
+					}
+				}
+				$tpl["list"][$k][$i]["iconimg"] = sprintf("%s?cid=%s&icon_id=%s", $D_SSAPI["icon_select_g"], $D_ICON_CID, $tpl["list"][$k][$i]["icon"]);
+				$tpl["list"][$k][$i]["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+				$tpl["list"][$k][$i]["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+				$tpl["list"][$k][$i]["_cgiSysIconimgSSL"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select_ssl"], $D_DATA_CID);	//add 2016/07/27 Y.Uesugi
+				$tpl["list"][$k][$i]["_cgiGifimg"]  = sprintf("%s?cid=%s&kid=", $D_SSAPI["gif_select"], $D_DATA_CID);
+				$tpl["list"][$k][$i]["_urlPrint"] = $D_DIR_BASE_G.'prt/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');
+			}
+		}
+	}
+	// ページ制御		add 2012/05/11 Y.Matsukawa
+	if ($D_KLIST_PAGING) {
+		$tpl["paging"] = 1;
+		$pg_prm = sprintf('&col=%s&sortkeys=%s', urlencode($col), urlencode($sortkeys));
+		if($page > 0) {
+			$tpl["_urlPrev"] = $D_DIR_BASE_G.sprintf('klist.htm?page=%d%s', $page-1, $pg_prm);
+			$tpl["_urlPrev"] .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+		}
+		if(substr($status[0], -1, 1) == '1'){
+			$tpl["_urlNext"] = $D_DIR_BASE_G.sprintf('klist.htm?page=%d%s', $page+1, $pg_prm);
+			$tpl["_urlNext"] .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+		}
+		$tpl["max"] = intval($status[2]);
+		$tpl["start"] = $pos;
+		$tpl["end"]   = $pos + $cnt - 1;
+		//ページジャンプリンク（1 2 3 ...）
+		$tpl["last"] = ceil($tpl["max"] / $D_KLIST_PAGE);
+		if ($tpl["last"] > 1) {
+			for ($j=0; $j<$tpl["last"]; $j++) {
+				$tpl["pgjump"][$j]["pg"] = $j+1;
+				if ($j != $page) {
+					$tpl["pgjump"][$j]["_urlLink"] = $D_DIR_BASE_G.sprintf('klist.htm?page=%d%s', $j, $pg_prm);
+					$tpl["pgjump"][$j]["_urlLink"] .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+				}
+			}
+		}
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+//header('X-UA-Compatible: IE=emulateIE7');
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY."klist.tpl", $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY."klist.tpl", $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+}
+?>

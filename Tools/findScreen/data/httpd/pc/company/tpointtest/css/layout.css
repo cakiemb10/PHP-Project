@@ -1,0 +1,93 @@
+@charset "euc-jp";
+
+/* body
+-------------------------------------------------- */
+#body {
+	text-align: center;
+}
+/* body直下のdiv
+-------------------------------------------------- */
+#wrapper {
+	overflow: hidden;
+	width: 884px;
+	height: auto;
+	/*height: 100%;*/
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 0px;
+	margin-bottom: 0px;
+	padding-left: 10px;
+	padding-right: 10px;
+	padding-top: 0px;
+	padding-bottom: 0px;
+	border-left: 1px solid #FFFFFF;
+	border-right: 1px solid #FFFFFF;
+	border-top: 0px solid #FFFFFF;
+	border-bottom: 1px solid #FFFFFF;
+	background-color: #FFFFFF;
+	text-align: center;
+	min-height: 1650px;
+}
+/* ヘッダ
+-------------------------------------------------- */
+#header {
+/*	display: ;*/
+	position: relative;
+	z-index: 1;
+	overflow: hidden;
+	width: 100%;
+	height: auto;
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 0px;
+	margin-bottom: 5px;
+	padding: 0px;
+}
+/* メイン部分
+-------------------------------------------------- */
+#contents {
+	position: relative;
+	z-index: 2;
+	overflow: hidden;
+	/*overflow-x: hidden;*/
+	/*overflow-y: auto;*/
+	/*overflow-y: hidden;*/
+	width: 100%;
+/*	height: ;*/
+	min-height: 980px;
+	margin-left: auto;
+	margin-right: auto;
+	/*margin-top: 0px;*/
+	margin-bottom: 5px;
+	text-align: center;
+	vertical-align: top;
+}
+div.contents-withhis {
+	margin-top: 0px;
+}
+div.contents-nohis {
+	margin-top: 10px;
+}
+#minheight {
+	height: 980px;
+	width:0px; 
+	margin:0; 
+	padding:0; 
+	overflow:hidden; 
+	border:0;
+}
+/* フッタ
+-------------------------------------------------- */
+#footer {
+/*	display: ;*/
+	position: relative;
+	z-index: 5;
+	overflow: hidden;
+	width: 100%;
+	height: auto;
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 5px;
+	margin-bottom: 0px;
+	padding: 0px;
+}

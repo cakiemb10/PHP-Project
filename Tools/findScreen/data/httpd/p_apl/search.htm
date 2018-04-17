@@ -1,0 +1,3260 @@
+<?PHP
+// ------------------------------------------------------------
+// 検索
+// 
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2011/12/05 Y.Matsukawa	別CID参照
+// 2011/12/21 H.osamoto		セブンミール業務支援用処理追加
+// 2012/01/10 Y.Matsukawa	【不具合修正】POSTの場合、遷移履歴のリンクからパラメータが消える
+// 2012/03/01 Y.Matsukawa	【不具合修正】フリーワード「表」文字化け対応
+// 2012/03/12 Y.Matsukawa	スマホリダイレクト（各種接続I/F対応）
+// 2012/04/02 K.Masuda		緯度経度接続で縮尺レベルを渡す
+// 2012/06/01 N.Wada		検索タイプをテンプレート変数に追加
+// 2012/06/25 N.Wada		【不具合修正】施設フリーワード検索時に予め都道府県コードが指定されているとパンくずの文字が出ない
+//							絞込み条件用の都道府県コードはtodを新たに使い、adcdは住所コード用として変数を分ける
+// 2012/07/20 H.osamoto		駅・住所リスト検索時に都道府県一覧の対象を限定可能にする
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// 2012/10/15 H.Osamoto		検索範囲の指定を実距離で指定可能に変更
+// 2012/11/06 H.Osamoto		SEJキャンペーン対応
+// 2012/11/13 Y.Matsukawa	JCN満空情報取得
+// 2012/11/14 Y.Matsukawa	XSS対策（NTT西日本から指摘）
+// 2012/11/30 Y.Matsukawa	【不具合修正】Comb検索エラー発生（define_get_icon.inc内でcgi変数使用していたため）
+// 2013/03/26 H.Iijima		RDデータ取得
+// 2013/07/22 Y.Matsukawa	【ヤマト運輸向けカスタマイズ】郵便番号検索0件の場合、検索TOPへ遷移
+// 2013/08/15 T.Sasaki		【ヤマト運輸向けカスタマイズ】住所リストをかな行別に表示する
+// 2013/08/20 Y.Matsukawa	表示データ件数１件判定
+// 2013/08/26 Y.Matsukawa	路線駅一覧に路線名を表示
+// 2013/09/13 Y.Matsukawa	【不具合修正】路線駅リストページ送り時に路線名文字化け
+// 2013/09/19 H.Osamoto		住所FW検索結果一覧の遷移先を住所リスト検索にする
+//							住所FW検索結果が1件だった場合に一覧画面をスキップする
+// 2013/10/03 Y.Matsukawa	住所検索結果一覧から最寄り地図へ検索文字列を渡す
+// 2013/10/16 Y.Matsukawa	住所FW検索リダイレクト時に最寄り地図へ検索文字列を渡す
+// 2013/11/27 H.Osamoto		new判定結果に「0」が入っておりテンプレート上で判別できない為nullに変更
+// 2014/05/16 Y.Matsukawa	商品マスタ対応
+// 2014/07/07 Y.Matsukawa	郵便番号検索：一覧スキップ（最寄り地図へ直接遷移）
+// 2014/12/03 Y.Matsukawa	任意カラムの値判定
+// 2015/01/26 Y.Matsukawa	ソート項目の桁あわせ
+// 2015/01/26 Y.Matsukawa	第二階層リスト画面に、上位階層（都道府県）代表点地図へのリンクを設置
+// 2015/01/26 Y.Matsukawa	住所リスト、駅リストのパンくずを1.0の仕様に合わせる
+// 2015/02/25 Y.Matsukawa	area1,area2を指定した時のエラーメッセージが表示されない
+// 2015/03/17 H.Osamoto		選択している都道府県情報をテンプレートに引き渡す
+// 2015/03/17 Y.Matsukawa	絞り込み：任意カラムの部分一致
+// 2015/03/17 H.Yasunaga	駅リストにかなの段を表示する
+// 2015/03/25 Y.Matsukawa	フリーワード検索対応
+// 2015/03/26 H.Osamoto		店舗リスト一覧印刷用のURLを生成
+// 2015/03/26 Y.Matsukawa	search.js読み込み
+// 2015/05/08 Y.Matsukawa	店舗一覧ソート順指定
+// 2015/06/03 N.Wada		ポップアップ表示のため検索結果画面テンプレートのみを画面出力
+// 2015/06/11 F.Yokoi		【不具合修正】Comb施設検索パラメータエラー修正
+// 2015/06/11 H.Osamoto		searchzip.cgi呼び出し時にソートパラメータ指定
+// 2015/07/21 H.Osamoto		住所リスト検索結果にフリガナを追加
+// 2015/10/20 N.Wada		住所リスト検索結果に全件出力を追加
+// 							住所リストをかな行別に表示する際に23区グループを追加
+// 							任意カラムの値判定にLT,GT,LTE,GTEを追加
+// 							common.jsの読み込み追加
+// 							拠点FW検索結果一覧の遷移先を最寄り地図へと変更する分岐を追加
+// 							住所リスト検索にエリア単位の検索を追加
+// 							住所リスト検索結果に都道府県名を追加
+//							検索エラーのテンプレートのみ表示に対応
+// 2015/10/21 Y.Uesugi		施設リストから特定施設を除外する機能追加
+// 2015/10/28 Y.Uesugi		任意カラムの値判定(比較位置指定)
+// 2015/11/09 Y.Uesugi		施設リスト検索にて都道府県選択時のパンクズ表示されない件を修正
+// 2015/11/11 Y.Uesugi		施設フリーワード検索にて施設住所取得
+// 2015/12/09 Y.Uesugi		特定の値の場合にフラグを立てる
+// 2015/12/22 F.Yokoi		HTMLエンティティ文字の表示対応（別変数に追加）
+// 2016/02/29 H.Yasunaga	全国信用協同組合連合会カスタマイズ
+// 2016/06/13 N.Wada		日本郵政版郵便番号検索追加
+// 2016/06/21 Y.Matsukawa	前方一致判定
+// 2016/07/27 Y.Uesugi		SSL許可時のアイコンCGI SSL対応
+// 2016/09/29 Y.Uesugi		住所リンクSEO対策
+// 2016/10/13 N.Wada		パンくずからキーワードを消す
+// 2016/10/13 N.Wada		カスタム用エラー画面テンプレートを追加
+// 2016/11/10 N.Wada		施設ジャンルメニューが複数指定してある場合は、ジャンルメニュー選択画面を表示
+// 2016/11/14 Y.Uesugi		複合フリーワード検索 住所カナ検索対応
+// 2016/11/21 T.Yoshino		グラクソ発毛様特注機能追加(香川県対応)
+// 2017/02/06 T.Yoshino		吉野家特注対応(複合FW検索/ﾊﾟﾗﾒｰﾀ追加)
+// 2017/03/06 K.Tani		駅リスト表示にフリガナ追加
+// 2017/03/09 Y.Uesugi		ページジャンプリンクに最大値を設定
+// 2017/03/14 H.Yasunaga	日本郵便カスタマイズ
+// 2017/03/30 N.Wada		任意カラム同士の一致判定
+// 2017/03/30 N.Wada		任意カラム（時刻）同士の比較
+// 2017/03/30 N.Wada		フラグ項目グループ判定（どれか１つ以上ON）
+// 2017/03/30 N.Wada		フラグ項目グループ判定（すべてON）
+// 2017/03/30 N.Wada		値グループ判定（どれか１つ以上値がある）
+// 2017/03/30 N.Wada		値グループ判定（どれか１つ以上、任意の値と一致する）
+// 2017/04/19 H.Yasunaga	日本郵便カスタマイズ
+// 2017/05/14 Y.Matsukawa	XSS対策
+// 2017/04/21 H.Yasunaga	ローソンキャンペーン対応カスタマイズ
+// 2017/05/11 H.Yasunaga	ローソンキャンペーン対応カスタマイズ
+// 2017/06/13 N.Wada		フリーワード複合検索の店舗一覧に任意カラム同士の一致判定
+// 2017/06/13 N.Wada		フリーワード複合検索の店舗一覧に任意カラム（時刻）同士の比較
+// 2017/06/13 N.Wada		フリーワード複合検索の店舗一覧にフラグ項目グループ判定（どれか１つ以上ON）
+// 2017/06/13 N.Wada		フリーワード複合検索の店舗一覧にフラグ項目グループ判定（すべてON）
+// 2017/06/13 N.Wada		フリーワード複合検索の店舗一覧に値グループ判定（どれか１つ以上値がある）
+// 2017/06/13 N.Wada		フリーワード複合検索の店舗一覧に値グループ判定（どれか１つ以上、任意の値と一致する）
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+require_once('/home/emap/src/p/inc/define_get_icon.inc');		// add 2012/11/13 Y.Matsukawa
+
+
+// 「表」文字化け対応で末尾に付加された全角スペースを除去		add 2012/03/01 Y.Matsukawa
+if (isset($keyword) && $keyword != '') {
+	$kwlen = mb_strlen($keyword);
+	for ($i = 0; $i < $kwlen; $i++) {
+		if (mb_substr($keyword, mb_strlen($keyword)-1, 1) != '　') break;
+		$keyword = mb_substr($keyword, 0, mb_strlen($keyword)-1);
+	}
+}
+
+// add 2012/06/01 N.Wada
+if ( $type != "" ) {
+	$tpl["type_".$type] = 1;
+}
+$type_org = $type;		// add 2013/07/22 Y.Matsukawa
+
+// areaptn未指定時は1とみなす		add 2015/01/26 Y.Matsukawa
+$areaptn = (isset($areaptn) && intval($areaptn) && $areaptn >= 1 && $areaptn <= 5 ? $areaptn : 1);
+
+//-------------------
+// パンくず追加
+//-------------------
+//$kw = (isset($keyword) ? $keyword : '');		mod 2012/11/14 Y.Matsukawa
+//$kw = (isset($keyword) ? htmlspecialchars($keyword) : '');		mod 2017/05/14 Y.Matsukawa
+$kw = (isset($keyword) ? $keyword : '');		// ※act_make_history.incで全てのhisnmをエスケープするのでここでは不要
+if (isset($D_HISTORY_NAME[$type])) {
+	$hisid = '';
+	switch($type) {
+		// 拠点フリーワード
+		case 'ShopW':
+			$hisid = 'sw';
+			// add 2016/10/13 N.Wada [
+			if (isset($D_HISTORY_NAME_KEYWORD_CUT[$type]) && $D_HISTORY_NAME_KEYWORD_CUT[$type]) {
+				$hisnm = $D_HISTORY_NAME[$type];
+			} else {
+			// add 2016/10/13 N.Wada ]
+				$hisnm = $D_HISTORY_NAME[$type].($kw != '' ? '('.$kw.')' : '');
+			}
+			break;
+		// 拠点フリーワード（完全一致）		add 2013/09/18 Y.Matsukawa
+		case 'ShopM':
+			$hisid = 'si';
+			$hisnm = $D_HISTORY_NAME[$type].($kw != '' ? '('.$kw.')' : '');
+			break;
+		// 拠点リスト
+		case 'ShopA':
+			$aptn = (isset($areaptn) && intval($areaptn) && $areaptn >= 1 && $areaptn <= 5 ? $areaptn : 1);
+			// 第2階層指定
+			if (isset($area2) && $area2 != '') {
+				$hisid = 'sa2';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type.($aptn>1?'_'.$aptn:'')];
+				}
+			// 第1階層指定
+			} else if (isset($area1) && $area1 != '') {
+				$hisid = 'sa1';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type.($aptn>1?'_'.$aptn:'')];
+				}
+			// 指定なし
+			} else {
+				$hisid = 'sa';
+				$hisnm = $D_HISTORY_NAME[$type.($aptn>1?'_'.$aptn:'')];
+			}
+			break;
+		// 駅フリーワード
+		case 'StW':
+			$hisid = 'ew';
+			$hisnm = $D_HISTORY_NAME[$type].($kw != '' ? '('.$kw.')' : '');
+			break;
+		// 駅リスト
+		case 'StL':
+			// 都道府県指定
+			//	if (isset($adcd) && intval($adcd)) {	mod 2012/07/20 H.osamoto
+			if (isset($adcd) && intval($adcd) && (strpos($adcd, ',') === false)) {
+				$hisid = 'elT';
+				$hisnm = $D_TOD[$adcd];
+				// add 2015/01/26 Y.Matsukawa [
+				$arr_his_wk = explode(',', $his);
+				if (!in_array('el', $arr_his_wk)) {
+					$hisnm = $D_HISTORY_NAME[$type].'('.$hisnm.')';
+				}
+				// add 2015/01/26 Y.Matsukawa ]
+			// 指定なし
+			} else {
+				$hisid = 'el';
+				//$hisnm = $D_HISTORY_NAME[$type];		mod 2015/01/26 Y.Matsukawa
+				$hisnm = $D_HISTORY_NAME[$type].'(全国)';
+			}
+			break;
+		// 路線リスト		add 2013/08/01 Y.Matsukawa
+		case 'LineL':
+			// 都道府県指定
+			if (isset($adcd) && intval($adcd) && (strpos($adcd, ',') === false)) {
+				$hisid = 'llT';
+				$hisnm = $D_TOD[$adcd];
+			// 指定なし
+			} else {
+				$hisid = 'll';
+				$hisnm = $D_HISTORY_NAME[$type];
+			}
+			break;
+		// 路線駅リスト		add 2013/08/01 Y.Matsukawa
+		case 'LineStL':
+			$hisid = 'el';
+			$hisnm = $D_HISTORY_NAME[$type];
+			break;
+		// 施設フリーワード
+		case 'PoiW':
+			// 都道府県指定
+			if (isset($adcd) && intval($adcd)) {
+				$hisid = 'pwT';
+				$hisnm = $D_TOD[$adcd];
+			// ジャンル指定
+			} else if (isset($jnr) && intval($jnr)) {
+				$hisid = 'pwJ';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			// ジャンルメニュー指定
+			} else if (isset($jnrmn) && intval($jnrmn)) {
+				$hisid = 'pwJM';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			// 指定なし
+			} else {
+				$hisid = 'pw';
+				$hisnm = $D_HISTORY_NAME[$type];
+			}
+			break;
+		// 施設リスト
+		case 'PoiL':
+			// 履歴表示修正		add 2015/11/09 Y.Uesugi [
+			// 都道府県指定
+			if (isset($adcd) && strlen($adcd) >= 5 ) {
+				$hisid = 'plS';
+				$hisnm = $selnm;
+
+			// 履歴表示修正		add 2015/11/09 Y.Uesugi ]
+			} else if (isset($adcd) && intval($adcd) ) {
+				$hisid = 'plT';
+				$hisnm = $D_TOD[$adcd];
+				// 履歴表示修正		add 2015/11/09 Y.Uesugi [
+				if (isset($tod) && $tod != '00') {
+					// ジャンル指定
+					if (isset($jnr) && intval($jnr)) {
+						$hisid = 'plJ';
+						if (isset($selnm) && $selnm != '') {
+							$hisnm = $selnm;
+						} else {
+							$hisnm = $D_HISTORY_NAME[$type];
+						}
+					// ジャンルメニュー指定
+					} else if (isset($jnrmn) && intval($jnrmn)) {
+						$hisid = 'plJM';
+						if (isset($selnm) && $selnm != '') {
+							$hisnm = $selnm;
+						} else {
+							$hisnm = $D_HISTORY_NAME[$type];
+						}
+					}
+				}
+				// 履歴表示修正		add 2015/11/09 Y.Uesugi ]
+			// ジャンル指定
+			} else if (isset($jnr) && intval($jnr)) {
+				$hisid = 'plJ';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			// ジャンルメニュー指定
+			} else if (isset($jnrmn) && intval($jnrmn)) {
+				$hisid = 'plJM';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			// 指定なし
+			} else {
+				$hisid = 'pl';
+				$hisnm = $D_HISTORY_NAME[$type];
+			}
+			break;
+		// 住所フリーワード
+		case 'AddrW':
+			$hisid = 'aw';
+			$hisnm = $D_HISTORY_NAME[$type].($kw != '' ? '('.$kw.')' : '');
+			break;
+		// 住所リスト
+		case 'AddrL':
+			// 指定なし
+			//	if (!isset($adcd) || $adcd == '') {		mod 2012/07/20 H.osamoto
+			//if (!isset($adcd) || $adcd == '' || (strpos($adcd, ',') !== false)) {		mod 2015/01/26 Y.Matsukawa
+			if (!isset($adcd) || $adcd == '' || (strpos($adcd, ',') !== false) || $adcd == '00') {
+				//$hisid = $type;		mod 2015/01/26 Y.Matsukawa
+				$hisid = 'al0';
+				$hisnm = $D_HISTORY_NAME[$type].'(全国)';
+			// 都道府県指定
+			} else if (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["KEN"]]) {
+				$hisid = 'al1';
+				if (isset($selnm) && $selnm != '') {
+					//$hisnm = $selnm;		mod 2015/01/26 Y.Matsukawa
+					$hisnm = $D_TOD[$adcd];
+				} else {
+					//$hisnm = $D_HISTORY_NAME[$type];		mod 2015/01/26 Y.Matsukawa
+					$hisnm = $D_HISTORY_NAME[$type].'('.$D_TOD[$adcd].')';
+				}
+			// 市区町村指定
+			} else if (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["SHK"]]) {
+				$hisid = 'al2';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			// 大字指定
+			} else if (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["OAZ"]]) {
+				$hisid = 'al3';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			// 字丁目
+			} else if (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["AZC"]]) {
+				$hisid = 'al4';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			// 街区
+			} else if (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["GIK"]]) {
+				$hisid = 'al5';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			// 地番
+			} else if (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["TBN"]]) {
+				$hisid = 'al6';
+				if (isset($selnm) && $selnm != '') {
+					$hisnm = $selnm;
+				} else {
+					$hisnm = $D_HISTORY_NAME[$type];
+				}
+			}
+			break;
+		// 郵便番号フリーワード
+		case 'ZipW':
+			$hisid = 'zw';
+			$hisnm = $D_HISTORY_NAME[$type].($kw != '' ? '('.$kw.')' : '');
+			break;
+		// 複合フリーワード
+		case 'Comb':
+			$hisid = 'cb';
+			$hisnm = $D_HISTORY_NAME[$type].($kw != '' ? '('.$kw.')' : '');
+			break;
+	}
+	if ($hisid != '') {
+		//ZdcHistoryAdd($hisid, $hisnm, $_SERVER['REQUEST_URI'], (isset($his) ? $his : ''));		mod 2012/01/10 Y.Matsukawa
+		ZdcHistoryAdd($hisid, $hisnm, ZdcGetRequestURI(), (isset($his) ? $his : ''));
+		//		dbl('----- ZdcHistory -----');
+		//		dbl(print_r($ZdcHistory, true));
+	}
+}
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	// add 2012/03/12 Y.Matsukawa
+	//-------------------
+	// UA判定でリダイレクト
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_redirect_ua.inc');
+
+	//-------------------
+	// 変数の処理
+	//-------------------
+	if(!$slogflg ) $slogflg  = "1";
+	if(!$adcd ) $adcd  = "00";
+	if(!$jnrmn) $jnrmn = "00000";
+	if(!$jnr  ) $jnr   = "00000";
+	// add 2012/06/25 N.Wada [
+	if(!$tod ) $tod  = "00";
+	if($adcd != "00") {
+		if(strpos($adcd, ',') !== false) {
+			// adcdに複数絞り込み条件が設定されていたら、todにセットしadcdを"00"に初期化
+			$tod = $adcd;
+			$adcd = "00";
+		} else {
+			$tod = substr($adcd, 0, 2);
+		}
+	}
+	// add 2012/06/25 N.Wada ]
+	// 入力値チェック
+	switch($type) {
+		case "ZipW"://郵便番号フリーワード
+			$tmp = '';
+			if(isset($keyword) && $keyword != '') {
+				$tmp = $keyword;
+				$tmp = str_replace("-", "", $tmp);
+				$tmp = str_replace("ー", "", $tmp);
+				$tmp = str_replace("−", "", $tmp);
+				$tmp = str_replace("―", "", $tmp);
+			}
+			if(mb_strlen($tmp) != 7) $err = $D_MSG_SEARCH_LENGTH[$type];
+		case "AddrW"://住所フリーワード
+		case "StW"://駅フリーワード
+		case "PoiW"://施設フリーワード
+		case "ShopW"://店舗フリーワード
+		case "ShopM"://拠点フリーワード（完全一致）		add 2013/09/18 Y.Matsukawa
+		case "Comb"://フリーワード複合検索
+			if(!isset($keyword) || $keyword == '') $err = $D_MSG_SEARCH_NULL[$type];
+			break;
+		case "AddrL"://住所リスト
+			break;
+		case "StL"://駅リスト
+		case "LineStL"://路線駅リスト		add 2013/08/01 Y.Matsukawa
+			if(!isset($kana)) $kana = 10;
+			break;
+		case "LineL"://路線リスト		add 2013/08/01 Y.Matsukawa
+		case "PoiL"://施設リスト
+		case "ShopA"://拠点エリア
+			break;
+		default:
+			break;
+	}
+
+	//--------------------------------------------------------------------------------
+	//
+	// 検索CGI
+	//
+	//--------------------------------------------------------------------------------
+	$cgi = '';		// add 2012/11/30 Y.Matsukawa
+	//$self = $D_DIR_BASE_L."search.htm?cid=$cid&$P_FREEPARAMS&";
+	//$self = "search.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm?'&'.$condprm.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'');		mod 2015/03/17 Y.Matsukawa
+	$self = "search.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'');
+
+	// add 2016/09/29 Y.Uesugi [
+	// http://〜/tokyo/search.htm... となるのを回避(SEO対策)
+	if (isset($D_SEARCH_ADDR_LIST_SEO) && $D_SEARCH_ADDR_LIST_SEO==1) {
+		$self_prm = "search.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'');
+		$self = $D_DIR_BASE_G."search.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'');
+	}
+	// add 2016/09/29 Y.Uesugi ]
+
+	//$nmap_url = "nmap.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm?'&'.$condprm.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'');	// mod 2012/04/02 K.Masuda
+	//$nmap_url = "nmap.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm?'&'.$condprm.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'').($lvl?'lvl='.$lvl.'&':'');		mod 2015/03/17 Y.Matsukawa
+	$nmap_url = "nmap.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'').($lvl?'lvl='.$lvl.'&':'');
+
+	// add 2016/09/29 Y.Uesugi [
+	// http://〜/tokyo/search.htm... となるのを回避(SEO対策)
+	if (isset($D_SEARCH_ADDR_LIST_SEO) && $D_SEARCH_ADDR_LIST_SEO==1) {
+		$nmap_url = $D_DIR_BASE_G."nmap.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'').($lvl?'lvl='.$lvl.'&':'');
+	}
+	// add 2016/09/29 Y.Uesugi ]
+
+	//$tpl["cid"] = $D_CID;
+	//$frewd = urlencode(zdc_htmlspecialchars_decode(ZdcConvertEncoding($keyword)));
+	$frewd = urlencode(zdc_htmlspecialchars_decode($keyword));
+	$frewd_esc = ($frewd ? $frewd.urlencode('　') : '');		// add 2012/04/25 Y.Matsukawa
+	//
+	switch($type) {
+		//--------------------------------------------------
+		// 住所フリーワード
+		//--------------------------------------------------
+		case "AddrW":
+			// add 2013/07/30 Y.Matsukawa [
+			// 「東十条」→「東」で検索したのと同じ結果になる（GEO仕様）を回避
+			$wkw = trim($keyword, " 　");
+			if (isset($D_GEO_ESC_JO[$wkw])) {
+				$addr_keyword = $D_GEO_ESC_JO[$wkw];
+				$addr_target = 1;//カナ
+			} else {
+				$addr_keyword = $wkw;
+				$addr_target = 0;//名称
+			}
+			$addr_frewd = urlencode(zdc_htmlspecialchars_decode($addr_keyword));
+			// add 2013/07/30 Y.Matsukawa ]
+			$start = $page*$D_SEARCH_LIST_PAGE+1;
+			$cnt = $D_SEARCH_LIST_PAGE * ($D_SEARCH_MAXPAGE[$type]+1) + 1;
+			$cgi = $D_SSAPI["searchaddr"];
+			//$prm = sprintf("pos=1&cnt=%d&lmt=%d&enc=%s&tod=%s&frewd=%s", $cnt, $cnt, "EUC", $adcd, $frewd);	mod 2012/06/25 N.Wada
+			//$prm = sprintf("pos=1&cnt=%d&lmt=%d&enc=%s&tod=%s&frewd=%s", $cnt, $cnt, "EUC", $tod, $frewd);		mod 2013/07/30 Y.Matsukawa
+			$prm = sprintf("pos=1&cnt=%d&lmt=%d&enc=%s&tod=%s&frewd=%s&srchtarget=%d", $cnt, $cnt, "EUC", $tod, $addr_frewd, $addr_target);
+
+			// add 2016/11/14 Y.Uesugi [
+			if ($D_COMB_FW_ADDR_KANA) {
+				//住所フリーワード(カナ)
+				$D_API_CORE = 1;
+				$cnt = $D_SEARCH_LIST_PAGE * ($D_SEARCH_MAXPAGE[$type]+1);
+				$cgi = $D_SSAPI['address/word'];
+				$prm = sprintf("multilanguage=T&limit=%d&ambiguoussearch=%s&word=%s", $cnt, $D_COMB_FW_ADDR_KANA_AMB, $addr_frewd);
+			}
+			// add 2016/11/14 Y.Uesugi ]
+
+			$col_name = 0;
+			$col_lat = 1;
+			$col_lon = 2;
+			break;
+		//--------------------------------------------------
+		// 駅フリーワード
+		//--------------------------------------------------
+		case "StW":
+			$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+			$cgi = $D_SSAPI["searcheki"];
+			//$prm = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s&srchmode=%s&frewd=%s", $start, $D_SEARCH_TABLE_PAGE, "EUC", $adcd, $D_SEARCH_SRCHMODE_STW, $frewd);	mod 2012/06/25 N.Wada
+			$prm = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s&srchmode=%s&frewd=%s", $start, $D_SEARCH_TABLE_PAGE, "EUC", $tod, $D_SEARCH_SRCHMODE_STW, $frewd);
+			$col_name = 3;
+			$col_lat = 1;
+			$col_lon = 2;
+			break;
+		//--------------------------------------------------
+		// 郵便番号フリーワード
+		//--------------------------------------------------
+		case "ZipW":
+			$start = ($page*$D_SEARCH_LIST_PAGE+1);
+			$cgi = $D_SSAPI["searchzip"];
+			if ($D_JPPOST_SEARCH_ZIP) $cgi = $D_SSAPI["searchjapanpost"];	// add 2016/06/13 N.Wada
+			//	$prm = sprintf("&pos=%d&cnt=%d&enc=%s&zip=%s", $start, $D_SEARCH_LIST_PAGE, "EUC", $frewd);		mod 2015/06/11 H.Osamoto
+			$prm = sprintf("&pos=%d&cnt=%d&enc=%s&zip=%s&sort=%s", $start, $D_SEARCH_LIST_PAGE, "EUC", $frewd, "adcd");
+			$col_name = 2;
+			$col_lat = 0;
+			$col_lon = 1;
+			break;
+		//--------------------------------------------------
+		// 拠点フリーワード
+		//--------------------------------------------------
+		case "ShopW":
+			$start = ($page*$D_SEARCH_SHOPLIST_PAGE+1);
+			$cgi = $D_SSAPI["kyotenlist"];
+			//$prm = sprintf("&cid=%s&opt=%s&pos=%d&cnt=%d&jkn=%s:FW:'%s'", $D_CID, $cid, $start, $D_SEARCH_SHOPLIST_PAGE, $col, $frewd);
+			$prm = sprintf("&cid=%s&opt=%s&pos=%d&cnt=%d&jkn=%s:FW:'%s'", $D_DATA_CID, $cid, $start, $D_SEARCH_SHOPLIST_PAGE, $col, $frewd);
+			//if($cond) $prm .= urlencode(sprintf(" AND (%s)", $cond));//絞込み条件の反映
+			if($cond_jkn) $prm .= urlencode(sprintf(" AND (%s)", $cond_jkn));//絞込み条件の反映
+			if(isset($D_KYOTENLIST_CUST) && $D_KYOTENLIST_CUST) $prm .= "&cust=$D_KYOTENLIST_CUST";// カスタマイズ仕様		add 2012/11/13 Y.Matsukawa
+			if($D_SHOPW_KYOTEN_SORT != "") $prm .= "&sort=".urlencode($D_SHOPW_KYOTEN_SORT);	// ソート順		add 2015/05/08 Y.Matsukawa
+			
+			// add 2017/04/21 H.Yasunaga ローソンキャンペーン対応 [
+			if ($D_LOWSON_CAM_CUST) {
+				$prm .= "&campaignid=" . $p_s1;
+			}
+			// add 2017/04/21 H.Yasunaga ]
+			
+			//$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=".$type."&col=".$col."&keyword=".$frewd."&cond=".$cond."&".$P_FREEPARAMS;
+			//$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=".$type."&col=".$col."&keyword=".$frewd."&".$P_FREEPARAMS.($condprm?'&'.$condprm:'');		mod 2012/04/25 Y.Matsukawa
+			//$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=".$type."&col=".$col."&keyword=".$frewd_esc."&".$P_FREEPARAMS.($condprm?'&'.$condprm:'');		mod 2015/03/17 Y.Matsukawa
+			//$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=".$type."&col=".$col."&keyword=".$frewd_esc."&".$P_FREEPARAMS.($condprm_enc?'&'.$condprm_enc:'');		mod 2015/03/26 H.Osamoto
+			$tpl["print_link"] = "./search_print.htm?col=".$col."&keyword=".$frewd_esc."&".$prm."&".$P_FREEPARAMS.($condprm_enc?'&'.$condprm_enc:'');
+			break;
+		// add 2013/09/18 Y.Matsukawa
+		//--------------------------------------------------
+		// 拠点フリーワード（完全一致）
+		//--------------------------------------------------
+		case "ShopM":
+			$start = ($page*$D_SEARCH_SHOPLIST_PAGE+1);
+			$cgi = $D_SSAPI["kyotenlist"];
+			$prm = sprintf("&cid=%s&opt=%s&pos=%d&cnt=%d&jkn=%s:'%s'", $D_DATA_CID, $cid, $start, $D_SEARCH_SHOPLIST_PAGE, $col, $frewd);
+			if($cond_jkn) $prm .= urlencode(sprintf(" AND (%s)", $cond_jkn));//絞込み条件の反映
+			if(isset($D_KYOTENLIST_CUST) && $D_KYOTENLIST_CUST) $prm .= "&cust=$D_KYOTENLIST_CUST";// カスタマイズ仕様
+			break;
+		//--------------------------------------------------
+		// 住所リスト
+		//--------------------------------------------------
+		case "AddrL":
+			$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+			$cgi = $D_SSAPI["listadcd"];
+			// エリアで検索		add 2015/10/20 N.Wada
+			if(isset($D_SEARCH_ADDR_LIST_AREA) && $D_SEARCH_ADDR_LIST_AREA) {
+				if($area && isset($AREA_INFO[$area-1])) {
+					$tod = str_replace('|', ',', $AREA_INFO[$area-1]["tod"]);
+				}
+			}
+			// 都道府県一覧の対象を限定
+			$select_adcd = array();
+			// mod 2012/07/20 H.osamoto [
+			//	if (strpos($adcd, ',') !== false) {
+			//		$select_adcd = explode(',', $adcd);
+			//		$adcd = '00';
+			//	}
+			if (strpos($tod, ',') !== false) {
+				$select_adcd = explode(',', $tod);
+			}
+			// mod 2012/07/20 H.osamoto ]
+			//$prm = sprintf("&pos=1&cnt=999&enc=%s&type=%d&adcd=%s","EUC", 1, $adcd);	mod 2012/06/25 N.Wada
+			$prm = sprintf("&pos=1&cnt=999&enc=%s&type=%d&adcd=%s&tod=%s","EUC", 1, $adcd, $tod);
+			if(intval($adcd) && (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["KEN"]] || strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["SHK"]])) {
+				//市区町村・大字は読み順に並べる
+				$prm .= "&sort=0";
+			}
+			$cgiadcd = $D_SSAPI["selectadcd"];
+			break;
+		//--------------------------------------------------
+		// 駅リスト
+		//--------------------------------------------------
+		case "StL":
+			// 都道府県指定→駅一覧
+			if(isset($adcd) && intval($adcd)) {
+				$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+				$cgi = $D_SSAPI["searcheki"];
+				//$prm = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s", $start, $D_SEARCH_TABLE_PAGE, "EUC", $adcd);	mod 2012/06/25 N.Wada
+				$prm = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s", $start, $D_SEARCH_TABLE_PAGE, "EUC", $tod);
+				if($D_SEARCH_KANA && isset($kana)) $prm .= "&kana=".($kana - 10);
+				
+				// add 2015/03/17 H.Yasunaga [
+				if($D_SEARCH_KANA && $D_SEARCHEKI_KANA_DAN) {
+					if (!isset($kanadan)) {
+						$kanadan = 0;
+					}
+					// カナリストから$kana行の段の取得
+					$filtarray = array_filter($D_KANA_CODE, function($arrayvalue) use ($kana) { return $arrayvalue == $kana;});
+					$filtarray = array_keys($filtarray);
+					if (intval($kanadan) > count($filtarray) || intval($kanadan) < 0) {
+						// 段の指定が段のリスト外を指定している場合は"あ段"にする
+						$kanadan = 0;
+					}
+				
+					// 先頭一致のカナ指定取得のパラメータ
+					for($i = intval($kanadan); $i < count($filtarray); $i++){
+						// srchmode=1 : 検索モード前方一致
+						// srchtarget=1 : 検索対象施設名カナ
+						// frewd=%s : フリーワード（カナ頭文字）
+						$prm = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s&srchmode=1&srchtarget=1&frewd=%s", $start, $D_SEARCH_TABLE_PAGE, "EUC", $tod, urlencode($filtarray[intval($i)]));
+						$url = sprintf("%s?key=%s&opt=%s&%s", $cgi, $D_SSAPI_KEY, $cid, $prm);
+						$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+						// 段に該当する駅が存在するか確認する。
+						if ( (count($dat) -1) > 0)
+						{
+							$kanadan = $i;
+							break;
+						}
+					}
+				}
+				// add 2015/03/17 H.Yasunaga ]
+				$col_name = 3;
+				$col_lat = 1;
+				$col_lon = 2;
+				if($D_SEARCH_KANA) {
+					$cgikana = $D_SSAPI["searchekikana"];
+					//$prmkana = sprintf("&pos=1&cnt=999&enc=%s&tod=%s", "EUC", $adcd);	mod 2012/06/25 N.Wada
+					$prmkana = sprintf("&pos=1&cnt=999&enc=%s&tod=%s", "EUC", $tod);
+				}
+			// 都道府県一覧
+			} else {
+				// add 2012/07/20 H.osamoto [
+				// 都道府県一覧の対象を限定
+				if (strpos($tod, ',') !== false) {
+					$select_adcd = explode(',', $tod);
+				}
+				// add 2012/07/20 H.osamoto ]
+				$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+				$cgi = $D_SSAPI["listadcd"];
+				$prm = sprintf("&pos=1&cnt=999&enc=%s&type=%d", "EUC", 1);
+			}
+			break;
+		// add 2013/08/01 Y.Matsukawa
+		//--------------------------------------------------
+		// 路線リスト
+		//--------------------------------------------------
+		case "LineL":
+			if(isset($adcd) && intval($adcd)) {
+				$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+				$cgi = $D_SSAPI["searchline"];
+				$prm = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s", $start, $D_SEARCH_TABLE_PAGE, "EUC", $tod);
+				$col_name = 1;
+				$col_code = 0;
+			} else {
+				// 都道府県一覧の対象を限定
+				if (strpos($tod, ',') !== false) {
+					$select_adcd = explode(',', $tod);
+				}
+				$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+				$cgi = $D_SSAPI["listadcd"];
+				$prm = sprintf("&pos=1&cnt=999&enc=%s&type=%d", "EUC", 1);
+			}
+			break;
+		// add 2013/08/01 Y.Matsukawa
+		//--------------------------------------------------
+		// 路線駅リスト
+		//--------------------------------------------------
+		case "LineStL":
+			$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+			$cgi = $D_SSAPI["searcheki"];
+			$prm = sprintf("&pos=%d&cnt=%d&enc=%s&line=%s", $start, $D_SEARCH_TABLE_PAGE, "EUC", $line);
+			//if($D_SEARCH_KANA && isset($kana)) $prm .= "&kana=".($kana - 10);
+			// かな指定
+			if($D_SEARCH_KANA && isset($kana)) {
+				// 初期表示
+				if ($kana == 10) {
+					// あ行の駅が無い場合があるので、かな検索をして最初の行を取得する
+					$prm2 = sprintf("&pos=1&cnt=999&enc=%s&line=%s", "EUC", $line);
+					$url2 = sprintf("%s?key=%s&opt=%s&%s", $D_SSAPI["searchekikana"], $D_SSAPI_KEY, $cid, $prm2);
+					$dat2 = ZdcHttpRead($url2, 0, $D_SOCKET_TIMEOUT);
+					$rec2 = explode("\t", $dat2[1]);
+					$prm .= "&kana=".trim($rec2[0]);
+				// かな選択表示
+				} else {
+					$prm .= "&kana=".($kana - 10);
+				}
+			}
+			$col_name = 3;
+			$col_lat = 1;
+			$col_lon = 2;
+			if($D_SEARCH_KANA) {
+				$cgikana = $D_SSAPI["searchekikana"];
+				$prmkana = sprintf("&pos=1&cnt=999&enc=%s&line=%s", "EUC", $line);
+			}
+			break;
+		//--------------------------------------------------
+		// 施設フリーワード
+		// 施設リスト
+		//--------------------------------------------------
+		case "PoiW":
+		case "PoiL":
+			$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+			// del 2012/06/25 N.Wada [
+			//if (strpos($adcd, ',') !== false) {
+			//	$tod = $adcd;
+			//	$shk = '';
+			//} else {
+			//	$tod = substr($adcd, 0, 2);
+			//	$shk = substr($adcd, 2, 3);
+			//}
+			// del 2012/06/25 N.Wada ]
+			// add 2012/06/25 N.Wada [
+			$shk = '';
+			if ($adcd != "00" && strlen($adcd) >= $D_ADCD_LEN[$D_ADCD_LVL["SHK"]]) {
+				$shk = substr($adcd, 2, 3);
+			}
+			// add 2012/06/25 N.Wada ]
+			//施設表示用
+			$cgipoi = $D_SSAPI["searchpoi"];
+			$prmpoi = sprintf("&cid=%s&sid=%s&menuid=%s&pos=%d&cnt=%d&enc=%s&tod=%s&shk=%s&jnrmn=%s&jnr=%s&frewd=%s",
+							$D_SEARCH_CORPID, $D_SRARCH_SRVSID, "00020", $start, $D_SEARCH_TABLE_PAGE, "EUC", $tod, $shk, $jnrmn, $jnr, $frewd);
+			//ジャンル絞込み用
+			$cgijnr = $D_SSAPI["searchpoijnr"];
+			$prmjnr = sprintf("&cid=%s&sid=%s&menuid=%s&enc=%s&tod=%s&shk=%s&jnrmn=%s&jnr=%s&frewd=%s",
+							$D_SEARCH_CORPID, $D_SRARCH_SRVSID, "00020", "EUC", $tod, $shk, $jnrmn, $jnr, $frewd);
+			if(!intval($jnrmn) && !intval($jnr)) {
+				$col_name = 3;
+			}
+			if(intval($jnrmn) && !intval($jnr)) {
+				$col_name = 5;
+			}
+			//住所絞込用
+			$cgiarea = $D_SSAPI["searchpoiarea"];
+			// del 2012/06/25 N.Wada [
+			//$prmarea = sprintf("&cid=%s&sid=%s&menuid=%s&pos=%d&cnt=%d&enc=%s&tod=%s&shk=%s&jnrmn=%s&jnr=%s&frewd=%s",
+			//				$D_SEARCH_CORPID, $D_SRARCH_SRVSID, "00020", ($page*$D_SEARCH_TABLE_PAGE+1), $D_SEARCH_TABLE_PAGE, "EUC", $tod, $shk, $jnrmn, $jnr, $frewd);
+			// del 2012/06/25 N.Wada ]
+			// add 2012/06/25 N.Wada [
+			// 現在の住所コード以下の住所を絞り込むのでtodではなくadcdを使う
+			if ($tod != "00" && $adcd == "00") {
+				// 予め都道府県コードが絞りこまれていた場合は、全都道府県分を検索（ページ分割だと処理が複雑になるので１ページで表示）
+				$prmarea = sprintf("&cid=%s&sid=%s&menuid=%s&pos=%d&cnt=%d&enc=%s&tod=%s&shk=%s&jnrmn=%s&jnr=%s&frewd=%s",
+								$D_SEARCH_CORPID, $D_SRARCH_SRVSID, "00020", 1, 100, "EUC", $adcd, $shk, $jnrmn, $jnr, $frewd);
+			} else {
+				$prmarea = sprintf("&cid=%s&sid=%s&menuid=%s&pos=%d&cnt=%d&enc=%s&tod=%s&shk=%s&jnrmn=%s&jnr=%s&frewd=%s",
+								$D_SEARCH_CORPID, $D_SRARCH_SRVSID, "00020", ($page*$D_SEARCH_TABLE_PAGE+1), $D_SEARCH_TABLE_PAGE, "EUC", $adcd, $shk, $jnrmn, $jnr, $frewd);
+			}
+			// add 2012/06/25 N.Wada ]
+			$cgiadcd = $D_SSAPI["listadcd"];
+			//$prmadcd = sprintf("&enc=%s&type=%d&adcd=%s", "EUC", 1, $adcd);	mod 2012/06/25 N.Wada
+			$prmadcd = sprintf("&enc=%s&type=%d&adcd=%s&tod=%s", "EUC", 1, $adcd, $tod);
+			//
+			$cgi = $cgipoi;
+			$prm = $prmpoi;
+			break;
+		//--------------------------------------------------
+		// 拠点エリア
+		//--------------------------------------------------
+		case "ShopA":
+			//			// function.inc内で、HTMLタグ（<BR><B>）がエンティティ化されてしまうので、元に戻す
+			//			if (isset($jkn) && $jkn) {
+			//				$jkn = mb_ereg_replace("&lt;", "<", $jkn);
+			//				$jkn = mb_ereg_replace("&gt;", ">", $jkn);
+			//				$jkn = mb_ereg_replace("&quot;", "\"", $jkn);
+			//			} else {
+			//				$jkn = "";
+			//			}
+			//第２階層まで指定した接続
+			if (isset($area1) && isset($area2) && $area1 != "" && $area2 != "") {
+				//第２階層のカラムを取得
+				//$url = sprintf("%s?cid=%s&opt=%s&jkn=%s&areaptn=%s", $D_SSAPI["kyotenarea"], $D_CID, $cid, urlencode($cond), $areaptn);
+				//$url = sprintf("%s?cid=%s&opt=%s&jkn=%s&areaptn=%s", $D_SSAPI["kyotenarea"], $D_CID, $cid, urlencode($cond_jkn), $areaptn);		mod 2011/12/05 Y.Matsukawa
+				$url = sprintf("%s?cid=%s&opt=%s&jkn=%s&areaptn=%s", $D_SSAPI["kyotenarea"], $D_DATA_CID, $cid, urlencode($cond_jkn), $areaptn);
+				$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+				$status  = explode("\t", $dat[0]);
+				if(!intval($status[2])) {
+					//$ERR = $D_MSG_SEARCH_NODATA[$type];		mod 2015/02/25 Y.Matsukawa
+					$err = $D_MSG_SEARCH_NODATA[$type];
+					$cgi = $type = "Err";
+				}
+				//if (!$ERR) {		mod 2015/02/25 Y.Matsukawa
+				if (!$err) {
+					$inf = explode("\t", $dat[1]);
+					if ($inf[3]) {	//第２階層あり
+						//$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+						$start = ($page*$D_SEARCH_SHOPLIST_PAGE+1);
+						//拠点一覧
+						$cgi = $D_SSAPI["kyotenlist"];
+						$jkn = $inf[0].":~~".$area1."~~";
+						$jkn .= " AND ";
+						$jkn .= $inf[3].":~~".$area2."~~";
+						$tmp = str_replace("~~", "'", $jkn);//シングルクォートへの変換
+						//if($cond) $tmp .= sprintf(" AND (%s)", $cond);//絞込み条件の反映
+						if($cond_jkn) $tmp .= sprintf(" AND (%s)", $cond_jkn);//絞込み条件の反映
+						// CGIパラメータ
+						//$prm = sprintf("&cid=%s&pos=%d&cnt=%d&jkn=%s&opt=%s", $D_CID, $start, $D_SEARCH_SHOPLIST_PAGE, urlencode($tmp), $cid);		mod 2011/12/05 Y.Matsukawa
+						$prm = sprintf("&cid=%s&pos=%d&cnt=%d&jkn=%s&opt=%s", $D_DATA_CID, $start, $D_SEARCH_SHOPLIST_PAGE, urlencode($tmp), $cid);
+						if(isset($D_KYOTENLIST_CUST) && $D_KYOTENLIST_CUST) $prm .= "&cust=$D_KYOTENLIST_CUST";// カスタマイズ仕様		add 2012/11/13 Y.Matsukawa
+						if($D_SHOPA_KYOTEN_SORT != "") $prm .= "&sort=".urlencode($D_SHOPA_KYOTEN_SORT);	// ソート順		add 2015/05/08 Y.Matsukawa
+						
+						// add 2017/05/11 H.Yasunaga ローソンキャンペーン対応 [
+						if ($D_LOWSON_CAM_CUST) {
+							$prm .= "&campaignid=" . $p_s1;
+						}
+						// add 2017/05/11 H.Yasunaga ]
+						
+						//$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=ShopA&area=".urlencode($area)."&kns=1&jkn=".urlencode($tmp)."&slogflg=".$slogflg."&".$P_FREEPARAMS;
+						$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=ShopA&area1=".urlencode($area1)."&area2=".urlencode($area2)."&jkn=".urlencode($tmp)."&slogflg=".$slogflg."&".$P_FREEPARAMS;
+						// 上位階層の選択名称を取得
+						if ($D_KBN_ITEM_NAME[$inf[0]]) $areanm = $D_KBN_ITEM_NAME[$inf[0]][$area1];
+						$tpl["areanm"] = ($areanm ? $areanm : $area1);
+						if ($D_KBN_ITEM_NAME[$inf[3]]) $areanm = $D_KBN_ITEM_NAME[$inf[3]][$area2];
+						$tpl["areanm"] = ($areanm ? $areanm : $area2);
+					} else {
+						//$ERR = $D_MSG_SEARCH_NODATA[$type];		mod 2015/02/25 Y.Matsukawa
+						$err = $D_MSG_SEARCH_NODATA[$type];
+						$cgi = $type = "Err";
+					}
+				}
+			//第１階層を指定した接続
+			} else if (isset($area1) && $area1 != '') {
+				//第２階層の有無をチェック
+				//$url = sprintf("%s?cid=%s&opt=%s&jkn=%s&areaptn=%s", $D_SSAPI["kyotenarea"], $D_CID, $cid, urlencode($cond_jkn), $areaptn);		mod 2011/12/05 Y.Matsukawa
+				$url = sprintf("%s?cid=%s&opt=%s&jkn=%s&areaptn=%s", $D_SSAPI["kyotenarea"], $D_DATA_CID, $cid, urlencode($cond_jkn), $areaptn);
+				
+				// add 2017/05/11 H.Yasunaga ローソンキャンペーン対応 [
+				if ($D_LOWSON_CAM_CUST) {
+					$url .= "&cust=" . $D_KYOTENLIST_CUST . "&campaignid=" . $p_s1;
+				}
+				// add 2017/05/11 H.Yasunaga ]
+				$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+				$status  = explode("\t", $dat[0]);
+				if(!intval($status[2])) {
+					//$ERR = $D_MSG_SEARCH_NODATA[$type];		mod 2015/02/25 Y.Matsukawa
+					$err = $D_MSG_SEARCH_NODATA[$type];
+					$cgi = $type = "Err";
+				}
+				//if (!$ERR) {		mod 2015/02/25 Y.Matsukawa
+				if (!$err) {
+					$inf = explode("\t", $dat[1]);
+					$jkn = $inf[0].":~~".$area1."~~";
+					if ($inf[3]) {	//第２階層あり
+						// add 2015/01/26 Y.Matsukawa [
+						// 第一階層（都道府県コード）代表点の最寄り地図リンク
+						if ($D_AREA_LVL1_NMAP_LINK) {
+							$area_tod = str_pad($area1, 2, '0', STR_PAD_LEFT);// 都道府県コードを０埋めなしで定義している場合にも対応
+							$url = sprintf("%s?key=%s&opt=%s&adcd=%s&enc=EUC&pflg=1", $D_SSAPI["selectadcd"], $D_SSAPI_KEY, $cid, $area_tod);
+							$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+							$status  = explode("\t", $dat[0]);
+							if(intval($status[2]) > 0) {
+								$rec = explode("\t", $dat[1]);
+								$tpl["upperTodName"] = htmlspecialchars($rec[4]);
+								$tpl["_urlUpperTodMapLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, trim($rec[5]), trim($rec[6]));
+							}
+						}
+						// add 2015/01/26 Y.Matsukawa ]
+						$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+						//エリア絞込み
+						$cgi = $D_SSAPI["kyotenarea"];
+						//$prm = sprintf("&cid=%s&pos=%d&cnt=%d&enc=%s&area=%s&opt=%s&areaptn=%s", $D_CID, $start, $D_SEARCH_TABLE_PAGE, "EUC", $area1, $cid, $areaptn);		mod 2011/12/05 Y.Matsukawa
+						$prm = sprintf("&cid=%s&pos=%d&cnt=%d&enc=%s&area=%s&opt=%s&areaptn=%s", $D_DATA_CID, $start, $D_SEARCH_TABLE_PAGE, "EUC", $area1, $cid, $areaptn);
+						if($cond_jkn) $prm .= sprintf("&jkn=%s", urlencode($cond_jkn));//絞込み条件の反映
+						// ソート桁あわせ		add 2015/01/26 Y.Matsukawa
+						if (isset($D_AREA_SORT_LPAD[$areaptn][2])) {
+							$prm .= "&sortlpad=".urlencode($D_AREA_SORT_LPAD[$areaptn][2]['len'].','.$D_AREA_SORT_LPAD[$areaptn][2]['char']);
+						}
+						
+						// add 2017/05/11 H.Yasunaga ローソンキャンペーン対応 [
+						if ($D_LOWSON_CAM_CUST) {
+							$prm .= "&cust=" . $D_KYOTENLIST_CUST . "&campaignid=" . $p_s1;
+						}
+						// add 2017/05/11 H.Yasunaga ]
+						
+					} else {		//第２階層なし
+						//$kns = 1;
+						$start = ($page*$D_SEARCH_SHOPLIST_PAGE+1);
+						//拠点一覧
+						$cgi = $D_SSAPI["kyotenlist"];
+						$tmp = str_replace("~~", "'", $jkn);//シングルクォートへの変換
+						//if($cond) $tmp .= sprintf(" AND (%s)", $cond);//絞込み条件の反映
+						if($cond_jkn) $tmp .= sprintf(" AND (%s)", $cond_jkn);//絞込み条件の反映
+						//$prm = sprintf("&cid=%s&pos=%d&cnt=%d&jkn=%s&opt=%s", $D_CID, $start, $D_SEARCH_SHOPLIST_PAGE, urlencode($tmp), $cid);		mod 2011/12/05 Y.Matsukawa
+						$prm = sprintf("&cid=%s&pos=%d&cnt=%d&jkn=%s&opt=%s", $D_DATA_CID, $start, $D_SEARCH_SHOPLIST_PAGE, urlencode($tmp), $cid);
+						if(isset($D_KYOTENLIST_CUST) && $D_KYOTENLIST_CUST) $prm .= "&cust=$D_KYOTENLIST_CUST";// カスタマイズ仕様		add 2012/11/13 Y.Matsukawa
+						if($D_SHOPA_KYOTEN_SORT != "") $prm .= "&sort=".urlencode($D_SHOPA_KYOTEN_SORT);	// ソート順		add 2015/05/08 Y.Matsukawa
+						//$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=".$type."&area=".urlencode($area)."&kns=1&jkn=".urlencode($tmp)."&slogflg=".$slogflg."&".$P_FREEPARAMS;		// add 2010/06/09 H.Osamoto
+						$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=".$type."&area1=".urlencode($area1)."&jkn=".urlencode($tmp)."&slogflg=".$slogflg."&".$P_FREEPARAMS;		// add 2010/06/09 H.Osamoto
+					}
+					// 上位階層の選択名称を取得
+					if ($D_KBN_ITEM_NAME[$inf[0]]) $areanm = $D_KBN_ITEM_NAME[$inf[0]][$area1];
+					$tpl["areanm"] = ($areanm ? $areanm : $area1);
+				}
+			//} else if(((isset($area) && !$area) || !isset($area)) || (isset($kns) && $kns > 1)) {
+			} else {
+				$start = ($page*$D_SEARCH_TABLE_PAGE+1);
+				//エリア絞込み
+				$cgi = $D_SSAPI["kyotenarea"];
+				//				if((isset($area1) && !$area1) || !isset($area1)){
+				//					if (!isset($area)) $area = "";
+				//					$prm = sprintf("&cid=%s&pos=%d&cnt=%d&enc=%s&area=%s&opt=%s&areaptn=%s",$D_CID,$start,$D_SEARCH_TABLE_PAGE,"EUC",$area,$cid,$areaptn);
+				//				} else {
+				//					if($adcd=="00"&&preg_match('/^[0-9a-zA-Z]+$/',$area1)){
+				//						$prm = sprintf("&cid=%s&pos=%d&cnt=%d&enc=%s&area=%s&opt=%s&areaptn=%s",$D_CID,$start,$D_SEARCH_TABLE_PAGE,"EUC",$area,$cid,$areaptn);
+				//					} else {
+				//						$prm = sprintf("&cid=%s&pos=%d&cnt=%d&enc=%s&area=%s&opt=%s&areaptn=%s",$D_CID,$start,$D_SEARCH_TABLE_PAGE,"EUC",urlencode($area1),$cid,$areaptn);
+				//					}
+				//				}
+				//$prm = sprintf("&cid=%s&pos=%d&cnt=%d&enc=%s&opt=%s&areaptn=%s", $D_CID, $start, $D_SEARCH_TABLE_PAGE, "EUC", $cid, $areaptn);		mod 2011/12/05 Y.Matsukawa
+				$prm = sprintf("&cid=%s&pos=%d&cnt=%d&enc=%s&opt=%s&areaptn=%s", $D_DATA_CID, $start, $D_SEARCH_TABLE_PAGE, "EUC", $cid, $areaptn);
+				//if($cond) $prm .= sprintf("&jkn=%s", urlencode($cond));//絞込み条件の反映
+				if($cond_jkn) $prm .= sprintf("&jkn=%s", urlencode($cond_jkn));//絞込み条件の反映
+				// ソート桁あわせ		add 2015/01/26 Y.Matsukawa
+				if (isset($D_AREA_SORT_LPAD[$areaptn][1])) {
+					$prm .= "&sortlpad=".urlencode($D_AREA_SORT_LPAD[$areaptn][1]['len'].','.$D_AREA_SORT_LPAD[$areaptn][1]['char']);
+				}
+				// add 2017/05/11 H.Yasunaga ローソンキャンペーン対応 [
+				if ($D_LOWSON_CAM_CUST) {
+					$prm .= "&cust=" . $D_KYOTENLIST_CUST . "&campaignid=" . $p_s1;
+				}
+				// add 2017/05/11 H.Yasunaga ]
+				
+				
+				//				// 上位階層の選択名称を取得
+				//				if (isset($area) && $area) {
+				//					//$url = sprintf("%s?cid=%s&opt=%s&jkn=%s&areaptn=%s",$D_SSAPI["kyotenarea"],$D_CID,$cid,urlencode($cond),$areaptn);
+				//					$url = sprintf("%s?cid=%s&opt=%s&jkn=%s&areaptn=%s",$D_SSAPI["kyotenarea"],$D_CID,$cid,urlencode($cond_jkn),$areaptn);
+				//					$dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+				//					$status  = explode("\t",$dat[0]);
+				//					if(!intval($status[2])) {
+				//						$ERR = $D_MSG_SEARCH_NODATA[$type];
+				//						$cgi = $type = "Err";
+				//					}
+				//					if (!$ERR) {
+				//						$inf = explode("\t",$dat[1]);
+				//						if ($inf[0]) {
+				//							if ($D_KBN_ITEM_NAME[$inf[0]]) $areanm = $D_KBN_ITEM_NAME[$inf[0]][$area];
+				//							$tpl["areanm"] = ($areanm ? $areanm : $area);
+				//						}
+				//					}
+				//				}
+			}
+			$tpl["ShopA"] = 1;
+			break;
+		//--------------------------------------------------
+		// 最寄り拠点
+		//--------------------------------------------------
+		case "Nshop":
+			$start = ($page*$D_SEARCH_SHOPLIST_PAGE+1);
+			$cgi = $D_SSAPI["nkyoten"];
+			//$prm = sprintf("&cid=%s&opt=%s&pos=%d&cnt=%d&lat=%s&lon=%s&rad=%s&knsu=%s", $D_CID, $cid, $start, $D_SEARCH_SHOPLIST_PAGE, $lat, $lon, $D_SHOP_RAD, $D_SHOP_MAX);		mod 2011/12/05 Y.Matsukawa
+			$prm = sprintf("&cid=%s&opt=%s&pos=%d&cnt=%d&lat=%s&lon=%s&rad=%s&knsu=%s", $D_DATA_CID, $cid, $start, $D_SEARCH_SHOPLIST_PAGE, $lat, $lon, $D_SHOP_RAD, $D_SHOP_MAX);
+			if(isset($D_ABS_DIST) && $D_ABS_DIST) $prm .= sprintf("&absdist=%s", $D_ABS_DIST);	// add 2012/10/15 H.Osamoto
+			//if($cond) $prm .= sprintf("&jkn=%s", urlencode($cond));//絞込み条件の反映
+			if($cond_jkn) $prm .= sprintf("&jkn=%s", urlencode($cond_jkn));//絞込み条件の反映
+			break;
+		//--------------------------------------------------
+		// フリーワード複合検索
+		//--------------------------------------------------
+		case "Comb":
+			$tmp_zip = $keyword;
+			$tmp_zip = mb_ereg_replace("-", "", $tmp_zip);
+			$tmp_zip = mb_ereg_replace("ー", "", $tmp_zip);
+			$tmp_zip = mb_ereg_replace("−", "", $tmp_zip);
+			$tmp_zip = mb_ereg_replace("―", "", $tmp_zip);
+			$tmp_zip = mb_convert_kana($tmp_zip, "n", "EUC-JP");
+			if ($D_COMB_FW_ZIP && is_numeric($tmp_zip)) {
+				//郵便番号フリーワード
+				$cgi_Zip = $D_SSAPI["searchzip"];
+				if ($D_JPPOST_SEARCH_ZIP) $cgi_Zip = $D_SSAPI["searchjapanpost"];	// add 2016/06/13 N.Wada
+				$start_Zip = 1;
+				//	$prm_Zip = sprintf("&pos=%d&cnt=%d&enc=%s&zip=%s", $start_Zip, $D_COMB_FW_ZIP_MAX, "EUC", $frewd);		mod 2015/06/11 H.Osamoto
+				$prm_Zip = sprintf("&pos=%d&cnt=%d&enc=%s&zip=%s&sort=%s", $start_Zip, $D_COMB_FW_ZIP_MAX, "EUC", $frewd, "adcd");
+				$col_name_Zip = 2;
+				$col_lat_Zip = 0;
+				$col_lon_Zip = 1;
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $keyword, $adcd, $col, $slogflg);
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $frewd, $adcd, $col, $slogflg);		mod 2012/04/25 Y.Matsukawa
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $frewd_esc, $adcd, $col, $slogflg);	mod 2012/06/25 N.Wada
+				$prm_re = sprintf("keyword=%s&adcd=%s&tod=%s&col=%s&slogflg=%s&page=", $frewd_esc, $adcd, $tod, $col, $slogflg);
+				//$tpl["all_disp"]["_jsZip"] = sprintf("ZdcEmapSearchChange('%s','%s','%s');", "ZipW", $prm_re, urldecode($frewd));	//郵便番号フリーワード
+				$tpl["all_disp"]["_urlAddr"] = sprintf("%stype=%s&%s", $self, 'ZipW', $prm_re);
+			} else if ($D_COMB_FW_ADDR) {
+				//住所フリーワード
+				$cgi_Ad = $D_SSAPI["searchaddr"];
+				$start_Ad = 1;
+				$cnt_Ad = $D_SEARCH_LIST_PAGE * ($D_SEARCH_MAXPAGE["AddrW"]+1) + 1;
+				//$prm_Ad = sprintf("pos=1&cnt=%d&lmt=%d&enc=%s&tod=%s&frewd=%s", $cnt_Ad, $cnt_Ad, "EUC", $adcd, $frewd);	mod 2012/06/25 N.Wada
+				$prm_Ad = sprintf("pos=1&cnt=%d&lmt=%d&enc=%s&tod=%s&frewd=%s", $cnt_Ad, $cnt_Ad, "EUC", $tod, $frewd);
+				$col_name_Ad = 0;
+				$col_lat_Ad = 1;
+				$col_lon_Ad = 2;
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $keyword, $adcd, $col, $slogflg);
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $frewd, $adcd, $col, $slogflg);		mod 2012/04/25 Y.Matsukawa
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $frewd_esc, $adcd, $col, $slogflg);	mod 2012/06/25 N.Wada
+				$prm_re = sprintf("keyword=%s&adcd=%s&tod=%s&col=%s&slogflg=%s&page=", $frewd_esc, $adcd, $tod, $col, $slogflg);
+				//$tpl["all_disp"]["_jsAddr"] = sprintf("ZdcEmapSearchChange('%s','%s','%s');","AddrW", $prm_re, urldecode($frewd));	//住所フリーワード
+				$tpl["all_disp"]["_urlAddr"] = sprintf("%stype=%s&%s", $self, 'AddrW', $prm_re);
+
+				// add 2016/11/14 Y.Uesugi [
+				if ($D_COMB_FW_ADDR_KANA) {
+					//住所フリーワード(カナ)
+					$D_API_CORE = 1;
+					$cnt_Ad = $D_SEARCH_LIST_PAGE * ($D_SEARCH_MAXPAGE["AddrW"]+1);
+					$cgi_Ad = $D_SSAPI['address/word'];
+					$prm_Ad = sprintf("multilanguage=T&limit=%d&ambiguoussearch=%s&word=%s", $cnt_Ad, $D_COMB_FW_ADDR_KANA_AMB, $frewd);
+				}
+				// add 2016/11/14 Y.Uesugi ]
+			}
+
+			if ($D_COMB_FW_ST) {
+				//駅フリーワード
+				$cgi_St = $D_SSAPI["searcheki"];
+				$start_St = 1;
+				//$prm_St = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s&srchmode=%s&frewd=%s", $start_St, $D_COMB_FW_ST_MAX, "EUC", $adcd, $D_SEARCH_SRCHMODE_STW, $frewd);	mod 2012/06/25 N.Wada
+				$prm_St = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s&srchmode=%s&frewd=%s", $start_St, $D_COMB_FW_ST_MAX, "EUC", $tod, $D_SEARCH_SRCHMODE_STW, $frewd);
+				$col_name_St = 3;
+				$col_lat_St = 1;
+				$col_lon_St = 2;
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $keyword, $adcd, $col, $slogflg);
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $frewd, $adcd, $col, $slogflg);		mod 2012/04/25 Y.Matsukawa
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $frewd_esc, $adcd, $col, $slogflg);	mod 2012/06/25 N.Wada
+				$prm_re = sprintf("keyword=%s&adcd=%s&tod=%s&col=%s&slogflg=%s&page=", $frewd_esc, $adcd, $tod, $col, $slogflg);
+				//$tpl["all_disp"]["_jsSt"] = sprintf("ZdcEmapSearchChange('%s','%s','%s');","StW", $prm_re, urldecode($frewd));		//駅フリーワード
+				$tpl["all_disp"]["_urlSt"] = sprintf("%stype=%s&%s", $self, 'StW', $prm_re);
+			}
+			if ($D_COMB_FW_POI) {
+				//施設フリーワード
+				$cgipoi = $D_SSAPI["searchpoi"];
+				$start_Poi = 1;
+				$prmpoi = sprintf("&cid=%s&sid=%s&menuid=%s&pos=%d&cnt=%d&enc=%s&tod=%s&shk=%s&jnrmn=%s&jnr=%s&frewd=%s",
+				                  $D_SEARCH_CORPID, $D_SRARCH_SRVSID, "00020", $start_Poi, $D_COMB_FW_POI_MAX, "EUC", $tod, $shk, $jnrmn, $jnr, $frewd);
+				$cgi_Poi = $cgipoi;
+				$prm_Poi = $prmpoi;
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $keyword, $adcd, $col, $slogflg);
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $frewd, $adcd, $col, $slogflg);		mod 2012/04/25 Y.Matsukawa
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $frewd_esc, $adcd, $col, $slogflg);	mod 2012/06/25 N.Wada
+				$prm_re = sprintf("keyword=%s&adcd=%s&tod=%s&col=%s&slogflg=%s&page=", $frewd_esc, $adcd, $tod, $col, $slogflg);
+				//$tpl["all_disp"]["_jsPoi"] = sprintf("ZdcEmapSearchChange('%s','%s','%s');","PoiW", $prm_re, urldecode($frewd));	//施設フリーワード
+				$tpl["all_disp"]["_urlPoi"] = sprintf("%stype=%s&%s", $self, 'PoiW', $prm_re);
+			}
+			if ($D_COMB_FW_SHOP) {
+				//拠点フリーワード
+				$cgi_Sh = $D_SSAPI["kyotenlist"];
+				$start_Sh = 1;
+				//$prm_Sh = sprintf("&cid=%s&opt=%s&pos=%d&cnt=%d&jkn=%s:FW:'%s'", $D_CID, $cid, $start_Sh, $D_COMB_FW_SHOP_MAX, "FREE_SRCH", $frewd);		mod 2011/12/05 Y.Matsukawa
+				$prm_Sh = sprintf("&cid=%s&opt=%s&pos=%d&cnt=%d&jkn=%s:FW:'%s'", $D_DATA_CID, $cid, $start_Sh, $D_COMB_FW_SHOP_MAX, "FREE_SRCH", $frewd);
+				//if($cond) $prm_Sh .= urlencode(sprintf(" AND (%s)",$cond));//絞込み条件の反映
+				if($cond_jkn) $prm_Sh .= urlencode(sprintf(" AND (%s)",$cond_jkn));//絞込み条件の反映
+				if(isset($D_KYOTENLIST_CUST) && $D_KYOTENLIST_CUST) $prm_Sh .= "&cust=$D_KYOTENLIST_CUST";// カスタマイズ仕様		add 2012/11/13 Y.Matsukawa
+				if($D_SHOPW_KYOTEN_SORT != "") $prm_Sh .= "&sort=".urlencode($D_SHOPW_KYOTEN_SORT);	// ソート順		add 2015/05/08 Y.Matsukawa
+				
+				// add 2017/04/21 H.Yasunaga ローソンキャンペーン対応 [
+				if ($D_LOWSON_CAM_CUST) {
+					$prm_Sh .= "&campaignid=" . $p_s1;
+				}
+				// add 2017/04/21 H.Yasunaga ]
+				
+				//$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=ShopW&col=FREE_SRCH&keyword=".$frewd."&cond=".$cond."&".$P_FREEPARAMS;
+				$tpl["print_link"] = "./search_print.htm?cid=".$cid."&type=ShopW&col=FREE_SRCH&keyword=".$frewd."&cond=".$cond_jkn."&".$P_FREEPARAMS;
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&cond=%s&slogflg=%s&page=", $keyword, $adcd, "FREE_SRCH", $cond, $slogflg);
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&cond=%s&slogflg=%s&page=", $frewd, $adcd, "FREE_SRCH", $cond_jkn, $slogflg);		mod 2012/04/25 Y.Matsukawa
+				//$prm_re = sprintf("keyword=%s&adcd=%s&col=%s&cond=%s&slogflg=%s&page=", $frewd_esc, $adcd, "FREE_SRCH", $cond_jkn, $slogflg);	mod 2012/06/25 N.Wada
+				$prm_re = sprintf("keyword=%s&adcd=%s&tod=%s&col=%s&cond=%s&slogflg=%s&page=", $frewd_esc, $adcd, $tod, "FREE_SRCH", $cond_jkn, $slogflg);
+				//$tpl["all_disp"]["_jsShop"] = sprintf("ZdcEmapSearchChange('%s','%s','%s');","ShopW", $prm_re, urldecode($frewd));	//拠点フリーワード
+				$tpl["all_disp"]["_urlShop"] = sprintf("%stype=%s&%s", $self, 'ShopW', $prm_re);
+			}
+			
+			// 再検索用JS
+			//$tpl["_jsResearch"] = sprintf("ZdcEmapSearchChange('%s','%s','%s');", "ShopW", $prm_re, urldecode($frewd));	//拠点フリーワード
+
+			break;
+	}
+
+	//--------------------------------------------------------------------------------
+	// 検索実行、結果表示
+	//--------------------------------------------------------------------------------
+	while(1) {
+		if($cgi && !$err) {
+
+			// add 2016/11/14 Y.Uesugi [
+			if ($D_API_CORE){ 
+				$url = sprintf("%s?%s", $cgi, $prm);
+				$dat = ZdcHttpReadCoreIF($url);
+
+				//エラーチェック
+				if($dat["status"]["code"] != "0000" || $dat["info"]["hit"] == "0") {
+					$err = $D_MSG_SEARCH_NODATA[$type];
+					$cgi = $type = "Err";
+				}
+			}else {
+			// add 2016/11/14 Y.Uesugi ]
+				$url = sprintf("%s?key=%s&opt=%s&%s", $cgi, $D_SSAPI_KEY, $cid, $prm);
+				$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+				$status  = explode("\t", $dat[0]);
+				if(!intval($status[2])) {
+					$err = $D_MSG_SEARCH_NODATA[$type];
+					$cgi = $type = "Err";
+				}
+			} // add 2016/11/14 Y.Uesugi
+			//動作ごとのリスト作成
+			switch($cgi) {
+				//--------------------------------------------------
+				// 単純リストタイプ
+				//--------------------------------------------------
+				default:
+					$template = "search_list";
+					$cnt = count($dat) - 1;
+					if ($cnt == 1) $tpl['data_cnt_1'] = 1;		// add 2013/08/20 Y.Matsukawa
+					// 任意の列数で表示（郵便番号検索の場合）		add 2013/08/09 Y.Matsukawa
+					$cell_cnt = $cnt;
+					//if ($D_LIST_COLS['ZipW'] > 1 && $cgi == $D_SSAPI["searchzip"]) {	mod 2016/06/13 N.Wada
+					if ($D_LIST_COLS['ZipW'] > 1 && ($cgi == $D_SSAPI["searchzip"] || $cgi == $D_SSAPI["searchjapanpost"])) {
+						$cell_cnt = ceil($cell_cnt / $D_LIST_COLS['ZipW']) * $D_LIST_COLS['ZipW'];
+					}
+					//for($i = 0;$i < $cnt;$i ++) {		mod 2013/08/09 Y.Matsukawa
+					for($i = 0;$i < $cell_cnt;$i ++) {
+						if ($dat[$i + 1]) {		// add 2013/08/09 Y.Matsukawa
+							$rec = explode("\t", $dat[$i + 1]);
+							$tpl["list"][$i]["no"] = $page * $D_SEARCH_LIST_PAGE + $i + 1;
+							$tpl["list"][$i]["name"] = $rec[$col_name];
+							// 選択した住所を出発地指定ルートの初期値にする（郵便番号検索の場合）
+							$frouteinit = '';
+							//if ($D_SEARCHLIST_ADDR_FROUTE_INIT && $cgi == $D_SSAPI["searchzip"]) {	mod 2016/06/13 N.Wada
+							if ($D_SEARCHLIST_ADDR_FROUTE_INIT && ($cgi == $D_SSAPI["searchzip"] || $cgi == $D_SSAPI["searchjapanpost"])) {
+								$frouteinit = sprintf("ZdcEmapSetFRouteInit('%s');", $rec[$col_name]);
+							}
+							// 任意の列数で表示（郵便番号検索の場合）		add 2013/08/09 Y.Matsukawa
+							//if ($D_LIST_COLS['ZipW'] > 1 && $cgi == $D_SSAPI["searchzip"]) {	mod 2016/06/13 N.Wada
+							if ($D_LIST_COLS['ZipW'] > 1 && ($cgi == $D_SSAPI["searchzip"] || $cgi == $D_SSAPI["searchjapanpost"])) {
+								if(!($i % $D_LIST_COLS['ZipW']) && $i) $tpl["list"][$i]["lf"] = "1";
+								if($i == 0) $tpl["list"][$i]["row1"] = "1";
+							} else {
+								$tpl["list"][$i]["lf"] = "1";
+								if($i == 0) $tpl["list"][$i]["row1"] = "1";
+							}
+							//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",$rec[$col_lat],$rec[$col_lon],$rec[$col_lat],$rec[$col_lon]).$frouteinit;
+							$tpl["list"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec[$col_lat]), cnv_dms2hour($rec[$col_lon]));
+							if(($i % 2) == 0) $tpl["list"][$i]["even_num"] = "1";	// add 2012/11/06 H.Osamoto
+						// add 2013/08/09 Y.Matsukawa [
+						} else {
+							$tpl["list"][$i]["null"] = "1";
+						}
+						// add 2013/08/09 Y.Matsukawa ]
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + $cnt - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_LIST_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME[$type];
+					break 2;
+				//--------------------------------------------------
+				// 住所フリーワード
+				//--------------------------------------------------
+				case $D_SSAPI["searchaddr"]:
+					$template = "search_list";
+					//マッチングレベルで並び替え
+					$cnt = count($dat) - 1;
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = explode("\t",$dat[$i + 1]);
+						$list[$i]["name"] = $rec[$col_name];
+						$list[$i]["lat"] = $rec[$col_lat];
+						$list[$i]["lon"] = $rec[$col_lon];
+						$list[$i]["adid"] = $rec[3];
+						$list[$i]["full"] = $rec[4];
+						$list[$i]["kai"] = $rec[5];	// add 2013/09/19 H.Osamoto
+					}
+
+					// add 2013/09/19 H.osamoto [
+					if ($cnt == 1 && isset($D_ADDR_FW_MONO_RESULT_REDIRECT) && $D_ADDR_FW_MONO_RESULT_REDIRECT) {
+						if (isset($D_ADDR_FW_TO_LIST) && $D_ADDR_FW_TO_LIST) {
+							// 住所リスト表示設定
+							if (intval($list[0]["kai"]) == 0 && strlen($list[0]["adid"]) < $D_ADCD_LEN[$D_ADDRL_BOTTOM_LVL]) {
+								// 下位住所有り（下位住所リストへリダイレクト）
+								$prm = sprintf("adcd=%s&slogflg=%s", $list[0]["adid"], $slogflg);
+								$url  = $D_PC2_URL;
+								$url .= sprintf("%stype=%s&%s&selnm=%s", "search.htm?", "AddrL", $prm, urlencode($list[0]["name"]));
+								//$url .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm?'&'.$condprm.'&':'');		mod 2015/03/17 Y.Matsukawa
+								$url .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'');
+							} else {
+								// 下位住所無し（地図画面へリダイレクト）
+								//$nmap_url = "nmap.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm?'&'.$condprm.'&':'').($lvl?'lvl='.$lvl.'&':'');		mod 2015/03/17 Y.Matsukawa
+								$nmap_url = "nmap.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'').($lvl?'lvl='.$lvl.'&':'');
+								$url  = $D_PC2_URL;
+								$url .= sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($list[0]["lat"]), cnv_dms2hour($list[0]["lon"]));
+								$url .= '&srchnm='.urlencode($list[0]["name"]);		// add 2013/10/16 Y.Matsukawa
+
+							}
+						} else {
+							// 地図画面へリダイレクト
+							//$nmap_url = "nmap.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm?'&'.$condprm.'&':'').($lvl?'lvl='.$lvl.'&':'');		mod 2015/03/17 Y.Matsukawa
+							$nmap_url = "nmap.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'').($lvl?'lvl='.$lvl.'&':'');
+							$url  = $D_PC2_URL;
+							$url .= sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($list[0]["lat"]), cnv_dms2hour($list[0]["lon"]));
+							$url .= '&srchnm='.urlencode($list[0]["name"]);		// add 2013/10/16 Y.Matsukawa
+						}
+						
+						// リダイレクト
+						header("Location: $url");
+						exit;
+					}
+					// add 2013/09/19 H.osamoto ]
+
+					usort( $list, "GEOAccess_cmp_sflg" );
+					//
+					if($start + $D_SEARCH_LIST_PAGE <= count($list)) {
+						//次ページあり
+						$cnt = $D_SEARCH_LIST_PAGE;
+						$status[0] = substr($status[0], 0, -1)."1";//無理やり
+					} else {
+						//次ページ無し
+						$cnt = count($list) - $start + 1;
+						$status[0] = substr($status[0], 0, -1)."0";
+					}
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = $list[$start + $i - 1];
+						$tpl["list"][$i]["no"] = $page * $D_SEARCH_LIST_PAGE + $i + 1;
+						$tpl["list"][$i]["name"] = $rec["name"];
+						// add 2016/11/21 T.Yoshino [
+						if ( isset( $D_LIST_ADDR_CUST ) && $D_LIST_ADDR_CUST ) {
+							foreach( $D_LIST_ADDR_CUST as $key => $val ){
+								if( $tpl['list'][$i]['name'] == $val['NAME'] ) {
+									$rec["lat"] = $val['LAT'];
+									$rec["lon"] = $val['LON'];
+								}
+							}
+						}
+						// add 2016/11/21 T.Yoshino ]
+						// 選択した住所を出発地指定ルートの初期値にする
+						$frouteinit = '';
+						if ($D_SEARCHLIST_ADDR_FROUTE_INIT) {
+							$frouteinit = sprintf("ZdcEmapSetFRouteInit('%s');", $rec["name"]);
+						}
+						if ($D_SEARCH_GOTO_NOMAP["AddrW"]) {
+							$prm = sprintf("lat=%s&lon=%s&slogflg=%s", $rec["lat"], $rec["lon"], $slogflg);
+							$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchChange('%s','%s',':%s')", "Nshop", $prm, "");
+						} else {
+							//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",cnv_dms2hour($rec["lat"]),cnv_dms2hour($rec["lon"])).$frouteinit;
+							// mod 2013/09/19 H.Osamoto [
+							//	$tpl["list"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec["lat"]), cnv_dms2hour($rec["lon"]));
+							$tmp_adcd = $list[$start + $i - 1]["adid"];
+							if(intval($rec["kai"]) == 0 && strlen($tmp_adcd) < $D_ADCD_LEN[$D_ADDRL_BOTTOM_LVL] && isset($D_ADDR_FW_TO_LIST) && $D_ADDR_FW_TO_LIST) {
+								// 住所リスト遷移フラグ有り、下位住所有り
+								$prm = sprintf("adcd=%s&slogflg=%s", $tmp_adcd, $slogflg);
+								if(intval($tmp_adcd) && (strlen($tmp_adcd) == $D_ADCD_LEN[$D_ADCD_LVL["KEN"]] || strlen($tmp_adcd) == $D_ADCD_LEN[$D_ADCD_LVL["SHK"]])) {
+									//市区町村・大字は読み順に並べる
+									$prm .= "&sort=0";
+								}
+								$tpl["list"][$i]["_urlNameLink"] = sprintf("%stype=%s&%s&selnm=%s", "search.htm?", "AddrL", $prm, urlencode($rec["name"]));
+								//$tpl["list"][$i]["_urlNameLink"] .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm?'&'.$condprm.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'');		mod 2015/03/17 Y.Matsukawa
+								$tpl["list"][$i]["_urlNameLink"] .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm_enc?'&'.$condprm_enc.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'');
+							} else {
+								$tpl["list"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec["lat"]), cnv_dms2hour($rec["lon"]));
+								$tpl["list"][$i]["_urlNameLink"] .= '&srchnm='.urlencode($rec["name"]);		// add 2013/10/03 Y.Matsukawa
+							}
+							// mod 2013/09/19 H.Osamoto ]
+						}
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + $cnt - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_LIST_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME[$type];
+					break 2;
+
+				// add 2016/11/14 Y.Uesugi [
+				//--------------------------------------------------
+				// 住所フリーワード(カナ)
+				//--------------------------------------------------
+				case $D_SSAPI['address/word']:
+					$template = "search_list";
+					//マッチングレベルで並び替え
+					$dat_cnt = count($dat["item"]);
+					for($i = 0;$i < $dat_cnt;$i ++) {
+							$list[$i]["name"] = mb_convert_encoding($dat["item"][$i]["text"], "EUC", "UTF-8");
+							$list[$i]["lat"] = mb_convert_encoding($dat["item"][$i]["point"]["lat"], "EUC", "UTF-8");
+							$list[$i]["lon"] = mb_convert_encoding($dat["item"][$i]["point"]["lon"], "EUC", "UTF-8");
+							//$list[$i]["adid"] = '';
+							//$list[$i]["full"] = '';
+							//$list[$i]["kai"] = '';
+					}
+					usort( $list, "GEOAccess_cmp_sflg" );
+
+					$status = $dat['status']['code'];
+					if($start + $D_SEARCH_LIST_PAGE <= count($list)) {
+						//次ページあり
+						$cnt = $D_SEARCH_LIST_PAGE;
+						$status = substr($status, 0, -1)."1";//無理やり
+					} else {
+						//次ページ無し
+						$cnt = count($list) - $start + 1;
+						$status = substr($status, 0, -1)."0";
+					}
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = $list[$start + $i - 1];
+						$tpl["list"][$i]["no"] = $page * $D_SEARCH_LIST_PAGE + $i + 1;
+						$tpl["list"][$i]["name"] = $rec["name"];
+						// 選択した住所を出発地指定ルートの初期値にする
+						$frouteinit = '';
+						if ($D_SEARCHLIST_ADDR_FROUTE_INIT) {
+							$frouteinit = sprintf("ZdcEmapSetFRouteInit('%s');", $rec["name"]);
+						}
+						$tpl["list"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, $rec["lat"], $rec["lon"]);
+						$tpl["list"][$i]["_urlNameLink"] .= '&srchnm='.urlencode($rec["name"]);
+					}
+					$tpl["max"] = $dat_cnt;
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + $cnt - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil($dat_cnt / $D_SEARCH_LIST_PAGE) - 1;
+					$tpl["status"] = $status;
+					$tpl["selname"] = $D_SEL_NAME[$type];
+					break 2;
+				// add 2016/11/14 Y.Uesugi ]
+
+				//--------------------------------------------------
+				// 拠点フリーワード
+				//--------------------------------------------------
+				case $D_SSAPI["kyotenlist"]:
+					$template = "search_shop_list";
+					$cnt = count($dat) - 1;
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = explode("\t",$dat[$i + 1]);
+						// 拠点縮尺（PC）
+						$kyoten_lvl = $rec[count($rec)-2];
+						if (ctype_digit($kyoten_lvl) && 1 <= $kyoten_lvl && $kyoten_lvl <= 18) {
+						} else $kyoten_lvl = 0;
+						$tpl["list"][$i]["no"] = $page * $D_SEARCH_SHOPLIST_PAGE + $i + 1;
+						//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapShopDetailKidFirst('%s','%s','%s','%s','%s',false,'%s');",$rec[0],cnv_dms2hour($rec[1]),cnv_dms2hour($rec[2]),$rec[3],$rec[4],$kyoten_lvl);
+						//$tpl["list"][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');		mod 2015/03/17 Y.Matsukawa
+						// add 2015/10/20 N.Wada [
+						if( isset($D_SHOP_FW_TO_NMAP) && $D_SHOP_FW_TO_NMAP ) {
+							$tpl["list"][$i]["_urlNameLink"] = sprintf("%skid=%s", $nmap_url, $rec[0]);
+						} else {
+						// add 2015/10/20 N.Wada ]
+							$tpl["list"][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+						}
+						$tpl["list"][$i]["cid"] = $rec[0];
+						$tpl["list"][$i]["kid"] = $rec[0];	// add 2014/12/03 Y.Matsukawa ※変数名を間違えてcidにしていましたが、既に使われているかもしれないので、cidも残します
+						$tpl["list"][$i]["lat"] = $rec[1];
+						$tpl["list"][$i]["lon"] = $rec[2];
+						$tpl["list"][$i]["icon"] = $rec[3];
+						$tpl["list"][$i]["icon_".$rec[3]] = 1;		// add 2012/11/13 Y.Matsukawa
+						// mod 2013/11/27 H.Osamoto [
+						//	$tpl["list"][$i]["new"]  = $rec[4];
+						if(isset($rec[4]) && intval($rec[4])) {
+							$tpl["list"][$i]["new"] = "1";
+						} else {
+							$tpl["list"][$i]["new"] = "";
+						}
+						// mod 2013/11/27 H.Osamoto ]
+						// add 2014/12/03 Y.Matsukawa [
+						//---------------------------------------------
+						// 拠点IDの値判定
+						// （例）$D_COL_VAL_CHK['kid'][] = array('0001', 'A');
+						//  → 拠点ID='0001' ならば、{def list/kid_EQ_A}が真になる
+						//---------------------------------------------
+						if (isset($D_COL_VAL_CHK['kid']) && is_array($D_COL_VAL_CHK['kid'])) {
+							foreach ($D_COL_VAL_CHK['kid'] as $cvc) {
+								$cvc_val = $cvc[0];
+								$cvc_lbl = $cvc[1];
+								if ($tpl["list"][$i]["kid"] == $cvc_val) {
+									$tpl["list"][$i]['kid_EQ_'.$cvc_lbl] = 1;
+								}
+							}
+						}
+						// add 2014/12/03 Y.Matsukawa ]
+						// add 2015/10/28 Y.Uesugi [
+						//---------------------------------------------
+						// 任意カラムの値判定(比較位置指定)
+						// （例）$D_YTC_OKINAWA['kid'][] = array('000', 'A', 0, 3);
+						//  → 拠点ID='000123'
+						//     スタート位置：0文字目
+						//     比較終了位置：3文字（文字数）
+						//   ならば、{def list/kid_EQP_A}が真になる
+						//---------------------------------------------
+						if (isset($D_COL_VAL_CHK_POS['kid']) && is_array($D_COL_VAL_CHK_POS['kid'])) {
+							foreach ($D_COL_VAL_CHK_POS['kid'] as $cvc) {
+								$cvc_val = $cvc[0];
+								$cvc_lbl = $cvc[1];
+								$kid_val = substr($tpl["list"][$i]["kid"], $cvc[2], $cvc[3]);
+								if ($cvc_val == $kid_val) {
+									$tpl["list"][$i]['kid_EQP_'.$cvc_lbl] = 1;
+								}
+							}
+						}
+						// add 2015/10/28 Y.Uesugi ]
+						for($j = 0;$j < 202;$j ++) {
+							$tmp = $D_KYO_COL_NAME[0][$j];
+							if ($tmp != '') {
+								$d = $rec[5+$j];
+								//	$tpl["list"][$i][$tmp] = $d;	2012/08/03 H.Osamoto mod
+								$tpl["list"][$i][$tmp] = zdcHtmlspecialchars($d, $tmp);
+								$tpl["list"][$i][$tmp."_raw"] = zdcHtmlspecialchars_raw($d, $tmp); // add 2015/12/22 F.Yokoi
+								if($d) $tpl["list"][$i][$tmp."l".$d] = "1";
+								if(intval($d) == 1) $tpl["list"][$i][$tmp."b"] = "1";
+								// add 2015/12/09 Y.Uesugi [
+								//---------------------------------------------
+								// 特定の値の場合にフラグを立てる
+								// （例）$D_CUST_CNV_FLG['col_02']['ああああ'] = 'TMP';
+								//  → col_2='ああああ' ならば、{def list/col_2_TMP}が真になる
+								//---------------------------------------------
+								if (is_array($D_CUST_CNV_FLG[$tmp]) && isset($D_CUST_CNV_FLG[$tmp][$d])) {
+									$tpl["list"][$i][$tmp.'_'.$D_CUST_CNV_FLG[$tmp][$d]] = 1;
+								}
+								// add 2015/12/09 Y.Uesugi ]
+								// add 2014/12/03 Y.Matsukawa [
+								//---------------------------------------------
+								// 任意カラムの値判定
+								// （例）$D_COL_VAL_CHK['col_01'][] = array('あ', 'A');
+								//  → col_01='あ' ならば、{def list/col_01_EQ_A}が真になる
+								//---------------------------------------------
+								if (isset($D_COL_VAL_CHK[$tmp]) && is_array($D_COL_VAL_CHK[$tmp])) {
+									foreach ($D_COL_VAL_CHK[$tmp] as $cvc) {
+										$cvc_val = $cvc[0];
+										$cvc_lbl = $cvc[1];
+										if ($d == $cvc_val) {
+											$tpl["list"][$i][$tmp.'_EQ_'.$cvc_lbl] = 1;
+										}
+										// add 2015/10/20 N.Wada [
+										if ($d < $cvc_val) {
+											$tpl["list"][$i][$tmp.'_LT_'.$cvc_lbl] = 1;
+										}
+										if ($d > $cvc_val) {
+											$tpl["list"][$i][$tmp.'_GT_'.$cvc_lbl] = 1;
+										}
+										if ($d <= $cvc_val) {
+											$tpl["list"][$i][$tmp.'_LTE_'.$cvc_lbl] = 1;
+										}
+										if ($d >= $cvc_val) {
+											$tpl["list"][$i][$tmp.'_GTE_'.$cvc_lbl] = 1;
+										}
+										// add 2015/10/20 N.Wada ]
+										// add 2016/06/21 Y.Matsukawa [
+										// 前方一致
+										if (strpos($d, $cvc_val) === 0) {
+											$tpl["list"][$i][$tmp.'_FWM_'.$cvc_lbl] = 1;
+										}
+										// add 2016/06/21 Y.Matsukawa ]
+									}
+								}
+								// add 2014/12/03 Y.Matsukawa ]
+							}
+						}
+						// add 2017/03/30 N.Wada
+						//---------------------------------------------
+						// 任意カラム同士の一致判定
+						//---------------------------------------------
+						if (isset($D_STR_DIFF_COLS)) {
+							$col1 = $D_STR_DIFF_COLS[0];
+							$col2 = $D_STR_DIFF_COLS[1];
+							if ($tpl["list"][$i][$col1] == $tpl["list"][$i][$col2]) {
+								$tpl["list"][$i][$col1.'_EQ_'.$col2] = 1;
+							} else {
+								$tpl["list"][$i][$col1.'_NEQ_'.$col2] = 1;
+							}
+						}
+						// add 2017/03/30 N.Wada
+						//---------------------------------------------
+						// 任意カラム（時刻）同士の比較
+						//---------------------------------------------
+						if (isset($D_TIME_COMP_COLS)) {
+							foreach($D_TIME_COMP_COLS as $g => $pair) {
+								$col1 = $pair[0];
+								$col2 = $pair[1];
+								if ($tpl["list"][$i][$col1] == "" || $tpl["list"][$i][$col2] == "") continue;
+								$val1 = (int)str_replace(":", "", $tpl["list"][$i][$col1]);
+								$val2 = (int)str_replace(":", "", $tpl["list"][$i][$col2]);
+								if ($val1 == $val2) {
+									$tpl["list"][$i][$col1.'_EQ_'.$col2.'_TIME'] = 1;
+								} else {
+									$tpl["list"][$i][$col1.'_NEQ_'.$col2.'_TIME'] = 1;
+								}
+								if ($val1 >= $val2) {
+									$tpl["list"][$i][$col1.'_GTE_'.$col2.'_TIME'] = 1;
+								} else {
+									$tpl["list"][$i][$col1.'_LT_'.$col2.'_TIME'] = 1;
+								}
+								if ($val1 <= $val2) {
+									$tpl["list"][$i][$col1.'_LTE_'.$col2.'_TIME'] = 1;
+								} else {
+									$tpl["list"][$i][$col1.'_GT_'.$col2.'_TIME'] = 1;
+								}
+							}
+						}
+						// add 2017/03/30 N.Wada
+						//---------------------------------------------
+						// フラグ項目グループ判定（どれか１つ以上ON）
+						//---------------------------------------------
+						if (isset($D_FLAGS_ANY_ON)) {
+							foreach($D_FLAGS_ANY_ON as $g => $flags) {
+								foreach ($flags as $c) {
+									if ($tpl["list"][$i][$c]) {
+										$tpl["list"][$i]['FLAGS_'.$g.'_ANY_ON'] = 1;
+										break;
+									}
+								}
+							}
+						}
+						// add 2017/03/30 N.Wada
+						//---------------------------------------------
+						// フラグ項目グループ判定（すべてON）
+						//---------------------------------------------
+						if (isset($D_FLAGS_ALL_ON)) {
+							foreach($D_FLAGS_ALL_ON as $g => $flags) {
+								$flag_on_cnt = 0;
+								foreach ($flags as $c) {
+									if ($tpl["list"][$i][$c]) {
+										$flag_on_cnt++;
+									}
+								}
+								if ($flag_on_cnt && count($flags) == $flag_on_cnt) {
+									$tpl["list"][$i]['FLAGS_'.$g.'_ALL_ON'] = 1;
+								}
+							}
+						}
+						// add 2017/03/30 N.Wada
+						//---------------------------------------------
+						// 値グループ判定（どれか１つ以上値がある）
+						//---------------------------------------------
+						if (isset($D_COLUMNS_ANY_VALUE)) {
+							foreach($D_COLUMNS_ANY_VALUE as $g => $flags) {
+								foreach ($flags as $c) {
+									if ($tpl["list"][$i][$c] != "") {
+										$tpl["list"][$i]['COLUMNS_'.$g.'_ANY_VALUE'] = 1;
+										break;
+									}
+								}
+							}
+						}
+						// add 2017/03/30 N.Wada
+						//---------------------------------------------
+						// 値グループ判定（どれか１つ以上、任意の値と一致する）
+						//---------------------------------------------
+						if (isset($D_COLUMNS_ANY_MATCH_VALUE)) {
+							foreach($D_COLUMNS_ANY_MATCH_VALUE as $g => $cols) {
+								foreach ($cols as $c => $v) {
+									if ($tpl["list"][$i][$c] == $v) {
+										$tpl["list"][$i]['COLUMNS_'.$g.'_ANY_MATCH_VALUE'] = 1;
+										break;
+									}
+								}
+							}
+						}
+						if (isset($D_ICON[$tpl["list"][$i]["icon"]])) {		// add 2012/11/13 Y.Matsukawa
+							//$tpl["list"][$i]["iconimg"] = sprintf("%s?cid=%s&icon_id=%s", $D_SSAPI["icon_select_g"], $D_CID, $tpl["list"][$i]["icon"]);		mod 2011/12/05 Y.Matsukawa
+							$tpl["list"][$i]["iconimg"] = sprintf("%s?cid=%s&icon_id=%s", $D_SSAPI["icon_select_g"], $D_ICON_CID, $tpl["list"][$i]["icon"]);
+						// add 2012/11/13 Y.Matsukawa [
+						} else {
+							$tpl["list"][$i]["iconimg"] = $D_ICON["@TP"]["IMG"];
+						}
+						// add 2012/11/13 Y.Matsukawa ]
+						//$tpl["list"][$i]["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"][$i]["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+						//$tpl["list"][$i]["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"][$i]["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+						$tpl["list"][$i]["_cgiSysIconimgSSL"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select_ssl"], $D_DATA_CID);	//add 2016/07/27 Y.Uesugi
+						//$tpl["list"][$i]["_cgiGifimg"]  = sprintf("%s?cid=%s&kid=", $D_SSAPI["gif_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"][$i]["_cgiGifimg"]  = sprintf("%s?cid=%s&kid=", $D_SSAPI["gif_select"], $D_DATA_CID);
+						//$tpl["list"][$i]["_urlPrint"] = sprintf("./print.htm?cid=%s&kid=%s", $cid, $rec[0]);
+						//$tpl["list"][$i]["_urlPrint"] = $D_DIR_BASE_G.'prt/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2015/03/17 Y.Matsukawa
+						$tpl["list"][$i]["_urlPrint"] = $D_DIR_BASE_G.'prt/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+						//RD====>
+						//$rec[0] がkid
+						if($i==0){
+							$rd_kid = $rec[0];
+						}else{
+							$rd_kid .= ",".$rec[0];
+						}
+						$tpl["list"][$i]["rd_kid"]=$rec[0];
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + $cnt - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_SHOPLIST_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME[$type];
+
+					//==>RDデータ取得  add 2013/03/26 H.Iijima
+					$rd_grp= implode(",",$D_RD_GRP[6]);
+					if($rd_grp){
+						$rd_info = ZdcSearchCgiRd($rd_kid,$rd_grp,1);
+						if($rd_info){
+							for($i=0;$i<count($tpl["list"]);$i++){
+								for($r=0;$r<count($rd_info);$r++){
+									if( $rd_info[$r]["rd_store_id"]==$tpl["list"][$i]["rd_kid"]){
+										$tpl["list"][$i] = $tpl["list"][$i] + $rd_info[$r];
+									}
+								}
+							}
+						}
+					}
+					break 2;
+				//--------------------------------------------------
+				// 最寄り拠点（地図なし）
+				//--------------------------------------------------
+				case $D_SSAPI["nkyoten"]:
+					$template = "search_shop_list";
+					$cnt = count($dat) - 1;
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = explode("\t", $dat[$i + 1]);
+						// 拠点縮尺（PC）
+						$kyoten_lvl = $rec[count($rec)-2];
+						if (ctype_digit($kyoten_lvl) && 1 <= $kyoten_lvl && $kyoten_lvl <= 18) {
+						} else $kyoten_lvl = 0;
+						$tpl["list"][$i]["no"] = $page * $D_SEARCH_SHOPLIST_PAGE + $i + 1;
+						//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapShopDetailKidFirst('%s','%s','%s','%s','%s',false,'%s');",$rec[0],$rec[1],$rec[2],$rec[3],$rec[4],$kyoten_lvl);
+						//$tpl["list"][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');		mod 2015/03/17 Y.Matsukawa
+						$tpl["list"][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+						$tpl["list"][$i]["cid"] = $rec[0];
+						$tpl["list"][$i]["lat"] = $rec[1];
+						$tpl["list"][$i]["lon"] = $rec[2];
+						$tpl["list"][$i]["icon"] = $rec[3];
+						$tpl["list"][$i]["icon_".$rec[3]] = 1;		// add 2012/11/13 Y.Matsukawa
+						$tpl["list"][$i]["dist"]  = $rec[4];
+						$dist_d = floor($rec[4]);
+						$tpl["list"][$i]["dist_d"] = number_format($dist_d);
+						if ($dist_d < 1000)
+							$tpl["list"][$i]["dist_f"] = $dist_d.'m';
+						else
+							$tpl["list"][$i]["dist_f"] = round($dist_d/1000, 2).'km';
+						// mod 2013/11/27 H.Osamoto [
+						//	$tpl["list"][$i]["new"]  = $rec[5];
+						if(isset($rec[5]) && intval($rec[5])) {
+							$tpl["list"][$i]["new"] = "1";
+						} else {
+							$tpl["list"][$i]["new"] = "";
+						}
+						// mod 2013/11/27 H.Osamoto ]
+						for($j = 0;$j < 202;$j ++) {
+							$tmp = $D_KYO_COL_NAME[0][$j];
+							if ($tmp != '') {
+								$d = $rec[6+$j];
+								//	$tpl["list"][$i][$tmp] = $d;	2012/08/03 H.Osamoto mod
+								$tpl["list"][$i][$tmp] = zdcHtmlspecialchars($d, $tmp);
+								$tpl["list"][$i][$tmp."_raw"] = zdcHtmlspecialchars_raw($d, $tmp); // add 2015/12/22 F.Yokoi
+								if($d) $tpl["list"][$i][$tmp."l".$d] = "1";
+								if(intval($d) == 1) $tpl["list"][$i][$tmp."b"] = "1";
+							}
+						}
+						if (isset($D_ICON[$tpl["list"][$i]["icon"]])) {		// add 2012/11/13 Y.Matsukawa
+							//$tpl["list"][$i]["iconimg"] = sprintf("%s?cid=%s&icon_id=%s", $D_SSAPI["icon_select_g"], $D_CID, $tpl["list"][$i]["icon"]);		mod 2011/12/05 Y.Matsukawa
+							$tpl["list"][$i]["iconimg"] = sprintf("%s?cid=%s&icon_id=%s", $D_SSAPI["icon_select_g"], $D_ICON_CID, $tpl["list"][$i]["icon"]);
+						// add 2012/11/13 Y.Matsukawa [
+						} else {
+							$tpl["list"][$i]["iconimg"] = $D_ICON["@TP"]["IMG"];
+						}
+						// add 2012/11/13 Y.Matsukawa ]
+						//$tpl["list"][$i]["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"][$i]["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+						//$tpl["list"][$i]["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"][$i]["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+						$tpl["list"][$i]["_cgiSysIconimgSSL"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select_ssl"], $D_DATA_CID);	//add 2016/07/27 Y.Uesugi
+						//$tpl["list"][$i]["_cgiGifimg"]  = sprintf("%s?cid=%s&kid=", $D_SSAPI["gif_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"][$i]["_cgiGifimg"]  = sprintf("%s?cid=%s&kid=", $D_SSAPI["gif_select"], $D_DATA_CID);
+						//$tpl["list"][$i]["_urlPrint"] = sprintf("./print.htm?cid=%s&kid=%s", $cid, $rec[0]);
+						//$tpl["list"][$i]["_urlPrint"] = $D_DIR_BASE_G.'prt/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2015/03/17 Y.Matsukawa
+						$tpl["list"][$i]["_urlPrint"] = $D_DIR_BASE_G.'prt/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + $cnt - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_SHOPLIST_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME[$type];
+					break 2;
+				//--------------------------------------------------
+				// 住所リスト
+				//--------------------------------------------------
+				case $D_SSAPI["listadcd"]:
+					//
+					$template = "search_addrtable";
+					//読み込み
+					$skana = 99;
+					$cnt = count($dat) - 1;
+					// 都道府県一覧の対象を限定
+					if (is_array($select_adcd) && count($select_adcd)) {
+						// add 2015/10/20 N.Wada [
+						// エリアで検索
+						if(isset($D_SEARCH_ADDR_LIST_AREA) && $D_SEARCH_ADDR_LIST_AREA) {
+							$tpl["area_name"] = $AREA_INFO[$area-1]["name"];
+							// $AREA_INFO[x]["tod"]の順に並べ替える
+							$wk_dat = array();
+							for($i = 0;$i < $cnt;$i ++) {
+								$rec = explode("\t", $dat[$i+1]);
+								$wk_dat[$rec[0]] = $dat[$i+1];
+							}
+							$dat = array();
+							$dat[0] = "";
+							foreach($select_adcd as $tmp_adcd) {
+								$dat[] = $wk_dat[$tmp_adcd];
+							}
+							$cnt = count($dat) - 1;
+							unset($wk_dat);
+						} else {
+						// add 2015/10/20 N.Wada ]
+							$wk_dat = $dat;
+							$dat = array();
+							$dat[0] = "";
+							for($i = 0;$i < $cnt;$i ++) {
+								$rec = explode("\t", $wk_dat[$i+1]);
+								if (in_array($rec[0], $select_adcd)) {
+									$dat[] = $wk_dat[$i+1];
+								}
+							}
+							$cnt = count($dat) - 1;
+						}
+					}
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = explode("\t", $dat[$i+1]);
+						$tlist[$i] = $rec;
+						//かな区分判定
+						if(!intval($adcd) || $D_SEARCH_KANA == 0) {
+							//全国 もしくは かな絞込み無し
+							$tmp = 0;
+						} else if($cnt < $D_SEARCH_TABLE_PAGE) {
+							//１ページに収まる
+							$tmp = 0;
+						} else if($D_KANA_23[$rec[2]]) {
+							//２３区
+							$tmp = $D_KANA_23[$rec[2]];
+						} else if($D_KANA_CODE[mb_substr($rec[3], 0, 1)]) {
+							//５０音
+							$tmp = $D_KANA_CODE[mb_substr($rec[3], 0, 1)];
+						} else {
+							//その他
+							$tmp = 99;
+						}
+						$tlist[$i]["kana"] = $tmp;
+						$list_kanacnt[$tmp] ++;
+						if($skana > $tmp) $skana = $tmp;//一番小さいカナを取得
+					}
+					if(!isset($kana)) $kana = $skana;
+					// add 2015/10/20 N.Wada [
+					if (isset($D_SEARCH_ADDR_LIST_OUTPUT_ALL) && $D_SEARCH_ADDR_LIST_OUTPUT_ALL==1) {
+						//全件表示
+						$cnt = count($tlist);
+						$j = 0;
+						for($i = 0;$i < $cnt;$i ++) {
+							$list[$j]["adcd"] = $tlist[$i][0];
+							$list[$j]["fullname"] = $tlist[$i][1];
+							$list[$j]["name"] = $tlist[$i][2];
+							$list[$j]["kana"] = $tlist[$i][3];
+							$list[$j]["lat"] = $tlist[$i][4];
+							$list[$j]["lon"] = $tlist[$i][5];
+							$list[$j]["kai"] = $tlist[$i][6];
+							$j ++;
+						}
+					} else {
+					// add 2015/10/20 N.Wada ]
+						//対象カナのリストだけに絞込み
+						$cnt = count($tlist);
+						$j = 0;
+						$k = count($list_kanacnt);
+						for($i = 0;$i < $cnt;$i ++) {
+							if($tlist[$i]["kana"] == $kana || $k == 1) {
+								$list[$j]["adcd"] = $tlist[$i][0];
+								$list[$j]["fullname"] = $tlist[$i][1];
+								$list[$j]["name"] = $tlist[$i][2];
+								$list[$j]["kana"] = $tlist[$i][3];
+								$list[$j]["lat"] = $tlist[$i][4];
+								$list[$j]["lon"] = $tlist[$i][5];
+								
+								// add 2016/11/21 T.Yoshino [
+								// 住所リスト緯度経度指定
+								if ( isset( $D_LIST_ADDR_CODE ) && $D_LIST_ADDR_CODE ) {
+									foreach( $D_LIST_ADDR_CODE as $key => $val ){
+										if( $tlist[$i][0] == $val ) {
+											$list[$j]["lat"] = $D_LIST_ADDR_LAT[$key];
+											$list[$j]["lon"] = $D_LIST_ADDR_LON[$key];
+										}
+									}
+								}
+								// add 2016/11/21 T.Yoshino ]
+								
+								$list[$j]["kai"] = $tlist[$i][6];
+								$j ++;
+							}
+						}
+						//次ページの処理
+						if($start + $D_SEARCH_TABLE_PAGE <= count($list) ) {
+							//次ページあり
+							$cnt = $D_SEARCH_TABLE_PAGE;
+							$status[0] = substr($status[0], 0, -1)."1";//無理やり
+						} else {
+							//次ページ無し
+							$cnt = count($list) - $start + 1;
+							$status[0] = substr($status[0], 0, -1)."0";
+						}
+					}
+					//表描画用のデータ作成
+					$reccnt = 0;
+					$cnt = ceil($cnt / $D_SEARCH_TABLE_COLS) * $D_SEARCH_TABLE_COLS;
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = $list[$start + $i - 1];
+						if($rec) {
+							$tmp = sprintf("adcd=%s&slogflg=%s", $rec["adcd"], $slogflg);
+							if(!$rec["name"]) $rec["name"] = $D_GEO_NONAME;
+							$tpl["list"][$i]["adcd"] = $rec["adcd"];	// add 2015/10/20 N.Wada
+							$tpl["list"][$i]["name"] = $rec["name"];
+							$tpl["list"][$i]["kana"] = $rec["kana"];	// add 2015/07/21 H.Osamoto
+							$tpl["list"][$i]["tod_name"] = isset($D_TOD[substr($rec["adcd"], 0, 2)]) ? $D_TOD[substr($rec["adcd"], 0, 2)] : "";	// add 2015/07/21 H.Osamoto
+							// 選択した住所を出発地指定ルートの初期値にする
+							$frouteinit = '';
+							if ($D_SEARCHLIST_ADDR_FROUTE_INIT) {
+								$frouteinit = sprintf("ZdcEmapSetFRouteInit('%s');", $rec["fullname"]);
+							}
+							if(intval($rec["kai"]) || strlen($rec["adcd"]) >= $D_ADCD_LEN[$D_ADDRL_BOTTOM_LVL]) {
+								//下位住所無し
+								//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",$rec["lat"],$rec["lon"],$rec["lat"],$rec["lon"]).$frouteinit;
+								$tpl["list"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec["lat"]), cnv_dms2hour($rec["lon"]));
+								$tpl["list"][$i]["_urlNameLink"] .= '&srchnm='.urlencode($rec["fullname"]);		// add 2013/10/03 Y.Matsukawa
+								// add 2017/03/14 H.Yasunaga 日本郵便カスタマイズ [
+								// mod 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+								//if ($cid == 'jppost15' || $cid == 'jppost15test') {
+								if ($cid == 'jppost15' || $cid == 'jppost15test' || $cid == 'jppost17' || $cid == 'jppost17test') {
+								// mod 2017/04/19 H.Yasunaga ]
+									$tpl["list"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec["lat"]), cnv_dms2hour($rec["lon"]));
+									$tpl["list"][$i]["_urlNameLink"] .= '&srchnm='.urlencode(mb_convert_encoding($rec["fullname"], $tpl['jp_param_enc'], "EUC-JP"));
+								}
+								// add 2017/03/14 H.Yasunaga ]
+								
+								// add 2011/12/21 H.osamoto [
+								if ($D_TYPE_SMSG) {
+									$tpl["list"][$i]["_urlNameLink"] .= "&shopno=".$shopno."&adcd=".$rec["adcd"]."&addr_name=".urlencode($rec["fullname"]);
+								}
+								// add 2011/12/21 H.osamoto ]
+								
+								// add 2016/02/29 H.Yasunaga 全国信用協同組合連合会カスタマイズ [
+								// 信用組合リストへ遷移
+								if (isset($D_CUST_ZENSHINKUMIREN) && $D_CUST_ZENSHINKUMIREN) {
+									// hisはパンくずリストの表示識別子のカンマ区切り
+									$tpl["list"][$i]["_urlNameLink"] = sprintf("%s?his=%s&lat=%s&lon=%s&adcd=%s&addr_name=%s", "zskr_union_list.htm",$ZdcHistoryParm, cnv_dms2hour($rec["lat"]), cnv_dms2hour($rec["lon"]), $rec["adcd"], urlencode($rec["fullname"]));
+								}
+								// add 2016/02/29 H.Yasunaga ]
+								
+							} else {
+								//下位住所有り
+								//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchChange('%s','%s',':%s')",$type,$tmp,$rec["name"]);
+								$tpl["list"][$i]["_urlNameLink"] = sprintf("%stype=%s&%s&selnm=%s", $self, $type, $tmp, urlencode($rec["name"]));
+								// add 2017/03/14 H.Yausnaga 日本郵便カスタマイズ [
+								// mod 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+								//if ($cid == 'jppost15' || $cid == 'jppost15test') {
+								if ($cid == 'jppost15' || $cid == 'jppost15test' || $cid == 'jppost17' || $cid == 'jppost17test') {
+								// mod 2017/04/19 H.Yasunaga ]
+									$tpl["list"][$i]["_urlNameLink"] = sprintf("%stype=%s&%s&selnm=%s", $self, $type, $tmp, urlencode(mb_convert_encoding($rec["name"], $tpl['jp_param_enc'], "EUC-JP" )));
+								}
+								// add 2017/03/14 H.Yasunaga ]
+								 
+								// add 2011/12/21 H.osamoto [
+								if ($D_TYPE_SMSG) {
+									$addr_name .= urlencode($rec["name"]);
+									$tpl["list"][$i]["_urlNameLink"] .= "&shopno=".$shopno."&adcd=".$rec["adcd"]."&addr_name=".urlencode($rec["fullname"]);
+								}
+								// add 2011/12/21 H.osamoto ]
+
+								// add 2016/09/29 Y.Uesugi [
+								// 市区町村CDの静的リンク作成(SEO対策)
+								if (substr_count($_SERVER["REQUEST_URI"], '/') === 4) {
+									if ((isset($D_SEARCH_ADDR_LIST_SEO) && $D_SEARCH_ADDR_LIST_SEO==1) && (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["KEN"]])) {
+										$tpl["list"][$i]["_urlNameLink"] = sprintf("%s/%stype=%s&%s&selnm=%s", $rec["adcd"], $self_prm, $type, $tmp, urlencode($rec["name"]));
+									}
+								}
+								// add 2016/09/29 Y.Uesugi ]
+							}
+							$reccnt++;
+						} else {
+							$tpl["list"][$i]["null"] = "1";
+						}
+						if(!($i % $D_SEARCH_TABLE_COLS) && $i) $tpl["list"][$i]["lf"] = "1";
+						if((floor($i / $D_SEARCH_TABLE_COLS) % 2) == 0) $tpl["list"][$i]["even_num"] = "1";	// add 2012/11/06 H.Osamoto
+					}
+					// 2013/08/15 T.Sasaki Start
+					// かな行別出力
+					// あ行〜わ行別インデックス：$tpl["kanaindex"]
+					// あ行〜わ行別データ      ：$tpl["kanalist$kanaRowCode"]
+					if (isset($D_SEARCH_ADDR_LIST_OUTPUT_KANA_GROUP) && $D_SEARCH_ADDR_LIST_OUTPUT_KANA_GROUP==1) {
+						$cnt = count($dat)-1;
+					
+						// 住所レベル：名称の設定
+						foreach ( $D_ADCD_LEN as $k=>$v ) {
+							if ( $v == strlen($list[$start - 1]['adcd']) ) {
+								$tpl["addrLvl".$k] = 1;	// add 2015/10/20 N.Wada
+								$tpl["addrLvlName"] = $D_ADCD_NAME[$k];
+								break;
+							}
+						}
+
+						// かな行別インデックス作成
+						$kanaRowIndex=-1;
+						for ($i=0; $i<$cnt; $i++) {
+							$rec = $list[$i];
+							if ($rec) {
+								// add 2015/10/20 N.Wada [
+								if (isset($D_SEARCH_ADDR_LIST_OUTPUT_KANA_GROUP_ADD_23) && $D_SEARCH_ADDR_LIST_OUTPUT_KANA_GROUP_ADD_23==1) {
+									$kanaRowCode = $D_KANA_23[$rec["name"]];
+									if ($kanaRowCode == '') $kanaRowCode = $D_KANA_CODE[mb_substr($rec["kana"], 0, 1)];
+								} else {
+								// add 2015/10/20 N.Wada ]
+									$kanaRowCode = $D_KANA_CODE[mb_substr($rec["kana"], 0, 1)];
+								}
+								if ($kanaRowCode == '') $kanaRowCode = '99';	// 引っかからないものはその他とする
+								$kanaRowName = $D_KANA_ON[$kanaRowCode];
+								
+								// 格納済みからサーチしてなければ追加する
+								$isExsistKanaIdx = false;
+								if ( is_array($tpl["kanaindex"]) ) {
+									foreach ($tpl["kanaindex"] as $key=>$val) {
+										if ( $val["code"] == $kanaRowCode) {
+											$isExsistKanaIdx = true;
+											break;
+										}
+									}
+								}
+								if (!$isExsistKanaIdx) {
+									$kanaRowIndex++;
+									$tpl["kanaindex"][$kanaRowIndex]["name"] = $kanaRowName;
+									$tpl["kanaindex"][$kanaRowIndex]["code"] = $kanaRowCode;
+								}
+							}
+						}
+						
+						if ( count($tpl["kanaindex"]) > 0 ) {
+							$tpl["kanaindex"][count($tpl["kanaindex"])-1]["lastItemFlag"] = '1';
+							$kanaRowLastIndexCode = $tpl["kanaindex"][count($tpl["kanaindex"])-1]["code"];
+							$tpl["kanaIndexLastItem$kanaRowLastIndexCode"] = "1";
+						}
+						
+						if ( count($tpl["kanaindex"]) > 1 ) {
+							$tpl["dispKanaIndex"] = "1";
+						}
+						
+						// データ
+						// かな行別にリストを作成し格納していく
+						$idx = -1;
+						$kanaRowCode_tmp = null;
+						for ($i=0; $i<$cnt; $i++) {
+							$rec = $list[$i];
+							if ($rec) {
+								// add 2015/10/20 N.Wada [
+								if (isset($D_SEARCH_ADDR_LIST_OUTPUT_KANA_GROUP_ADD_23) && $D_SEARCH_ADDR_LIST_OUTPUT_KANA_GROUP_ADD_23==1) {
+									$kanaRowCode = $D_KANA_23[$rec["name"]];
+									if ($kanaRowCode == '') $kanaRowCode = $D_KANA_CODE[mb_substr($rec["kana"], 0, 1)];
+								} else {
+								// add 2015/10/20 N.Wada ]
+									$kanaRowCode = $D_KANA_CODE[mb_substr($rec["kana"], 0, 1)];
+								}
+								if ($kanaRowCode == '') $kanaRowCode = '99';
+								$idx = count($tpl["kanalist$kanaRowCode"]);
+								$tmp = sprintf("adcd=%s&slogflg=%s", $rec["adcd"], $slogflg);
+								if(!$rec["name"]) $rec["name"] = $D_GEO_NONAME;
+								$tpl["kanalist$kanaRowCode"][$idx]["name"] = $rec["name"];
+								// 選択した住所を出発地指定ルートの初期値にする
+								$frouteinit = '';
+								if ($D_SEARCHLIST_ADDR_FROUTE_INIT) {
+									$frouteinit = sprintf("ZdcEmapSetFRouteInit('%s');", $rec["fullname"]);
+								}
+								if(intval($rec["kai"]) || strlen($rec["adcd"]) >= $D_ADCD_LEN[$D_ADDRL_BOTTOM_LVL]) {
+									//下位住所無し
+									$tpl["kanalist$kanaRowCode"][$idx]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec["lat"]), cnv_dms2hour($rec["lon"]));
+									if ($D_TYPE_SMSG) {
+										$tpl["kanalist$kanaRowCode"][$idx]["_urlNameLink"] .= "&shopno=".$shopno."&adcd=".$rec["adcd"]."&addr_name=".urlencode($rec["fullname"]);
+									}
+								} else {
+									//下位住所有り
+									$tpl["kanalist$kanaRowCode"][$idx]["_urlNameLink"] = sprintf("%stype=%s&%s&selnm=%s", $self, $type, $tmp, urlencode($rec["name"]));
+									if ($D_TYPE_SMSG) {
+										$addr_name .= urlencode($rec["name"]);
+										$tpl["kanalist$kanaRowCode"][$idx]["_urlNameLink"] .= "&shopno=".$shopno."&adcd=".$rec["adcd"]."&addr_name=".urlencode($rec["fullname"]);
+									}
+
+									// add 2016/09/29 Y.Uesugi [
+									// 市区町村CDの静的リンク作成(SEO対策)
+									if (substr_count($_SERVER["REQUEST_URI"], '/') === 4) {
+										if ((isset($D_SEARCH_ADDR_LIST_SEO) && $D_SEARCH_ADDR_LIST_SEO==1) && (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["KEN"]])) {
+											$tpl["kanalist$kanaRowCode"][$idx]["_urlNameLink"] = sprintf("%s/%stype=%s&%s&selnm=%s", $rec["adcd"], $self_prm, $type, $tmp, urlencode($rec["name"]));
+										}
+									}
+									// add 2016/09/29 Y.Uesugi ]
+								}
+							}
+						}
+
+						foreach ($tpl["kanaindex"] as $k=>$v) {
+							// nullデータを作成
+							if ( is_array($tpl["kanalist".$v["code"]]) && count($tpl["kanalist".$v["code"]]) > 0) {
+								if (count($tpl["kanalist".$v["code"]]) % $D_SEARCH_TABLE_COLS != 0) {
+									for ($i=count($tpl["kanalist".$v["code"]]); 
+										 $i<count($tpl["kanalist".$v["code"]])+(count($tpl["kanalist".$v["code"]]) % $D_SEARCH_TABLE_COLS);
+										 $i++) {
+										$tpl["kanalist".$v["code"]][$i]["null"] = "1";
+									}
+								}
+							}
+							
+							foreach ($tpl["kanalist".$v["code"]] as $idx=>$val) {
+								// 改行フラグを立てていく
+								if(!($idx % $D_SEARCH_TABLE_COLS) && $idx) {
+									$tpl["kanalist".$v["code"]][$idx]["lf"] = "1";
+								}
+								// 偶数行にeven_numフラグを立てていく
+								if((floor($idx / $D_SEARCH_TABLE_COLS) % 2) == 0) {
+									$tpl["kanalist".$v["code"]][$idx]["even_num"] = "1";
+									$val["even_num"] = "1";
+								}
+							}
+						}
+					}
+					// 2013/08/15 T.Sasaki End
+					$tpl["max"] = count($list);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + $reccnt - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval(count($list)) / $D_SEARCH_TABLE_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME["AddrL"];
+					//上位住所取得の判断
+					if(intval($adcd)) {
+						$cgi = $cgiadcd;
+						$prm = $prm;
+						break;
+					} else {
+						break 2;
+					}
+				//--------------------------------------------------
+				// 住所リスト(上位住所情報取得)
+				//--------------------------------------------------
+				case $D_SSAPI["selectadcd"]:
+					$rec  = explode("\t", $dat[1]);
+					if($rec) {
+						$lvl = $D_ADCD_LVL[$rec[0]];
+						if($lvl) {
+							$area_name = $rec[4];
+							$area_lat = $rec[5];
+							$area_lon = $rec[6];
+							// add 2016/11/21 T.Yoshino [
+							// 住所リスト緯度経度指定
+							if ( isset( $D_LIST_ADDR_NAME ) && $D_LIST_ADDR_NAME ) {
+								foreach( $D_LIST_ADDR_NAME as $key => $val ){
+									if( $area_name == $val ) {
+										$area_lat = $D_LIST_ADDR_LAT[$key];
+										$area_lon = $D_LIST_ADDR_LON[$key];
+									}
+								}
+							}
+							// add 2016/11/21 T.Yoshino ]
+							$back_adcd = substr($rec[3], 0, $D_ADCD_LEN[($lvl-1)]);
+							// 選択した住所を出発地指定ルートの初期値にする
+							$frouteinit = '';
+							if ($D_SEARCHLIST_ADDR_FROUTE_INIT) {
+								$frouteinit = sprintf("ZdcEmapSetFRouteInit('%s');", $area_name);
+							}
+							//エリアリンク
+							$tpl["area"] = $area_name;
+							//$tpl["_jsAreaLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",$area_lat,$area_lon).$frouteinit;
+							$tpl["_urlAreaLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($area_lat), cnv_dms2hour($area_lon));
+							$tpl["_urlAreaLink"] .= '&srchnm='.urlencode($area_name);		// add 2013/10/03 Y.Matsukawa
+							// add 2011/12/21 H.osamoto [
+							
+							// add 2017/03/14 H.Yasunaga 日本郵便カスタマイズ [
+							// mod 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+							//if ($cid == 'jppost15' || $cid == 'jppost15test') {
+							if ($cid == 'jppost15' || $cid == 'jppost15test' || $cid == 'jppost17' || $cid == 'jppost17test') {
+							// mod 2017/04/19 H.Yasunaga ]
+								$tpl["_urlAreaLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($area_lat), cnv_dms2hour($area_lon));
+								$tpl["_urlAreaLink"] .= '&srchnm='.urlencode(mb_convert_encoding($area_name, $tpl['jp_param_enc'], "EUC-JP"));
+							}
+							// add 2017/03/14 H.Yasunaga ]
+							
+							if ($D_TYPE_SMSG) {
+								$tpl["_urlAreaLink"] .= "&shopno=".$shopno."&adcd=".$adcd."&addr_name=".urlencode($area_name);
+							}
+							// add 2011/12/21 H.osamoto ]
+						}
+					}
+					break 2;
+				//--------------------------------------------------
+				// 駅リスト
+				//--------------------------------------------------
+				case $D_SSAPI["searcheki"]:
+					$template = "search_table";
+					//かな絞込み
+					if($cgikana) {
+						$url2 = sprintf("%s?key=%s&opt=%s&%s", $cgikana, $D_SSAPI_KEY, $cid, $prmkana);
+						$dat2 = ZdcHttpRead($url2, 0, $D_SOCKET_TIMEOUT);
+						$cnt = count($dat2) - 1;
+						for($i = 0;$i < $cnt;$i ++) {
+							$rec2 = explode("\t", $dat2[$i+1]);
+							$list_kanacnt[(intval($rec2[0])+10)] = intval($rec2[1]);
+						}
+						// add 2015/03/17 H.Yasunaga [
+						if ($D_SEARCHEKI_KANA_DAN) {
+							// 各段の件数を取得する
+							for($i = 0; $i < count($filtarray) ; $i++) {
+								$url3 = sprintf("%s?key=%s&opt=%s&enc=%s&tod=%s&srchmode=1&srchtarget=1&frewd=%s",$D_SSAPI["searcheki"], $D_SSAPI_KEY, $cid, "EUC", $tod, urlencode($filtarray[$i]));
+								$dat3 = ZdcHttpRead($url3, 0, $D_SOCKET_TIMEOUT);
+								
+								$list_kanadancnt[$i] = count($dat3) -1;
+							}
+						}
+						// add 2015/03/17 H.Yasunaga ]
+					}
+					//
+					$cnt = ceil((count($dat)-1) / $D_SEARCH_TABLE_COLS) * $D_SEARCH_TABLE_COLS;
+					$inf = explode("\t", $dat[1]);
+					for($i = 0;$i < $cnt;$i ++) {
+						if($dat[$i+1]) {
+							$rec = explode("\t", $dat[$i+1]);
+							$tmp = $rec[$col_name];
+							if(strpos($tmp,"(") < 1) {
+								//名前だけ
+								$tpl["list"][$i]["name"] = $tmp;
+							} else {
+								//路線図
+								$tmp = explode("(", $tmp);
+								$tpl["list"][$i]["name"] = $tmp[0];
+								$tpl["list"][$i]["name2"] = "(".$tmp[1];
+							}
+							$tpl["list"][$i]["kana"] = $rec[4]; // add 2017/03/06 K.Tani
+							//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",cnv_dms2hour($rec[$col_lat]),cnv_dms2hour($rec[$col_lon]),cnv_dms2hour($rec[$col_lat]),cnv_dms2hour($rec[$col_lon]));
+							$tpl["list"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec[$col_lat]), cnv_dms2hour($rec[$col_lon]));
+						} else {
+							$tpl["list"][$i]["null"] = "1";
+						}
+						if(!($i % $D_SEARCH_TABLE_COLS) && $i) $tpl["list"][$i]["lf"] = "1";
+						if((floor($i / $D_SEARCH_TABLE_COLS) % 2) == 0) $tpl["list"][$i]["even_num"] = "1";	// add 2012/11/06 H.Osamoto
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + intval($status[1]) - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_TABLE_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME[$type];
+					if ($selnm) $tpl['linenm'] = htmlspecialchars($selnm);		// add 2013/08/26 Y.Matsukawa
+					break 2;
+				// add 2013/08/01 Y.Matsukawa
+				//--------------------------------------------------
+				// 路線リスト
+				//--------------------------------------------------
+				case $D_SSAPI["searchline"]:
+					$template = "search_table";
+					$cnt = ceil((count($dat)-1) / $D_SEARCH_TABLE_COLS) * $D_SEARCH_TABLE_COLS;
+					$inf = explode("\t", $dat[1]);
+					for($i = 0;$i < $cnt;$i ++) {
+						if($dat[$i+1]) {
+							$rec = explode("\t", $dat[$i+1]);
+							$tpl["list"][$i]["name"] = $rec[$col_name];
+							//$tpl["list"][$i]["_urlNameLink"] = sprintf("%stype=%s&line=%s&slogflg=%s", $self, "LineStL", $rec[$col_code], $slogflg);		mod 2013/08/26 Y.Matsukawa
+							$tpl["list"][$i]["_urlNameLink"] = sprintf("%stype=%s&line=%s&selnm=%s&slogflg=%s", $self, "LineStL", $rec[$col_code], urlencode($rec[$col_name]), $slogflg);
+						} else {
+							$tpl["list"][$i]["null"] = "1";
+						}
+						if(!($i % $D_SEARCH_TABLE_COLS) && $i) $tpl["list"][$i]["lf"] = "1";
+						if((floor($i / $D_SEARCH_TABLE_COLS) % 2) == 0) $tpl["list"][$i]["even_num"] = "1";
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + intval($status[1]) - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_TABLE_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME[$type];
+					break 2;
+				//--------------------------------------------------
+				// 施設リスト
+				//--------------------------------------------------
+				case $D_SSAPI["searchpoi"]:
+					$template = "search_table";
+					//絞り込みの判断
+					$cnt = intval($status[2]);
+					if(!intval($jnrmn) || !intval($jnr)) {
+						if( ($frewd && $cnt > $D_SEARCH_POI_SCNT) || !$frewd) {
+							//ジャンル絞込みを行う
+							$cgi = $cgijnr;
+							$prm = $prmjnr;
+							break;
+						}
+					}
+					if($cnt > $D_SEARCH_POI_SCNT && strlen($adcd) < $D_ADCD_LEN[$D_ADCD_LVL["SHK"]]) {
+						//都道府県絞込みを行う
+						$cgi = $cgiarea;
+						$prm = $prmarea;
+						break;
+					}
+					//施設一覧
+					$cnt = ceil((count($dat)-1) / $D_SEARCH_TABLE_COLS) * $D_SEARCH_TABLE_COLS;
+					for($i = 0;$i < $cnt;$i ++) {
+						if($dat[$i+1]) {
+							$rec = explode("\t", $dat[$i+1]);
+							$tpl["list"][$i]["name"] = $rec[3];
+							//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",$rec[1],$rec[2]);
+							$tpl["list"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec[1]), cnv_dms2hour($rec[2]));
+						} else {
+							$tpl["list"][$i]["null"] = "1";
+						}
+						if(!($i % $D_SEARCH_TABLE_COLS) && $i) $tpl["list"][$i]["lf"] = "1";
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + intval($status[1]) - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_TABLE_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME[$type];
+					break 2;
+				//--------------------------------------------------
+				// 施設リスト(ジャンル絞込み)
+				//--------------------------------------------------
+				case $D_SSAPI["searchpoijnr"]:
+					$template = "search_table";
+					//ジャンル・サブジャンル
+					$cnt = count($dat);
+					$j = 0;
+					$ext = explode(',', $D_SEARCH_POI_JNRMN_NG);	//add 2015/10/21 Y.Uesugi
+					for($i = 1;$i < $cnt;$i ++) {
+						$rec = explode("\t", $dat[$i]);
+						//NGチェック bandomemo CGI側で対応してもらう いったん保留
+						//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s",$rec[2],$rec[4],$adcd,$keyword,$slogflg);
+						//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&selnm=%s", $rec[2], $rec[4], $adcd, $keyword, $slogflg, urlencode($rec[$col_name]));		mod 2012/04/25 Y.Matsukawa
+						//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&selnm=%s", $rec[2], $rec[4], $adcd, ($frewd ? $frewd_esc : ''), $slogflg, urlencode($rec[$col_name]));	mod 2012/06/25 N.Wada
+						if(!(in_array($rec[2], $ext))) {	//add 2015/10/21 Y.Uesugi
+							// add 2016/11/10 N.Wada [
+							//施設ジャンルメニューが複数指定してある場合は、ジャンルメニュー選択画面を表示
+							if(isset($D_SEARCH_POI_JNRMN_SELECT) && $D_SEARCH_POI_JNRMN_SELECT &&  strpos($jnrmn, ',') !== false) {
+								if($prev_code == $rec[2]) continue;
+								$prev_code = $rec[2];
+								$col_name = 3;
+								$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&tod=%s&keyword=%s&slogflg=%s&selnm=%s", $rec[2], "", $adcd, $tod, ($frewd ? $frewd_esc : ''), $slogflg, urlencode($rec[$col_name]));
+							} else {
+							// add 2016/11/10 N.Wada ]
+								$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&tod=%s&keyword=%s&slogflg=%s&selnm=%s", $rec[2], $rec[4], $adcd, $tod, ($frewd ? $frewd_esc : ''), $slogflg, urlencode($rec[$col_name]));
+							}
+							$tpl["list"][$j]["name"] = $rec[$col_name];
+							//$tpl["list"][$j]["_jsNameLink"] = sprintf("ZdcEmapSearchChange('%s','%s',':%s')",$type,$tmp,$rec[$col_name]);
+							$tpl["list"][$j]["_urlNameLink"] = sprintf("%stype=%s&%s", $self, $type, $tmp);
+							//改行
+							if(!($j % $D_SEARCH_TABLE_COLS) && $j) $tpl["list"][$j]["lf"] = "1";
+							$j ++;
+						//add 2015/10/21 Y.Uesugi [
+						}else {
+							$status[1] = intval($status[1]) - 1;
+							$status[2] = intval($status[2]) - 1;
+						}
+						//add 2015/10/21 Y.Uesugi ]
+					}
+					if($j % $D_SEARCH_TABLE_COLS) {
+						for($i = 0;$i < $D_SEARCH_TABLE_COLS - ($j % $D_SEARCH_TABLE_COLS);$i ++) {
+							$tpl["list"][$j+$i]["null"] = "1";
+						}
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + intval($status[1]) - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_TABLE_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME["PoiJnr"];
+					break 2;
+				//--------------------------------------------------
+				// 施設リスト(住所絞込み)
+				//--------------------------------------------------
+				case $D_SSAPI["searchpoiarea"]:
+					//住所名取得
+					$url2 = sprintf("%s?key=%s&opt=%s&%s&cnt=999", $cgiadcd, $D_SSAPI_KEY, $cid, $prmadcd);
+					$dat2 = ZdcHttpRead($url2, 0, $D_SOCKET_TIMEOUT);
+					for($i = 1;$i < count($dat2);$i ++) {
+						$rec = explode("\t", $dat2[$i]);
+						$adname[$rec[0]] = $rec[2];
+					}
+					
+					//都道府県絞込み
+					//$cnt = ceil((count($dat)-1) / $D_SEARCH_TABLE_COLS) * $D_SEARCH_TABLE_COLS;
+					//for($i = 0;$i < $cnt;$i ++) {
+					//	if($dat[$i+1]) {
+					//		$rec = explode("\t",$dat[$i+1]);
+					//		//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s",$jnrmn,$jnr,$rec[0],$keyword,$slogflg);
+					//		$tmp2 = $adname[$rec[0]];//住所名
+					//		if(!$tmp2) $tmp2 = $rec[0];
+					//		//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&selnm=%s", $jnrmn, $jnr, $rec[0], $keyword, $slogflg, urlencode($tmp2));		mod 2012/04/25 Y.Matsukawa
+					//		//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&selnm=%s", $jnrmn, $jnr, $rec[0], ($frewd ? $frewd_esc : ''), $slogflg, urlencode($tmp2));	mod 2012/06/25 N.Wada
+					//		$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&tod=%s&keyword=%s&slogflg=%s&selnm=%s", $jnrmn, $jnr, $rec[0], $tod, ($frewd ? $frewd_esc : ''), $slogflg, urlencode($tmp2));
+					//		$tpl["list"][$i]["name"] = sprintf("%s(%d)", $tmp2, $rec[1]);
+					//		//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchChange('%s','%s',':%s')",$type,$tmp,$tmp2);
+					//		$tpl["list"][$i]["_urlNameLink"] = sprintf("%stype=%s&%s", $self, $type, $tmp);
+					//	} else {
+					//		$tpl["list"][$i]["null"] = "1";
+					//	}
+					//	if(!($i % $D_SEARCH_TABLE_COLS) && $i) $tpl["list"][$i]["lf"] = "1";
+					//}
+					//予め都道府県コードが絞りこまれている場合は、その都道府県のみを選択しとして表示する
+					$targetAry = array();
+					if ($tod != "00" && $adcd == "00") {
+						if (strpos($tod, ',') !== false) {
+							foreach (explode(',', $tod) as $key => $value) {
+								if( $value ) {
+									$targetAry[$value] = 1;
+								}
+							}
+						} else {
+							$targetAry[$tod] = 1;
+						}
+					}
+					//都道府県または市区町村絞込み
+					$idx = 0;
+					foreach( $dat as $key => $val ) {
+						if( $key == 0 ) continue;	// 最初のデータはステータスと件数なので飛ばす
+						if( $val ) {
+							$rec = explode("\t",$val);
+							if( count($targetAry) && ! $targetAry[$rec[0]] ) continue;
+							//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s",$jnrmn,$jnr,$rec[0],$keyword,$slogflg);
+							$tmp2 = $adname[$rec[0]];//住所名
+							if(!$tmp2) $tmp2 = $rec[0];
+							//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&selnm=%s", $jnrmn, $jnr, $rec[0], $keyword, $slogflg, urlencode($tmp2));		mod 2012/04/25 Y.Matsukawa
+							//$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&selnm=%s", $jnrmn, $jnr, $rec[0], ($frewd ? $frewd_esc : ''), $slogflg, urlencode($tmp2));	mod 2012/06/25 N.Wada
+							$tmp = sprintf("jnrmn=%s&jnr=%s&adcd=%s&tod=%s&keyword=%s&slogflg=%s&selnm=%s", $jnrmn, $jnr, $rec[0], $tod, ($frewd ? $frewd_esc : ''), $slogflg, urlencode($tmp2));
+							$tpl["list"][$idx]["name"] = sprintf("%s(%d)", $tmp2, $rec[1]);
+							//$tpl["list"][$idx]["_jsNameLink"] = sprintf("ZdcEmapSearchChange('%s','%s',':%s')",$type,$tmp,$tmp2);
+							$tpl["list"][$idx]["_urlNameLink"] = sprintf("%stype=%s&%s", $self, $type, $tmp);
+						}
+						if(!($idx % $D_SEARCH_TABLE_COLS) && $idx) $tpl["list"][$idx]["lf"] = "1";
+						$idx++;
+					}
+					$cnt = $idx;
+					// 足りない列は空白で埋める
+					if( ($pad = $idx % $D_SEARCH_TABLE_COLS) ) {
+						for( $i=$D_SEARCH_TABLE_COLS; $i>$pad; $i-- ) {
+							$tpl["list"][$idx]["null"] = "1";
+							$idx++;
+						}
+					}
+					
+					//$tpl["max"] = intval($status[2]);		mod 2012/06/25 N.Wada
+					if ($tod != "00" && $adcd == "00") {
+						$tpl["max"] = $cnt;
+					} else {
+						$tpl["max"] = intval($status[2]);
+					}
+					$tpl["start"] = $start;
+					//$tpl["end"]   = $start + intval($status[1]) - 1;	mod 2012/06/25 N.Wada
+					$tpl["end"]   = $start + $cnt - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_TABLE_PAGE);
+					$tpl["status"] = $status[0];
+					$tpl["selname"] = $D_SEL_NAME["AddrL"];
+					break 2;
+				//--------------------------------------------------
+				// 拠点エリア
+				//--------------------------------------------------
+				case $D_SSAPI["kyotenarea"]:
+					$template = "search_table";
+					$cnt = ceil((count($dat)-2) / $D_SEARCH_TABLE_COLS) * $D_SEARCH_TABLE_COLS;
+					$inf = explode("\t", $dat[1]);
+					for($i = 0;$i < $cnt;$i ++) {
+						if(isset($dat[$i+2]) && $dat[$i+2]) {
+							$rec = explode("\t", $dat[$i+2]);
+							$tpl["list"][$i]["name"] = sprintf("%s(%s)", $rec[1], $rec[2]);
+							// ダブルクォートをエンティティ化
+							$rec[0] = mb_ereg_replace("\"", "&quot;", $rec[0]);
+							$rec[1] = mb_ereg_replace("\"", "&quot;", $rec[1]);
+							//							if(!$inf[2]) {
+							//								//第一階層選択
+							//								//シングルクォートのエスケープが面倒なので~~にしている
+							//								$tmp = sprintf("%s:~~%s~~",$inf[0],$rec[0]);
+							//							} else {
+							//								//第二階層
+							//								$tmp = sprintf("%s:~~%s~~ AND %s:~~%s~~",$inf[0],$inf[2],$inf[3],$rec[0]);
+							//								if(!$area)$area=$inf[2];
+							//							}
+							//if(isset($rec[2]) && intval($rec[2]) > 1 && ((isset($area) && !$area) || !isset($area))) {
+							if($inf[2] == '') {
+								//第一階層
+								//								if($inf[3]) {
+								//									//第二階層あり
+								//									$tmp = sprintf("area=%s&kns=%d&jkn=%s&cond=%s&slogflg=%s&areaptn=%s",$rec[0],$rec[2],$tmp,$cond,$slogflg,$areaptn);
+								//								} else {
+								//									//第二階層なし
+								//									$tmp = sprintf("area=%s&kns=1&jkn=%s&cond=%s&slogflg=%s&areaptn=%s",$rec[0],$tmp,$cond,$slogflg,$areaptn);
+								//								}
+								//$tmp = sprintf("area1=%s&slogflg=%s&areaptn=%s",urlencode($rec[0]),$slogflg,$areaptn);
+								$tmp = sprintf("area1=%s&slogflg=%s&areaptn=%s&selnm=%s", urlencode($rec[0]), $slogflg, $areaptn, urlencode($rec[1]));
+								//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchChange('%s','%s',':%s')",$type,$tmp,$rec[1]);
+								$tpl["list"][$i]["_urlNameLink"] = sprintf("%s&type=%s&%s", $self, $type, $tmp);
+								$tpl["selname"] = $D_SEARCH_SHOPA_DISPNM[1];
+							} else {
+								//第二階層
+								//if (!isset($area)) $area ="";
+								// add 2015/05/07 Y.Matsukawa [
+								if ($rec[0] == "") {
+									$rec[0] = "@@NULL@@";
+									$rec[1] = $D_SEARCH_SHOPA_DISPNM_NULL;
+									$tpl["list"][$i]["name"] = sprintf("%s(%s)", $D_SEARCH_SHOPA_DISPNM_NULL, $rec[2]);
+								}
+								// add 2015/05/07 Y.Matsukawa ]
+								//$tmp = sprintf("area=%s&kns=1&jkn=%s&cond=%s&slogflg=%s&areaptn=%s",$area.$rec[0],$tmp,$cond,$slogflg,$areaptn);
+								$tmp = sprintf("area1=%s&area2=%s&slogflg=%s&areaptn=%s&selnm=%s", urlencode($inf[2]), urlencode($rec[0]), $slogflg, $areaptn, urlencode($rec[1]));
+								//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchChange('%s','%s',':%s')",$type,$tmp,$rec[1]);
+								$tpl["list"][$i]["_urlNameLink"] = sprintf("%s&type=%s&%s", $self, $type, $tmp);
+								$tpl["selname"] = $D_SEARCH_SHOPA_DISPNM[2];
+							}
+						} else {
+							$tpl["list"][$i]["null"] = "1";
+						}
+						//if(!$inf[2]){
+						if($inf[2] == '') {
+							//第一階層
+							($areaptn) ? $dspidx = $areaptn + ($areaptn - 1) : $dspidx = 1;
+						} else {
+							//第二階層
+							($areaptn) ? $dspidx = $areaptn + $areaptn : $dspidx = 2;
+						}
+						$tpl["selname"] = $D_SEARCH_SHOPA_DISPNM[$dspidx];
+						if(!($i % $D_SEARCH_TABLE_COLS) && $i) $tpl["list"][$i]["lf"] = "1";
+					}
+					$tpl["max"] = intval($status[2]);
+					$tpl["start"] = $start;
+					$tpl["end"]   = $start + intval($status[1]) - 1;
+					$tpl["page"] = $page + 1;
+					$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_TABLE_PAGE);
+					$tpl["status"] = $status[0];
+				break 2;
+			}
+		//--------------------------------------------------
+		// フリーワード複合検索
+		//--------------------------------------------------
+		} else if ($type == "Comb") {
+			$template = "search_list_comb";
+			//------------------------------
+			// 郵便番号フリーワード
+			//------------------------------
+			if($cgi_Zip && !$err) {
+				$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_Zip, $D_SSAPI_KEY, $cid, $prm_Zip);
+				$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+				//エラーチェック
+				$status  = explode("\t", $dat[0]);
+				if(!intval($status[2])) {
+					$ERR_Zip = $D_MSG_SEARCH_NODATA["ZipW"];
+					$cgi_Zip = $type_Zip = "Err";
+					// add 2012/04/02 K.Masuda [
+					$ERR_Ad = $D_MSG_SEARCH_NODATA["AddrW"];
+					$cgi_Ad = $type_Ad = "Err";
+					// add 2012/04/02 K.Masuda ]
+				} else {
+					$cnt = count($dat) - 1;
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = explode("\t", $dat[$i + 1]);
+						$tpl["list"]["addr"][$i]["no"] = $page * $D_COMB_FW_ZIP_MAX + $i + 1;
+						$tpl["list"]["addr"][$i]["name"] = $rec[$col_name_Zip];
+						//						// 選択した住所を出発地指定ルートの初期値にする（郵便番号検索の場合）
+						//						$frouteinit = '';
+						//						if ($D_SEARCHLIST_ADDR_FROUTE_INIT && $cgi == $D_SSAPI["searchzip"]) {
+						//							$frouteinit = sprintf("ZdcEmapSetFRouteInit('%s');", $rec[$col_name_Zip]);
+						//						}
+						//$tpl["list"]["addr"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",$rec[$col_lat_Zip],$rec[$col_lon_Zip],$rec[$col_lat_Zip],$rec[$col_lon_Zip]).$frouteinit;
+						$tpl["list"]["addr"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec[$col_lat_Zip]), cnv_dms2hour($rec[$col_lon_Zip]));
+					}
+					$tpl["addr"]["max"] = intval($status[2]);
+					$tpl["addr"]["start"] = $start_Zip;
+					$tpl["addr"]["end"]   = $start_Zip + $cnt - 1;
+					$tpl["addr"]["page"] = $page + 1;
+					$tpl["addr"]["last"] = ceil(intval($status[2]) / $D_SEARCH_LIST_PAGE);
+					$tpl["addr"]["status"] = $status[0];
+					$tpl["addr"]["selname"] = $D_SEL_NAME[$type];
+				}
+			//------------------------------
+			// 住所フリーワード
+			//------------------------------
+			} else if($cgi_Ad && !$err) {
+				// add 2016/11/14 Y.Uesugi [
+				//住所フリーワード カナ対応
+				if ($D_COMB_FW_ADDR_KANA) {
+
+					$url = sprintf("%s?%s", $cgi_Ad, $prm_Ad);
+					$dat = ZdcHttpReadCoreIF($url);
+
+					$dat_cnt = count($dat["item"]);
+
+					//エラーチェック
+					if($dat["status"]["code"] != "0000" || $dat_cnt == "0") {
+						$ERR_Ad = $D_MSG_SEARCH_NODATA["AddrW"];
+						$cgi_Ad = $type_Ad = "Err";
+					} else {
+
+						//マッチングレベルで並び替え
+						for($i = 0; $i < $dat_cnt; $i++) {
+							$list[$i]["name"] = mb_convert_encoding($dat["item"][$i]["text"], "EUC", "UTF-8");
+							$list[$i]["lat"] = mb_convert_encoding($dat["item"][$i]["point"]["lat"], "EUC", "UTF-8");
+							$list[$i]["lon"] = mb_convert_encoding($dat["item"][$i]["point"]["lon"], "EUC", "UTF-8");
+							//$list[$i]["adid"] = '';
+							//$list[$i]["full"] = '';
+						}
+						usort( $list, "GEOAccess_cmp_sflg" );
+
+						$status = $dat["status"]["code"];
+						if($start_Ad + $D_COMB_FW_ADDR_MAX <= count($list)) {
+							//次ページあり
+							$cnt = $D_COMB_FW_ADDR_MAX;
+							$status = substr($status, 0, -1)."1";//無理やり
+						} else {
+							//次ページ無し
+							$cnt = count($list) - $start_Ad + 1;
+							$status = substr($status, 0, -1)."0";
+						}
+						for($i = 0; $i < $cnt; $i++) {
+							$rec = $list[$start_Ad + $i - 1];
+							$tpl["list"]["addr"][$i]["no"] = $page * $D_COMB_FW_ADDR_MAX + $i + 1;
+							$tpl["list"]["addr"][$i]["name"] = $rec["name"];
+							$tpl["list"]["addr"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, $rec["lat"], $rec["lon"]);
+
+						}
+						$tpl["addr"]["max"] = $dat_cnt;
+						$tpl["addr"]["start"] = $start_Ad;
+						$tpl["addr"]["end"]   = $start_Ad + $cnt - 1;
+						$tpl["addr"]["page"] = $page + 1;
+						$tpl["addr"]["last"] = ceil($dat_cnt / $D_SEARCH_LIST_PAGE) -1;
+						$tpl["addr"]["status"] = $status;
+						$tpl["addr"]["selname"] = $D_SEL_NAME[$type];
+						//最大ページ数チェック
+						if($D_SEARCH_MAXPAGE["AddrW"] && $tpl["addr"]["last"] > $D_SEARCH_MAXPAGE["AddrW"]) {
+							unset($tpl["addr"]);
+							unset($tpl["list"]["addr"]);
+							$ERR_Ad = $D_MSG_SEARCH_MAXPAGE["AddrW"];
+							$cgi_Ad = $type_Ad = "Err";
+						}
+					}
+				} else {
+					// add 2016/11/14 Y.Uesugi ]
+					$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_Ad, $D_SSAPI_KEY, $cid, $prm_Ad);
+					$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+					//エラーチェック
+					$status  = explode("\t", $dat[0]);
+					if(!intval($status[2])) {
+						$ERR_Ad = $D_MSG_SEARCH_NODATA["AddrW"];
+						$cgi_Ad = $type_Ad = "Err";
+					} else {
+						//マッチングレベルで並び替え
+						$cnt = count($dat) - 1;
+						for($i = 0;$i < $cnt;$i ++) {
+							$rec = explode("\t",$dat[$i + 1]);
+							$list[$i]["name"] = $rec[$col_name_Ad];
+							$list[$i]["lat"] = $rec[$col_lat_Ad];
+							$list[$i]["lon"] = $rec[$col_lon_Ad];
+							// add 2016/11/21 T.Yoshino [
+							if ( isset( $D_LIST_ADDR_CUST ) && $D_LIST_ADDR_CUST ) {
+								foreach( $D_LIST_ADDR_CUST as $key => $val ){
+									if( $list[$i]["name"] == $val['NAME'] ) {
+										$list[$i]["lat"] = $val['LAT'];
+										$list[$i]["lon"] = $val['LON'];
+									}
+								}
+							}
+							// add 2016/11/21 T.Yoshino ]
+							$list[$i]["adid"] = $rec[3];
+							$list[$i]["full"] = $rec[4];
+						}
+						usort( $list, "GEOAccess_cmp_sflg" );
+						//
+						if($start_Ad + $D_COMB_FW_ADDR_MAX <= count($list)) {
+							//次ページあり
+							$cnt = $D_COMB_FW_ADDR_MAX;
+							$status[0] = substr($status[0], 0, -1)."1";//無理やり
+						} else {
+							//次ページ無し
+							$cnt = count($list) - $start_Ad + 1;
+							$status[0] = substr($status[0], 0, -1)."0";
+						}
+						for($i = 0;$i < $cnt;$i ++) {
+							$rec = $list[$start_Ad + $i - 1];
+							$tpl["list"]["addr"][$i]["no"] = $page * $D_COMB_FW_ADDR_MAX + $i + 1;
+							$tpl["list"]["addr"][$i]["name"] = $rec["name"];
+							//						// 選択した住所を出発地指定ルートの初期値にする
+							//						$frouteinit = '';
+							//						if ($D_SEARCHLIST_ADDR_FROUTE_INIT) {
+							//							$frouteinit = sprintf("ZdcEmapSetFRouteInit('%s');", $rec["name"]);
+							//						}
+							//						if ($D_SEARCH_GOTO_NOMAP["AddrW"]) {
+							//							$tmp = sprintf("lat=%s&lon=%s&slogflg=%s",$rec["lat"],$rec["lon"],$slogflg);
+							//							$tpl["list"]["addr"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchChange('%s','%s',':%s')","Nshop",$tmp,"");
+							//						} else {
+							//							$tpl["list"]["addr"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",cnv_dms2hour($rec["lat"]),cnv_dms2hour($rec["lon"])).$frouteinit;
+							//						}
+							$tpl["list"]["addr"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec["lat"]), cnv_dms2hour($rec["lon"]));
+							// add 2017/02/06 T.Yoshino [
+							if ( isset( $D_LIST_NEED_SRCHNM ) && $D_LIST_NEED_SRCHNM ) {
+								$tpl["list"]["addr"][$i]["_urlNameLink"] .= '&srchnm='.urlencode($rec["name"]);
+							}
+							// add 2017/02/06 T.Yoshino ]
+						}
+						$tpl["addr"]["max"] = intval($status[2]);
+						$tpl["addr"]["start"] = $start_Ad;
+						$tpl["addr"]["end"]   = $start_Ad + $cnt - 1;
+						$tpl["addr"]["page"] = $page + 1;
+						$tpl["addr"]["last"] = ceil(intval($status[2]) / $D_SEARCH_LIST_PAGE);
+						$tpl["addr"]["status"] = $status[0];
+						$tpl["addr"]["selname"] = $D_SEL_NAME[$type];
+						//最大ページ数チェック
+						if($D_SEARCH_MAXPAGE["AddrW"] && $tpl["addr"]["last"] > $D_SEARCH_MAXPAGE["AddrW"]) {
+							unset($tpl["addr"]);
+							unset($tpl["list"]["addr"]);
+							$ERR_Ad = $D_MSG_SEARCH_MAXPAGE["AddrW"];
+							$cgi_Ad = $type_Ad = "Err";
+						}
+					}
+				} // add 2016/11/14 Y.Uesugi
+			}
+			
+			//------------------------------
+			// 駅フリーワード
+			//------------------------------
+			if($cgi_St && !$err) {
+				$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_St, $D_SSAPI_KEY, $cid, $prm_St);
+				$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+				//エラーチェック
+				$status  = explode("\t", $dat[0]);
+				if(!intval($status[2])) {
+					$ERR_St = $D_MSG_SEARCH_NODATA["StW"];
+					$cgi_St = $type_St = "Err";
+				} else {
+					$cnt = ceil((count($dat)-1) / $D_COMB_FW_ST_MAX) * $D_COMB_FW_ST_MAX;
+					$inf = explode("\t", $dat[1]);
+					for($i = 0;$i < $cnt;$i ++) {
+						if($dat[$i+1]) {
+							$rec = explode("\t", $dat[$i+1]);
+							$tmp = $rec[$col_name_St];
+							if(strpos($tmp, "(") < 1) {
+								//名前だけ
+								$tpl["list"]["st"][$i]["name"] = $tmp;
+							} else {
+								//路線図
+								$tmp = explode("(", $tmp);
+								$tpl["list"]["st"][$i]["name"] = $tmp[0];
+								$tpl["list"]["st"][$i]["name2"] = "(".$tmp[1];
+							}
+							//$tpl["list"]["st"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",cnv_dms2hour($rec[$col_lat_St]),cnv_dms2hour($rec[$col_lon_St]),cnv_dms2hour($rec[$col_lat_St]),cnv_dms2hour($rec[$col_lon_St]));
+							$tpl["list"]["st"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec[$col_lat_St]), cnv_dms2hour($rec[$col_lon_St]));
+							// add 2017/02/06 T.Yoshino [
+							if ( isset( $D_LIST_NEED_SRCHNM ) && $D_LIST_NEED_SRCHNM ) {
+								$tpl["list"]["st"][$i]["_urlNameLink"] .= '&srchnm='.urlencode($tpl["list"]["st"][$i]["name"]);
+							}
+							// add 2017/02/06 T.Yoshino ]
+						}
+					}
+					$tpl["st"]["max"] = intval($status[2]);
+					$tpl["st"]["start"] = $start_St;
+					$tpl["st"]["end"]   = $start_St + intval($status[1]) - 1;
+					$tpl["st"]["page"] = $page + 1;
+					$tpl["st"]["last"] = ceil(intval($status[2]) / $D_SEARCH_TABLE_PAGE);
+					$tpl["st"]["status"] = $status[0];
+					$tpl["st"]["selname"] = $D_SEL_NAME[$type];
+					//最大ページ数チェック
+					if($D_SEARCH_MAXPAGE["StW"] && $tpl["st"]["last"] > $D_SEARCH_MAXPAGE["StW"]) {
+						unset($tpl["st"]);
+						unset($tpl["list"]["st"]);
+						$ERR_St = $D_MSG_SEARCH_MAXPAGE["StW"];
+						$cgi_St = $type_St = "Err";
+					}
+				}
+			}
+			//------------------------------
+			// 施設フリーワード
+			//------------------------------
+			if($cgi_Poi && !$err) {
+				$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_Poi, $D_SSAPI_KEY, $cid, $prm_Poi);
+				$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+				//エラーチェック
+				$status  = explode("\t", $dat[0]);
+				if(!intval($status[2])) {
+					$ERR_Poi = $D_MSG_SEARCH_NODATA["PoiW"];
+					$cgi_Poi = $type_Poi = "Err";
+				} else {
+					//施設一覧
+					// mod 2015/11/11 Y.Uesugi [
+					//$cnt = ceil((count($dat)-1) / $D_COMB_FW_POI_MAX) * $D_COMB_FW_POI_MAX;
+					$cnt = count($dat) - 1;
+					// mod 2015/11/11 Y.Uesugi ]
+					for($i = 0;$i < $cnt;$i ++) {
+						if($dat[$i+1]) {
+							$rec = explode("\t", $dat[$i+1]);
+							$tpl["list"]["poi"][$i]["name"] = $rec[3];
+							// add 2015/11/11 Y.Uesugi
+							$tpl["list"]["poi"][$i]["addr"] = $rec[4];	//住所
+							$tpl["list"]["poi"][$i]["adcd"] = $rec[5];	//郵便番号
+							$tpl["list"]["poi"][$i]["tel"] = $rec[6];	//電話番号
+							// add 2015/11/11 Y.Uesugi
+							//$tpl["list"]["poi"][$i]["_jsNameLink"] = sprintf("ZdcEmapSearchSet('%s','%s');",$rec[1],$rec[2]);
+							$tpl["list"]["poi"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour($rec[1]), cnv_dms2hour($rec[2])); // mod 2015/06/11 F.Yokoi
+							//$tpl["list"]["poi"][$i]["_urlNameLink"] = sprintf("%slat=%s&lon=%s", $nmap_url, cnv_dms2hour(1), cnv_dms2hour($rec[2]));
+						} else {
+							$tpl["list"]["poi"][$i]["null"] = "1";
+						}
+						if(!($i % $D_COMB_FW_POI_MAX) && $i) $tpl["list"]["poi"][$i]["lf"] = "1";
+					}
+					$tpl["poi"]["max"] = intval($status[2]);
+					$tpl["poi"]["start"] = $start_Poi;
+					$tpl["poi"]["end"]   = $start_Poi + intval($status[1]) - 1;
+					$tpl["poi"]["page"] = $page + 1;
+					$tpl["poi"]["last"] = ceil(intval($status[2]) / $D_COMB_FW_POI_MAX);
+					$tpl["poi"]["status"] = $status[0];
+					$tpl["poi"]["selname"] = $D_SEL_NAME[$type];
+				}
+			}
+			//------------------------------
+			// 拠点フリーワード
+			//------------------------------
+			if($cgi_Sh && !$err) {
+				$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_Sh, $D_SSAPI_KEY, $cid, $prm_Sh);
+				$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+				//エラーチェック
+				$status  = explode("\t", $dat[0]);
+				if(!intval($status[2])) {
+					$ERR_Sh = $D_MSG_SEARCH_NODATA["ShopW"];
+					$cgi_Sh = $type_Sh = "Err";
+				} else {
+					$cnt = count($dat) - 1;
+					for($i = 0;$i < $cnt;$i ++) {
+						$rec = explode("\t", $dat[$i + 1]);
+						// 拠点縮尺（PC）
+						$kyoten_lvl = $rec[count($rec)-2];
+						if (ctype_digit($kyoten_lvl) && 1 <= $kyoten_lvl && $kyoten_lvl <= 18) {
+						} else $kyoten_lvl = 0;
+						$tpl["list"]["shop"][$i]["no"] = $page * $D_COMB_FW_SHOP_MAX + $i + 1;
+						//$tpl["list"]["shop"][$i]["_jsNameLink"] = sprintf("ZdcEmapShopDetailKidFirst('%s','%s','%s','%s','%s',false,'%s');",$rec[0],cnv_dms2hour($rec[1]),cnv_dms2hour($rec[2]),$rec[3],$rec[4],$kyoten_lvl);
+						//$tpl["list"]["shop"][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');		mod 2015/03/17 Y.Matsukawa
+						$tpl["list"]["shop"][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+						$tpl["list"]["shop"][$i]["cid"] = $rec[0];
+						$tpl["list"]["shop"][$i]["kid"] = $rec[0];		// add 2015/06/10 Y.Matsukawa
+						$tpl["list"]["shop"][$i]["lat"] = $rec[1];
+						$tpl["list"]["shop"][$i]["lon"] = $rec[2];
+						$tpl["list"]["shop"][$i]["icon"] = $rec[3];
+						$tpl["list"]["shop"][$i]["icon_".$rec[3]] = 1;		// add 2012/11/13 Y.Matsukawa
+						// mod 2013/11/27 H.Osamoto [
+						//	$tpl["list"]["shop"][$i]["new"]  = $rec[4];
+						if(isset($rec[4]) && intval($rec[4])) {
+							$tpl["list"]["shop"][$i]["new"] = "1";
+						} else {
+							$tpl["list"]["shop"][$i]["new"] = "";
+						}
+						// mod 2013/11/27 H.Osamoto ]
+						for($j = 0;$j < 202;$j ++) {
+							$tmp = $D_KYO_COL_NAME[0][$j];
+							if ($tmp != '') {
+								$d = $rec[5+$j];
+								//	$tpl["list"]["shop"][$i][$tmp] = $d;	2012/08/03 H.Osamoto mod
+								$tpl["list"]["shop"][$i][$tmp] = zdcHtmlspecialchars($d, $tmp);
+								$tpl["list"]["shop"][$i][$tmp."_raw"] = zdcHtmlspecialchars_raw($d, $tmp); // add 2015/12/22 F.Yokoi
+								if($d) $tpl["list"]["shop"][$i][$tmp."l".$d] = "1";
+								if(intval($d) == 1) $tpl["list"]["shop"][$i][$tmp."b"] = "1";
+							}
+						}
+						// add 2017/06/13 N.Wada
+						//---------------------------------------------
+						// 任意カラム同士の一致判定
+						//---------------------------------------------
+						if (isset($D_STR_DIFF_COLS)) {
+							$col1 = $D_STR_DIFF_COLS[0];
+							$col2 = $D_STR_DIFF_COLS[1];
+							if ($tpl["list"]["shop"][$i][$col1] == $tpl["list"]["shop"][$i][$col2]) {
+								$tpl["list"]["shop"][$i][$col1.'_EQ_'.$col2] = 1;
+							} else {
+								$tpl["list"]["shop"][$i][$col1.'_NEQ_'.$col2] = 1;
+							}
+						}
+						// add 2017/06/13 N.Wada
+						//---------------------------------------------
+						// 任意カラム（時刻）同士の比較
+						//---------------------------------------------
+						if (isset($D_TIME_COMP_COLS)) {
+							foreach($D_TIME_COMP_COLS as $g => $pair) {
+								$col1 = $pair[0];
+								$col2 = $pair[1];
+								if ($tpl["list"]["shop"][$i][$col1] == "" || $tpl["list"]["shop"][$i][$col2] == "") continue;
+								$val1 = (int)str_replace(":", "", $tpl["list"]["shop"][$i][$col1]);
+								$val2 = (int)str_replace(":", "", $tpl["list"]["shop"][$i][$col2]);
+								if ($val1 == $val2) {
+									$tpl["list"]["shop"][$i][$col1.'_EQ_'.$col2.'_TIME'] = 1;
+								} else {
+									$tpl["list"]["shop"][$i][$col1.'_NEQ_'.$col2.'_TIME'] = 1;
+								}
+								if ($val1 >= $val2) {
+									$tpl["list"]["shop"][$i][$col1.'_GTE_'.$col2.'_TIME'] = 1;
+								} else {
+									$tpl["list"]["shop"][$i][$col1.'_LT_'.$col2.'_TIME'] = 1;
+								}
+								if ($val1 <= $val2) {
+									$tpl["list"]["shop"][$i][$col1.'_LTE_'.$col2.'_TIME'] = 1;
+								} else {
+									$tpl["list"]["shop"][$i][$col1.'_GT_'.$col2.'_TIME'] = 1;
+								}
+							}
+						}
+						// add 2017/06/13 N.Wada
+						//---------------------------------------------
+						// フラグ項目グループ判定（どれか１つ以上ON）
+						//---------------------------------------------
+						if (isset($D_FLAGS_ANY_ON)) {
+							foreach($D_FLAGS_ANY_ON as $g => $flags) {
+								foreach ($flags as $c) {
+									if ($tpl["list"]["shop"][$i][$c]) {
+										$tpl["list"]["shop"][$i]['FLAGS_'.$g.'_ANY_ON'] = 1;
+										break;
+									}
+								}
+							}
+						}
+						// add 2017/06/13 N.Wada
+						//---------------------------------------------
+						// フラグ項目グループ判定（すべてON）
+						//---------------------------------------------
+						if (isset($D_FLAGS_ALL_ON)) {
+							foreach($D_FLAGS_ALL_ON as $g => $flags) {
+								$flag_on_cnt = 0;
+								foreach ($flags as $c) {
+									if ($tpl["list"]["shop"][$i][$c]) {
+										$flag_on_cnt++;
+									}
+								}
+								if ($flag_on_cnt && count($flags) == $flag_on_cnt) {
+									$tpl["list"]["shop"][$i]['FLAGS_'.$g.'_ALL_ON'] = 1;
+								}
+							}
+						}
+						// add 2017/06/13 N.Wada
+						//---------------------------------------------
+						// 値グループ判定（どれか１つ以上値がある）
+						//---------------------------------------------
+						if (isset($D_COLUMNS_ANY_VALUE)) {
+							foreach($D_COLUMNS_ANY_VALUE as $g => $flags) {
+								foreach ($flags as $c) {
+									if ($tpl["list"]["shop"][$i][$c] != "") {
+										$tpl["list"]["shop"][$i]['COLUMNS_'.$g.'_ANY_VALUE'] = 1;
+										break;
+									}
+								}
+							}
+						}
+						// add 2017/06/13 N.Wada
+						//---------------------------------------------
+						// 値グループ判定（どれか１つ以上、任意の値と一致する）
+						//---------------------------------------------
+						if (isset($D_COLUMNS_ANY_MATCH_VALUE)) {
+							foreach($D_COLUMNS_ANY_MATCH_VALUE as $g => $cols) {
+								foreach ($cols as $c => $v) {
+									if ($tpl["list"]["shop"][$i][$c] == $v) {
+										$tpl["list"]["shop"][$i]['COLUMNS_'.$g.'_ANY_MATCH_VALUE'] = 1;
+										break;
+									}
+								}
+							}
+						}
+						if (isset($D_ICON[$tpl["list"]["shop"][$i]["icon"]])) {		// add 2012/11/13 Y.Matsukawa
+							//$tpl["list"]["shop"][$i]["iconimg"] = sprintf("%s?cid=%s&icon_id=%s", $D_SSAPI["icon_select_g"], $D_CID, $tpl["list"]["shop"][$i]["icon"]);		mod 2011/12/05 Y.Matsukawa
+							$tpl["list"]["shop"][$i]["iconimg"] = sprintf("%s?cid=%s&icon_id=%s", $D_SSAPI["icon_select_g"], $D_ICON_CID, $tpl["list"]["shop"][$i]["icon"]);
+						// add 2012/11/13 Y.Matsukawa [
+						} else {
+							$tpl["list"]["shop"][$i]["iconimg"] = $D_ICON["@TP"]["IMG"];
+						}
+						// add 2012/11/13 Y.Matsukawa ]
+						//$tpl["list"]["shop"][$i]["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"]["shop"][$i]["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+						//$tpl["list"]["shop"][$i]["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"]["shop"][$i]["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+						$tpl["list"]["shop"][$i]["_cgiSysIconimgSSL"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select_ssl"], $D_DATA_CID);	//add 2016/07/27 Y.Uesugi
+						//$tpl["list"]["shop"][$i]["_cgiGifimg"]  = sprintf("%s?cid=%s&kid=", $D_SSAPI["gif_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+						$tpl["list"]["shop"][$i]["_cgiGifimg"]  = sprintf("%s?cid=%s&kid=", $D_SSAPI["gif_select"], $D_DATA_CID);
+						//$tpl["list"]["shop"][$i]["_urlPrint"] = sprintf("./print.htm?cid=%s&kid=%s", $cid, $rec[0]);
+						//$tpl["list"]["shop"][$i]["_urlPrint"] = $D_DIR_BASE_G.'prt/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2015/03/17 Y.Matsukawa
+						$tpl["list"]["shop"][$i]["_urlPrint"] = $D_DIR_BASE_G.'prt/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+					}
+					$tpl["shop"]["max"] = intval($status[2]);
+					$tpl["shop"]["start"] = $start_Sh;
+					$tpl["shop"]["end"]   = $start_Sh + $cnt - 1;
+					$tpl["shop"]["page"] = $page + 1;
+					$tpl["shop"]["last"] = ceil(intval($status[2]) / $D_SEARCH_SHOPLIST_PAGE);
+					$tpl["shop"]["status"] = $status[0];
+					$tpl["shop"]["selname"] = $D_SEL_NAME[$type];
+					//最大ページ数チェック
+					if($D_SEARCH_MAXPAGE["ShopW"] && $tpl["shop"]["last"] > $D_SEARCH_MAXPAGE["ShopW"]) {
+						unset($tpl["shop"]);
+						unset($tpl["list"]["shop"]);
+						$ERR_Sh = $D_MSG_SEARCH_MAXPAGE["ShopW"];
+						$cgi_Sh = $type_Sh = "Err";
+					}
+				}
+			}
+			break;
+		} else {
+			break;
+		}
+	}
+
+	if( is_array($D_COND_CHECK) && count($D_COND_CHECK) ){
+		$cnt = count($dat) - 1;
+		foreach($D_COND_CHECK as $g => $grp){
+			$arr_cnd = explode(",", $grp);
+			foreach($arr_cnd as $cnd) {
+				$CND_TMP[$g][] = $cnd;
+			}
+		}
+		foreach( $CND_TMP as $one_k => $one_v ){
+			for($i = 0;$i < $cnt;$i ++) {
+				foreach( $one_v as $value ){
+					if( $tpl["list"][$i][strtolower($value)] == "" || $tpl["list"][$i][strtolower($value)] == "0" ) {
+					} else {
+						$tpl["list"][$i]["condcheck".$one_k] = 1;
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	//最大ページ数チェック
+	if($D_SEARCH_MAXPAGE[$type] && $tpl["last"] > $D_SEARCH_MAXPAGE[$type]) $err = $D_MSG_SEARCH_MAXPAGE[$type];
+
+	// 郵便番号検索０件の場合、検索TOP遷移		add 2013/07/22 Y.Matsukawa
+	if ($D_ZIPW0_GOTO_PAGE && $err && $type_org == 'ZipW') {
+		$url = $D_DIR_BASE_G.$D_ZIPW0_GOTO_PAGE.'?fail=ZipW';
+		$url .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');
+		header("Location: $url");
+		exit;
+	}
+
+	// 郵便番号検索一覧をスキップ（先頭データの緯度経度で最寄り地図へ遷移）		add 2014/07/07 Y.Matsukawa
+	if ($D_ZIPW_SKIP_LIST && !$err && $type_org == 'ZipW') {
+		if (isset($tpl['list'][0])) {
+			ZdcHistoryRemove('zw');
+			header('Location: '.$tpl['list'][0]['_urlNameLink']);
+			exit;
+		}
+	}
+
+	//-------------------
+	// 画面設定
+	//-------------------
+	if($err) $type = "Err";
+	//ページ制御等
+	switch($type) {
+		case "AddrW"://住所フリーワード
+		case "StW"://駅フリーワード
+		case "ZipW"://郵便番号フリーワード
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $self, $type, $keyword, $adcd, $col, $slogflg);
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd, $adcd, $col, $slogflg);		mod 2012/04/25 Y.Matsukawa
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd_esc, $adcd, $col, $slogflg);	mod 2012/06/25 N.Wada
+			$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&tod=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd_esc, $adcd, $tod, $col, $slogflg);
+			break;
+		case "AddrL"://住所リスト
+			//$pg = sprintf("%stype=%s&adcd=%s&kana=%d&slogflg=%s&page=", $self, $type, $adcd, $kana, $slogflg);	mod 2012/06/25 N.Wada
+			$pg = sprintf("%stype=%s&adcd=%s&tod=%s&kana=%d&slogflg=%s&page=", $self, $type, $adcd, $tod, $kana, $slogflg);
+
+			// add 2016/09/29 Y.Uesugi [
+			// 市区町村CDの静的リンク作成(SEO対策)
+			if (substr_count($_SERVER["REQUEST_URI"], '/') === 4) {
+				if ((isset($D_SEARCH_ADDR_LIST_SEO) && $D_SEARCH_ADDR_LIST_SEO==1) && (strlen($adcd) == $D_ADCD_LEN[$D_ADCD_LVL["KEN"]])) {
+					$pg = sprintf("%stype=%s&adcd=%s&tod=%s&kana=%d&slogflg=%s&page=", $self_prm, $type, $adcd, $tod, $kana, $slogflg);
+				}
+			}
+			// add 2016/09/29 Y.Uesugi ]
+
+			break;
+		case "StL"://駅リスト
+			//$pg = sprintf("%stype=%s&adcd=%s&kana=%d&slogflg=%s&page=", $self, $type, $adcd, $kana, $slogflg);	mod 2012/06/25 N.Wada
+			$pg = sprintf("%stype=%s&adcd=%s&tod=%s&kana=%d&slogflg=%s&page=", $self, $type, $adcd, $tod, $kana, $slogflg);
+			break;
+		case "LineL"://路線リスト		add 2013/08/01 Y.Matsukawa
+			$pg = sprintf("%stype=%s&adcd=%s&tod=%s&slogflg=%s&page=", $self, $type, $adcd, $tod, $slogflg);
+			break;
+		case "LineStL"://路線駅リスト		add 2013/08/01 Y.Matsukawa
+			//$pg = sprintf("%stype=%s&line=%s&kana=%d&slogflg=%s&page=", $self, $type, $line, $kana, $slogflg);		mod 2013/08/26 Y.Matsukawa
+			//$pg = sprintf("%stype=%s&line=%s&selnm=%s&kana=%d&slogflg=%s&page=", $self, $type, $line, htmlspecialchars($selnm), $kana, $slogflg);		mod 2013/09/13 Y.Matsukawa
+			$pg = sprintf("%stype=%s&line=%s&selnm=%s&kana=%d&slogflg=%s&page=", $self, $type, $line, urlencode($selnm), $kana, $slogflg);
+			break;
+		case "PoiW"://施設フリーワード
+		case "PoiL"://施設リスト
+			//$pg = sprintf("%stype=%s&jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&page=", $self, $type, $jnrmn, $jnr, $adcd, $keyword, $slogflg);
+			//$pg = sprintf("%stype=%s&jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&page=", $self, $type, $jnrmn, $jnr, $adcd, $frewd, $slogflg);		mod 2012/04/25 Y.Matsukawa
+			//$pg = sprintf("%stype=%s&jnrmn=%s&jnr=%s&adcd=%s&keyword=%s&slogflg=%s&page=", $self, $type, $jnrmn, $jnr, $adcd, $frewd_esc, $slogflg);	mod 2012/06/25 N.Wada
+			$pg = sprintf("%stype=%s&jnrmn=%s&jnr=%s&adcd=%s&tod=%s&keyword=%s&slogflg=%s&page=", $self, $type, $jnrmn, $jnr, $adcd, $tod, $frewd_esc, $slogflg);
+			break;
+		case "ShopW"://拠点フリーワード
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&cond=%s&slogflg=%s&page=", $self, $type, $keyword, $adcd, $col, $cond, $slogflg);
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd, $adcd, $col, $slogflg);		mod 2012/04/25 Y.Matsukawa
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd_esc, $adcd, $col, $slogflg);	mod 2012/06/25 N.Wada
+			$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&tod=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd_esc, $adcd, $tod, $col, $slogflg);
+			break;
+		case "ShopM"://拠点フリーワード（完全一致）		add 2013/09/18 Y.Matsukawa
+			$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&tod=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd_esc, $adcd, $tod, $col, $slogflg);
+			break;
+		case "ShopA"://拠点エリア
+			//			if ($area1 != "" && $area2 != "") {
+			//				$area = $area1.$area2;
+			//				$kns = '1';
+			//			}
+			//$pg = sprintf("%stype=%s&area=%s&kns=%s&jkn=%s&cond=%s&slogflg=%s&areaptn=%s&page=", $self, $type, $area, $kns, $jkn, $cond, $slogflg, $areaptn);
+			$pg = sprintf("%stype=%s&area1=%s&area2=%s&slogflg=%s&areaptn=%s&page=", $self, $type, urlencode($area1), urlencode($area2), $slogflg, $areaptn);
+			break;
+		case "Nshop"://最寄り拠点（地図なし）
+			$pg = sprintf("%stype=%s&lat=%s&lon=%s&cond=%s&slogflg=%s&page=", $self, $type, $lat, $lon, $cond, $slogflg);
+			break;
+		case "Comb"://フリーワード複合検索
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $self, $type, $keyword, $adcd, $col, $slogflg);
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd, $adcd, $col, $slogflg);		mod 2012/04/25 Y.Matsukawa
+			//$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd_esc, $adcd, $col, $slogflg);	mod 2012/06/25 N.Wada
+			$pg = sprintf("%stype=%s&keyword=%s&adcd=%s&tod=%s&col=%s&slogflg=%s&page=", $self, $type, $frewd_esc, $adcd, $tod, $col, $slogflg);
+			if ($type_Zip == "Err") $tpl["zip"]["msg"] = $ERR_Zip;
+			if ($type_Ad == "Err") $tpl["addr"]["msg"] = $ERR_Ad;
+			if ($type_St == "Err") $tpl["st"]["msg"] = $ERR_St;
+			if ($type_Poi == "Err") $tpl["poi"]["msg"] = $ERR_Poi;
+			if ($type_Sh == "Err") $tpl["shop"]["msg"] = $ERR_Sh;
+			break;
+		case "Err"://エラー画面
+			$tpl["msg"] .= $err;
+			$template = "search_error";
+			break;
+	}
+
+	//if($page) $tpl["_jsPrev"]  = sprintf("ZdcEmapSearchRequest('%s%s')",$pg,($page - 1));
+	if($page) $tpl["_urlPrev"]  = sprintf("%s%s", $pg, ($page - 1));
+	//if(substr($tpl["status"], -1, 1) == '1') $tpl["_jsNext"] = sprintf("ZdcEmapSearchRequest('%s%s')",$pg,($page + 1));
+	if(substr($tpl["status"], -1, 1) == '1') $tpl["_urlNext"] = sprintf("%s%s", $pg, ($page + 1));
+
+	//かなページ制御
+	$j = 0;
+	foreach( $D_KANA_ON as $key=>$val) {
+		if($list_kanacnt[$key]) {
+			$tpl["kana"][$j]["on"]   = $val;
+			$tpl["kana"][$j]["cnt"]  = $list_kanacnt[$key];
+			// mod 2015/03/17 H.Yasunaga [
+			//$tpl["kana"][$j]["_jsLink"]  = sprintf("ZdcEmapSearchRequest('%s0&kana=%d')",$pg,$key);
+			//$tpl["kana"][$j]["_urlLink"]  = sprintf("%s0&kana=%d", $pg, $key);
+			if ($D_SEARCHEKI_KANA_DAN)
+			{
+				$tpl["kana"][$j]["_urlLink"]  = sprintf("%s0&kana=%d&kanadan=0", $pg, $key);
+			} else {
+				$tpl["kana"][$j]["_urlLink"]  = sprintf("%s0&kana=%d", $pg, $key);
+			}
+			// mod 2015/03/17 H.Yasunaga ]
+			if ($key == $kana) $tpl["kana"][$j]["crr"] = 1;
+			$j ++;
+		}
+	}
+	if($j == 1) unset($tpl["kana"]);//かなが一種類の時は出さない
+	//ページジャンプリンク（1 2 3 ...）
+
+	if ($tpl["last"] > 1) {
+		// add 2017/03/09 Y.Uesugi [
+		if(isset($D_SEARCH_SHOPLIST_PAGE_MAX) && $D_SEARCH_SHOPLIST_PAGE_MAX){
+
+			//ページ番号リンク
+			$start =  ($page-floor($D_SEARCH_SHOPLIST_PAGE_MAX/2) > 0) ? ($page-floor($D_SEARCH_SHOPLIST_PAGE_MAX/2)) : 0;//始点
+			$end =  ($start > 1) ? ($page+floor($D_SEARCH_SHOPLIST_PAGE_MAX/2)) : $D_SEARCH_SHOPLIST_PAGE_MAX;//終点
+
+			$start = ($end > $tpl["last"] ) ? $start-($end - $tpl["last"]) : $start;//始点再計算
+			$end = ($tpl["last"] > $start+$D_SEARCH_SHOPLIST_PAGE_MAX) ? $start+$D_SEARCH_SHOPLIST_PAGE_MAX : $tpl["last"];
+			$start = ($start < 0) ? 0 : $start;//始点再計算
+
+			//最初のページへのリンク
+			if(($start > 0) && ($start > floor($D_SEARCH_SHOPLIST_PAGE_MAX/2))){
+				$tpl["_urlTop"] = sprintf("%s%s", $pg, 0);
+			}
+
+			//「前へ」リンク
+			if($page != 0) {
+				$tpl["_urlPrev"] = sprintf("%s%s", $pg, ($page - 1));
+			}
+
+
+			//ページャ設定
+			$j = 0;
+			for($i=$start; $i < $end ; $i++){				//ページリンク表示ループ
+				if($i <= $tpl["last"] ){			//1以上最大ページ数以下の場合
+					$tpl["pgjump"][$j]["pg"] = $i+1;
+					if ($i != $page) $tpl["pgjump"][$j]["_urlLink"] = sprintf("%s%s", $pg, $i);
+					$j++;
+				}
+			}
+
+			//「次へ」リンク
+			if($tpl["last"] > $page+1) {
+				$tpl["_urlNext"] = sprintf("%s%s", $pg, ($page + 1));
+			}
+
+			//最後のページへのリンク
+			if($tpl["last"] > $end){
+				$tpl["_urlLast"] = sprintf("%s%s", $pg, $tpl["last"]-1);
+			}
+
+		}else{
+		// add 2017/03/09 Y.Uesugi ]
+			for ($j=0; $j<$tpl["last"]; $j++) {
+				$tpl["pgjump"][$j]["pg"] = $j+1;
+				//if ($j != $page) $tpl["pgjump"][$j]["_jsLink"] = sprintf("ZdcEmapSearchRequest('%s%s')",$pg,$j);
+				if ($j != $page) $tpl["pgjump"][$j]["_urlLink"] = sprintf("%s%s", $pg, $j);
+			}
+		// add 2017/03/09 Y.Uesugi [
+		}
+		// add 2017/03/09 Y.Uesugi ]
+	}
+	
+	$D_JS[] = $D_DIR_BASE_G.'common.js';	// add 2015/10/20 N.Wada
+	// add 2014/05/16 Y.Matsukawa [
+	$D_JS[] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$D_JS[] = $D_DIR_BASE_G.'search.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');		// add 2015/03/26 Y.Matsukawa
+	// 商品マスタ
+	if ($D_PRD) {
+		$D_JS[] = $D_DIR_BASE_G.'prd_select.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');
+	}
+	// JS
+	$j = 0;
+	foreach ($D_JS as $value) {
+		$tpl['js'][$j]['src'] = $value;
+		$tpl['js'][$j]['charset']  = $D_JSAPI_charset;
+		$j++;
+	}
+	// add 2014/05/16 Y.Matsukawa ]
+	
+	// add 2015/03/17 H.Yasunaga [
+	// かな段表示
+	if ($D_SEARCHEKI_KANA_DAN)
+	{
+		$j=0;
+		foreach($D_HIRAGANA_CODE as $key=>$val) {
+			if ($kana == $val)
+			{
+				$tpl["kanadan"][$j]["on"] = $key;
+				if ($list_kanadancnt[$j] != 0) {
+					$tpl["kanadan"][$j]["_urlLink"] = sprintf("%s0&kana=%d&kanadan=%d", $pg, $val, $j);
+				}
+				$j ++;
+			}
+		}
+	}
+	// add 2015/03/17 H.Yasunaga ]
+
+	//css
+	$j = 0;
+	if($D_JSCSS) {
+		foreach ($D_JSCSS as $key => $value) {
+			$tpl["css"][$j]["src"] = $value;
+			$j ++;
+		}
+	}
+
+	//その他
+	//$tpl["keyword"] = $keyword;		mod 2017/05/14 Y.Matsukawa
+	$tpl["keyword"] = htmlspecialchars($keyword, ENT_QUOTES);
+	// 2015/03/17 H.Osamoto [
+	if (isset($adcd) && $adcd) {
+		$tpl["adcd"] = $adcd;
+		$tpl["tod_name"] = $D_TOD[$adcd];
+		
+		foreach($D_TOD as $key => $value) {
+			if (($key == $adcd) && intval($key) > 0) {
+				$tpl["adcd".$key."_sel"] = "selected";
+			}
+		}
+	}
+	// 2015/03/17 H.Osamoto ]
+	if($areaptn && $areaptn != "1"){
+		$tpl["title"]   = $D_HISTORY_NAME[$type."_".$areaptn];
+	} else {
+		$tpl["title"]   = $D_HISTORY_NAME[$type];
+	}
+
+	//$tpl["_jsBack"]       = "ZdcEmapHistoryBack()";
+	$tpl["_jsBack"]       = "history.back()";
+	$tpl["_jsCancel"]     = "ZdcEmapSearchCancel()";
+	$tpl["_jsChangeFunc"] = "ZdcEmapSearchChange";
+	$tpl["_jsSearchOpenFromSrchWin"] = "ZdcEmapSearchOpenFromSrchWin";
+	$tpl["_jsCond2Scond"] = "ZdcEmapCond2SearchTopCond()";
+	$tpl["_jsScond2Cond"] = "ZdcEmapSearchTopCond2Cond()";
+	// add 2015/03/25 Y.Matsukawa [
+	$tpl['_urlSearch'] = 'search.htm';
+	$tpl['_jsSetCond'] = 'ZdcEmapSetCond';
+	$tpl['_jsSetFreeParams'] = 'ZdcEmapSetFreeParams';
+	$tpl['_jsEscapeKeyword'] = 'ZdcEmapEscapeKeyword';
+	// add 2015/03/25 Y.Matsukawa ]
+}
+
+//-------------------
+// 画面出力
+//-------------------
+//header('X-UA-Compatible: IE=emulateIE7');
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	// add 2015/06/03 N.Wada [
+	if (isset($D_SEARCH_RESULT_TEMPLATE_ONLY) && $D_SEARCH_RESULT_TEMPLATE_ONLY) {
+		htmloutput($D_SYSDIR_COMPANY.$template.".tpl", $tpl);
+	// add 2015/06/03 N.Wada ]
+	} else {
+		for($i = 0;$i <= 4;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		htmloutput($D_SYSDIR_COMPANY.$template.".tpl", $tpl);
+		for($i = 6;$i <= 9;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	}
+} else {
+	ZdcLogPut(1);
+	// add 2015/10/20 N.Wada [
+	if (isset($D_SEARCH_ERROR_TEMPLATE_ONLY) && $D_SEARCH_ERROR_TEMPLATE_ONLY) {
+		htmloutput($D_SYSDIR_COMPANY."search_error.tpl", $tpl);
+	// add 2015/10/20 N.Wada ]
+	} else {
+		for($i = 0;$i <= 4;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		// add 2016/10/13 N.Wada [
+		if (isset($D_CUSTOM_SEARCH_ERROR_TPL) && $D_CUSTOM_SEARCH_ERROR_TPL) {
+			htmloutput($D_SYSDIR_COMPANY.$D_CUSTOM_SEARCH_ERROR_TPL, $tpl);
+		} else {
+		// add 2016/10/13 N.Wada ]
+			htmloutput($D_SYSDIR_COMPANY."search_error.tpl", $tpl);
+		}
+		for($i = 6;$i <= 9;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	}
+}
+?>

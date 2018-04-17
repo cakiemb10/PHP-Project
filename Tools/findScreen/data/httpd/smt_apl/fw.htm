@@ -1,0 +1,159 @@
+<?PHP
+// ------------------------------------------------------------
+// 店舗フリーワード検索
+// 
+// 2011/03/10 Y.Matsukawa	新規作成
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/08/08 Y.Matsukawa	機能追加（絞り込み拡張、拠点エリア検索、駅リスト検索）
+// 2011/08/12 K.Masuda		拠点フリーワード検索で対象カラム指定
+// 2011/12/13 K.Masuda 		パラメータ処理追加
+// 2012/01/11 Y.Matsukawa	任意パラメータ
+// 2012/02/21 Y.Matsukawa	店舗一覧にチェックボックス設置
+// 2012/09/10 Y.Matsukawa	【不具合修正】任意パラメータに「&」を含めると正しく引き継がれない、任意パラメータに半角スペース指定すると消える
+// 2014/12/18 Y.Matsukawa	【ヤマト運輸】【不具合対応】フリーワード入力欄の履歴表示が複数の欄で共有されてしまう
+// 2015/02/02 Y.Matsukawa	jQueryの読み込み停止
+// 2015/02/13 Y.Matsukawa	絞り込み変更再検索
+// 2017/04/14 N.Wada		拠点フリーワード検索：実行jsに独自パラメータ追加
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理	add 2011/12/13 K.Masuda
+//-------------------
+//require_once('/home/emap/src/smt/inc/proc_get_freeparam.inc');		del 2012/01/11 Y.Matsukawa
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');		// add 2012/01/11 Y.Matsukawa
+
+// 複数のフリーワード入力欄を、各々違うnameで定義		add 2014/12/18 Y.Matsukawa
+if (!isset($keyword)) {
+	// keyword1〜keyword20
+	for ($i = 1; $i <= 20; $i++) {
+		if (isset(${'keyword'.$i})) {
+			$keyword = ${'keyword'.$i};
+			break;
+		}
+	}
+}
+
+//dbl("QUERY_STRING=".$_SERVER['QUERY_STRING']);
+//dbl("keyword=$keyword");
+
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	//-------------------
+	// 画面設定
+	//-------------------
+	if (count($D_FILTER_VAL_LIST)) {
+		foreach ($D_FILTER_VAL_LIST as $i => $val) {
+			$nm = $D_FILTER_NAME_LIST[$i];
+			$tpl['filter_list'][$i]['val'] = htmlspecialchars($val);
+			$tpl['filter_list'][$i]['name'] = htmlspecialchars($nm);
+			if ($val == $filter) {
+				$tpl['filter_list'][$i]['selected'] = 1;
+			}
+		}
+	}
+	$tpl['html_FWInit'] = htmlspecialchars($D_SHOP_FW_INIT);
+	$tpl['html_FWInit_col'] = htmlspecialchars($D_SHOP_FW_INIT_COL);	// add 2011/08/12 K.Masuda
+	$tpl['html_keyword'] = htmlspecialchars($keyword);
+	$tpl['html_keyword_col'] = htmlspecialchars($keyword);	// add 2011/08/12 K.Masuda
+	$tpl['js_keyword'] = ZdcEsc4JsLiteral($keyword);
+	$tpl['keyword_enc'] = urlencode(mb_convert_encoding($keyword, 'UTF-8', 'EUC-JP'));		// add 2015/02/13 Y.Matsukawa
+	$tpl['js_filter'] = ZdcEsc4JsLiteral($filter);
+	$tpl['_jsFWIn'] = 'ZdcEmapShopFWIn(this);';
+	$tpl['_jsFWOut'] = 'ZdcEmapShopFWOut(this);';
+	$tpl['_jsFWIn_col'] = 'ZdcEmapShopFWInCol(this);';		// add 2011/08/12 K.Masuda
+	$tpl['_jsFWOut_col'] = 'ZdcEmapShopFWOutCol(this);';	// add 2011/08/12 K.Masuda
+	$tpl['_jsFWSubmit'] = 'ZdcEmapShopFWSubmit(this);';
+	$tpl['_jsFWSubmit_col'] = 'ZdcEmapShopFWSubmitCol(this);';	// add 2011/08/12 K.Masuda
+	$tpl['_jsFWCondChange'] = "ZdcEmapCondBtnClick('fw');";		// add 2011/08/08 Y.Matsukawa
+	// add 2012/02/21 Y.Matsukawa [
+	//$tpl['_jsCondChangeSubmit'] = sprintf('ZdcEmapSearchShopFWListClear();var cnd=ZdcEmapGetCondParm();ZdcEmapSearchShopFW(\'%s\',\'%s\',cnd,1,\'%s\',\'%s\');',
+	$tpl['_jsCondChangeSubmit'] = sprintf('ZdcEmapSearchShopFWListClear();var cnd=ZdcEmapGetCondParm(true);ZdcEmapSearchShopFW(\'%s\',\'%s\',cnd,1,\'%s\',\'%s\');',
+						//ZdcEsc4JsLiteral($keyword),		mod 2012/09/10 Y.Matsukawa
+						urlencode(mb_convert_encoding($keyword, 'UTF-8', 'EUC-JP')),
+						//ZdcEsc4JsLiteral($filter),		mod 2012/09/10 Y.Matsukawa
+						urlencode(mb_convert_encoding($filter, 'UTF-8', 'EUC-JP')),
+						ZdcEsc4JsLiteral($col),
+						//ZdcEsc4JsLiteral($freeparms)		mod 2012/09/10 Y.Matsukawa
+						//ZdcEsc4JsLiteral($freeparms_enc)	mod 2017/04/14 N.Wada
+						ZdcEsc4JsLiteral($freeparms_enc.($D_FWLIST_PRM_STR?$D_FWLIST_PRM_STR:''))
+						);
+	$tpl['_jsFWCondChangeGet'] = 'ZdcEmapCondGetForm(this);';
+	// add 2012/02/21 Y.Matsukawa ]
+	$tpl['col'] = $col;
+	// function
+	// ロード時処理
+	//$tpl['_jsInit'] = sprintf('javascript:ZdcEmapSearchShopFWInit();ZdcEmapSearchShopFW(\'%s\',\'%s\',1);',		mod 2011/08/08 Y.Matsukawa
+	//$tpl['_jsInit'] = sprintf('javascript:ZdcEmapSearchShopFWInit();ZdcEmapSearchShopFW(\'%s\',\'%s\',\'%s\',1);',	mod 2011/08/12 K.Masuda
+	//$tpl['_jsInit'] = sprintf('javascript:ZdcEmapSearchShopFWInit();ZdcEmapSearchShopFW(\'%s\',\'%s\',\'%s\',1,\'%s\');',		mod 2012/01/11 Y.Matsukawa
+	$tpl['_jsInit'] = sprintf('javascript:ZdcEmapSearchShopFWInit();ZdcEmapSearchShopFW(\'%s\',\'%s\',\'%s\',1,\'%s\',\'%s\');',
+						//ZdcEsc4JsLiteral($keyword),		mod 2012/09/10 Y.Matsukawa
+						urlencode(mb_convert_encoding($keyword, 'UTF-8', 'EUC-JP')),
+						//ZdcEsc4JsLiteral($filter),		mod 2012/09/10 Y.Matsukawa
+						urlencode(mb_convert_encoding($filter, 'UTF-8', 'EUC-JP')),
+						//ZdcEsc4JsLiteral($cond_prm),		// add 2011/08/08 Y.Matsukawa		mod 2012/09/10 Y.Matsukawa
+						ZdcEsc4JsLiteral($cond_prm_enc),
+						ZdcEsc4JsLiteral($col),			// add 2011/08/12 K.Masuda
+						//ZdcEsc4JsLiteral($freeparms)		// add 2012/01/11 Y.Matsukawa		mod 2012/09/10 Y.Matsukawa
+						//ZdcEsc4JsLiteral($freeparms_enc)	mod 2017/04/14 N.Wada
+						ZdcEsc4JsLiteral($freeparms_enc.($D_FWLIST_PRM_STR?$D_FWLIST_PRM_STR:''))
+						);
+	$tpl['_jsInit'] .= 'ZdcEmapCondPanelInit();';		// add 2011/08/08 Y.Matsukawa
+	// js
+	$j = 0;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'common.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'search.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	// add 2011/08/08 Y.Matsukawa [
+	if (!$D_DISABLE_JQUERY) {		// add 2015/02/02 Y.Matsukawa
+		$j++;
+		$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'jquery.js';
+		$tpl['js'][$j]['charset'] = 'Shift_JIS';
+	}
+	// add 2011/08/08 Y.Matsukawa ]
+}
+
+$tpl['D_URL_SEARCH_TOP'] .= '?'.$cond_prm_enc;		// add 2011/08/08 Y.Matsukawa
+if($freeparms_enc) $tpl['D_URL_SEARCH_TOP'] .= '&'.$freeparms_enc;		// add 2012/01/11 Y.Matsukawa
+
+//-------------------
+// 画面出力
+//-------------------
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($err)) {
+	$err = "";
+}
+// mod 2011/07/05 Y.Nakajima ]
+$tpl['err'] = $err;
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'fw.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

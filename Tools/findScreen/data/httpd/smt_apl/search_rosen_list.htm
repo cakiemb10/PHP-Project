@@ -1,0 +1,228 @@
+<?PHP
+// ------------------------------------------------------------
+// 路線検索
+//
+// 2014/03/12 Y.Matsukawa	新規作成
+// 2015/03/18 Y.Matsukawa	総件数表示
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理
+//-------------------
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');
+
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	if (!isset($pl_prm_enc['cond'])) $pl_prm_enc['cond'] = "";
+	if (!isset($line)) $line = '';
+	if (!isset($linenm)) $linenm = '';
+	if (!isset($tod)) $tod = '';
+	if (!isset($area)) $area = '';
+	$param = '';
+	if ($kid != '')  $param .= "&kid=$kid";
+	//-------------------
+	// 都道府県コード複数指定
+	//-------------------
+	// 地方リスト非表示の場合
+	if ($tod == '' && $area == '' && $D_ADDRLIST_AREA_SKIP) {
+		// 都道府県絞込み設定があったら
+		if ($D_SELECT_TODS != '') {
+			$area = 'SEL';
+			$AREA_INFO[$area]['tod'] = $D_SELECT_TODS;
+		}
+	}
+	// 都道府県限定の場合
+	$arr_tod = array();
+	if ($area != '') {
+		if ($D_SELECT_TODS != '') {
+			$arr_tod = explode('|', $D_SELECT_TODS);
+		}
+	}
+	//-------------------
+	// 駅リスト
+	//-------------------
+	if ($line != '') {
+		//-------------------
+		// データ取得
+		//-------------------
+		$pos = ((($pg-1) * $D_SEARCH_ROSEN_EKIL_PAGE)+1);
+		$cgi = $D_SSAPI['searcheki'];
+		$prm = sprintf('&pos=%d&cnt=%d&line=%s', $pos, $D_SEARCH_ROSEN_EKIL_PAGE, $line);
+		$url = sprintf('%s?cid=%s&enc=EUC&key=%s&opt=%s%s', $cgi, $D_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+		$dat = ZdcHttpRead($url, false, 5);
+		$status = explode("\t", $dat[0]);
+		$cnt = count($dat) - 1;
+		// データなし
+		if($cnt == 0){
+			erl('SEARCHEKI NOT FOUND['.$dat[0]."][$url]");
+			$tpl['errmsg'] = $D_MSG_SEARCH_NODATA['StL'];
+			$err = true;
+		// データあり
+		} else {
+			$hit_count = intval(trim($status[2]));
+			$tpl['page'] = $pg;
+			$tpl['max'] = $hit_count;		// add 2015/03/18 Y.Matsukawa
+			if ($pos + $cnt - 1 < $hit_count) {
+				$tpl['next'] = 1;
+				$tpl['next_pos'] = $pos + $cnt;
+				$tpl['next_url'] = sprintf('javascript:ZdcEmapSearchRosenL(\'%s\',\'%s\',\'%s\',\'%s\',%d);',
+									ZdcEsc4JsLiteral($area),
+									ZdcEsc4JsLiteral($tod),
+									ZdcEsc4JsLiteral($line),
+									ZdcEsc4JsLiteral($pl_prm_enc_enc_all.$param.($freeparms_enc_enc?'&'.$freeparms_enc_enc:'')),
+									$pg + 1
+									);
+			}
+			for($i = 0; $i < $cnt; $i++) {
+				$rec = explode("\t", $dat[$i + 1]);
+				$tpl['list'][$i]['no'] = $i+1;
+				$tpl['list'][$i]['lat'] = trim($rec[1]);
+				$tpl['list'][$i]['lon'] = trim($rec[2]);
+				
+				list($ekinm, $lnm) = explode('(', trim($rec[3]));
+				$tpl['list'][$i]['name'] = $ekinm;
+				if( (isset($D_DIRECT_SEARCH) && $D_DIRECT_SEARCH == 1) && $D_DIRECT_SEARCH_NOTROSEN != 1 ){
+					if ($D_EKIL_NMAP) {
+						$tpl['list'][$i]['url'] = 'nmap.htm';
+					} else {
+						$tpl['list'][$i]['url'] = 'n.htm';
+					}
+					$tpl['list'][$i]['url'] .= sprintf('?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+											'4',
+											urlencode(mb_convert_encoding(trim($rec[3]), 'UTF-8', 'EUC-JP')),
+											trim($rec[1]),
+											trim($rec[2]),
+											$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+											);
+				} else {
+					$tpl['list'][$i]['url'] = sprintf('search.htm?pldone=1&pltype=%s&plname=%s&lat=%s&lon=%s%s',														
+											'4',
+											urlencode(mb_convert_encoding(trim($rec[3]), 'UTF-8', 'EUC-JP')),
+											trim($rec[1]),
+											trim($rec[2]),
+											$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+											);
+				}
+			}
+			if ($pg == 1) {
+				$tpl['hit_count'] = $hit_count;
+			}
+		}
+		//-------------------
+		// 上位名称
+		//-------------------
+		if ($linenm != '') $tpl['upper_name'] = $linenm;
+	//-------------------
+	// 路線リスト
+	//-------------------
+	} else if ($tod != '') {
+		//-------------------
+		// データ取得
+		//-------------------
+		$pos = ((($pg-1) * $D_SEARCH_ROSENL_PAGE)+1);
+		$cgi = $D_SSAPI['searchline'];
+		$prm = sprintf('&pos=%d&cnt=%d&tod=%s', $pos, $D_SEARCH_ROSENL_PAGE, $tod);
+		$url = sprintf('%s?cid=%s&enc=EUC&key=%s&opt=%s%s', $cgi, $D_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+		$dat = ZdcHttpRead($url, false, 5);
+		$status = explode("\t", $dat[0]);
+		$cnt = count($dat) - 1;
+		// データなし
+		if($cnt == 0){
+			erl('SEARCHLINE NOT FOUND['.$dat[0]."][$url]");
+			$tpl['errmsg'] = $D_MSG_SEARCH_NODATA['StL'];
+			$err = true;
+		// データあり
+		} else {
+			$hit_count = intval(trim($status[2]));
+			$tpl['page'] = $pg;
+			$tpl['max'] = $hit_count;		// add 2015/03/18 Y.Matsukawa
+			if ($pos + $cnt - 1 < $hit_count) {
+				$tpl['next'] = 1;
+				$tpl['next_pos'] = $pos + $cnt;
+				$tpl['next_url'] = sprintf('javascript:ZdcEmapSearchRosenL(\'%s\',\'%s\',\'%s\',\'%s\',%d);',
+									ZdcEsc4JsLiteral($area),
+									ZdcEsc4JsLiteral($tod),
+									'',
+									ZdcEsc4JsLiteral($pl_prm_enc_enc_all.$param.($freeparms_enc_enc?'&'.$freeparms_enc_enc:'')),
+									$pg + 1
+									);
+			}
+			for($i = 0; $i < $cnt; $i++) {
+				$rec = explode("\t", $dat[$i + 1]);
+				$tpl['list'][$i]['no'] = $i+1;
+				$tpl['list'][$i]['line'] = trim($rec[0]);
+				$tpl['list'][$i]['name'] = trim($rec[1]);
+				$tpl['list'][$i]['url'] = sprintf('search_rosen.htm?tod=%s&line=%s%s&pg=1',
+										$tod,
+										$rec[0],
+										ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))
+										);
+			}
+			if ($pg == 1) {
+				$tpl['hit_count'] = $hit_count;
+			}
+		}
+		//-------------------
+		// 上位名称
+		//-------------------
+		if ($pg == 1) $tpl['upper_name'] = $D_TOD[$tod];
+	//-------------------
+	// 都道府県リスト
+	//-------------------
+	} else if ($area != '') {
+		if ($AREA_INFO[$area]) {
+			$tods = explode('|', $AREA_INFO[$area]['tod']);
+			$i = 0;
+			foreach ($tods as $tod) {
+				if (!count($arr_tod) || in_array($tod, $arr_tod)) {
+					$tpl['list'][$i]['name'] = $D_TOD[$tod];
+					$tpl['list'][$i]['url'] = sprintf('search_rosen.htm?tod=%s%s&pg=1',
+											$tod,
+											ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))
+											);
+					$i++;
+				}
+			}
+		}
+		//-------------------
+		// 上位名称
+		//-------------------
+		if ($pg == 1) $tpl['upper_name'] = $AREA_INFO[$area]['name'];
+	//-------------------
+	// 地方リスト
+	//-------------------
+	} else {
+		foreach ($AREA_INFO as $i => $areainfo) {
+			$tpl['list'][$i]['name'] = htmlspecialchars($areainfo['name']);
+			$tpl['list'][$i]['url'] = sprintf('search_rosen.htm?area=%s%s&pg=1',
+									$i,
+									ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))
+									);
+		}
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	htmloutput($D_SYSDIR_COMPANY.'search_rosen_list.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'error.tpl', $tpl);
+}
+?>

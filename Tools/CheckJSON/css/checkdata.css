@@ -1,0 +1,18 @@
+
+
+.checkdata_content
+{
+	position: absolute;
+	top: 10%;
+	left: 1%;
+	right: 25px;
+	min-height: 80%;
+	color: black;
+	border: 1px solid #5889B3;
+	border-radius: 2px;
+	padding: 10px;
+	padding-bottom: 50px;
+}
+
+
+

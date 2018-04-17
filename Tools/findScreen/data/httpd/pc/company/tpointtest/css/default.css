@@ -1,0 +1,21 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+
+img {
+	border-style: none;
+}
+
+a,map {
+	outline: none; /* FireFox£ó#³ãÅãNÛâËögÀğ&#65533;ïí¡¦¸Â*/
+}
+
+div,form {
+	margin: 0px; 
+	padding: 0px;
+}
+
+th {
+	font-weight: normal;
+}

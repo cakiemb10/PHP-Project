@@ -1,0 +1,5 @@
+@charset "utf-8";
+
+/* default import*/
+@import "../../css/base.css";
+@import "index.css";

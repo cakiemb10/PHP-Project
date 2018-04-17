@@ -1,0 +1,1174 @@
+<?php
+if (ereg('tpointtest', $_SERVER['SCRIPT_NAME'])) {
+	$D_CID = 'tpointtest';
+	$test_flg = "1";	// 検証環境フラグ（検証）
+	$tsite_url = "https://stg.tsite.jp/r/map/index.html";
+	$domain = "test.e-map.ne.jp";
+} else {
+	$D_CID = 'tpoint';
+	$test_flg = "";		// 検証環境フラグ（本番）
+	$tsite_url = "https://tsite.jp/r/map/index.html";
+	$domain = "www.e-map.ne.jp";
+}
+//ログ出力
+include("../../pc/inc/function.inc");
+$LOG_MODE = "ASP";
+$ASP_MODE = "PC";
+ZdcLogPut(0);
+
+include("../../inc/ZdcCommonFunc.inc");
+
+// ログイン状態判定
+if ($p_s2) {
+	// ログイン状態
+	$user_id = $p_s2;	// ユーザID
+	
+	// Myエリアデータ取得
+	$cgi_url = "http://".$domain."/cgi/myarea_select.cgi?corp_id=".$D_CID."&user_id=".urlencode($user_id);
+	$dat = ZdcHttpRead($cgi_url, 0, 10000);
+	$cnt  = $dat[0];
+	
+	for($i = 0; $i < $cnt; $i++) {
+		$rec = explode("\t",$dat[$i+1]);
+		
+		$myarea_list[$i]["myarea_id"]   = $rec[0];
+		$myarea_list[$i]["corp_id"]     = $rec[1];
+		$myarea_list[$i]["user_id"]     = $rec[2];
+		$myarea_list[$i]["myarea_name"] = htmlspecialchars($rec[3]);
+		$myarea_list[$i]["lat"]         = $rec[4];
+		$myarea_list[$i]["lon"]         = $rec[5];
+		$myarea_list[$i]["disp_order"]   = $rec[6];
+		if ($rec[6] != 1) {
+			$myarea_list[$i]["disp_order_prev"]   = $rec[6] - 1;
+		}
+		if ($rec[6] != $cnt) {
+			$myarea_list[$i]["disp_order_next"]   = $rec[6] + 1;
+		}
+		
+		// Myエリア遷移用URL
+		if ($i == 0 && $cnt > 0) {
+			$myarea1_url = "../../pc/index.htm?cid=".$D_CID."&myar=e&p_s2=".urlencode($p_s2)."&lm=".urlencode($lm)."&myardisp=1"."&lat=".$rec[4]."&lon=".$rec[5]."&area_no=1";
+		}
+	}
+
+	if ($myar == "t" && $cnt > 0) {
+		// Tサイトからの遷移
+		
+		// 1つ目のMyエリアに遷移
+		header('Location: '.$myarea1_url);
+		exit;
+	}
+} else {
+	// 未ログイン状態
+}
+
+$condtpl  = '<input type="hidden" name="cond1"><input type="hidden" name="cond2"><input type="hidden" name="cond3">'."\n";
+$condtpl .= '<input type="hidden" name="cond4"><input type="hidden" name="cond5"><input type="hidden" name="cond6">'."\n";
+$condtpl .= '<input type="hidden" name="cond7"><input type="hidden" name="cond8"><input type="hidden" name="cond9">'."\n";
+$condtpl .= '<input type="hidden" name="cond10"><input type="hidden" name="cond11"><input type="hidden" name="cond12">'."\n";
+$condtpl .= '<input type="hidden" name="cond13"><input type="hidden" name="cond14"><input type="hidden" name="cond15">'."\n";
+$condtpl .= '<input type="hidden" name="cond16">'."\n";
+//$condtpl .= '<input type="hidden" name="cond16"><input type="hidden" name="cond17"><input type="hidden" name="cond18">'."\n";
+$condtpl .= '<input type="hidden" name="cond19"><input type="hidden" name="cond20"><input type="hidden" name="cond21">'."\n";
+$condtpl .= '<input type="hidden" name="cond22"><input type="hidden" name="cond23"><input type="hidden" name="cond24">'."\n";
+$condtpl .= '<input type="hidden" name="cond25"><input type="hidden" name="cond26"><input type="hidden" name="cond27">'."\n";
+$condtpl .= '<input type="hidden" name="cond28"><input type="hidden" name="cond30">'."\n";
+$condtpl .= '<input type="hidden" name="cond31"><input type="hidden" name="cond32"><input type="hidden" name="cond33">'."\n";
+$condtpl .= '<input type="hidden" name="cond34"><input type="hidden" name="cond35"><input type="hidden" name="cond36">'."\n";
+$condtpl .= '<input type="hidden" name="cond37"><input type="hidden" name="cond38"><input type="hidden" name="cond39">'."\n";
+$condtpl .= '<input type="hidden" name="cond40"><input type="hidden" name="cond51"><input type="hidden" name="cond52">'."\n";
+$condtpl .= '<input type="hidden" name="cond53"><input type="hidden" name="cond54"><input type="hidden" name="cond55">'."\n";
+$condtpl .= '<input type="hidden" name="cond56"><input type="hidden" name="cond57"><input type="hidden" name="cond58">'."\n";
+$condtpl .= '<input type="hidden" name="cond59"><input type="hidden" name="cond60"><input type="hidden" name="cond61">'."\n";
+$condtpl .= '<input type="hidden" name="cond62"><input type="hidden" name="cond63"><input type="hidden" name="cond64">'."\n";
+$condtpl .= '<input type="hidden" name="cond65"><input type="hidden" name="cond66"><input type="hidden" name="cond67">'."\n";
+$condtpl .= '<input type="hidden" name="cond68"><input type="hidden" name="cond69"><input type="hidden" name="cond70">'."\n";
+$condtpl .= '<input type="hidden" name="cond71"><input type="hidden" name="cond72"><input type="hidden" name="cond73">'."\n";
+$condtpl .= '<input type="hidden" name="cond74"><input type="hidden" name="cond75"><input type="hidden" name="cond76">'."\n";
+$condtpl .= '<input type="hidden" name="cond77"><input type="hidden" name="cond78"><input type="hidden" name="cond79">'."\n";
+$condtpl .= '<input type="hidden" name="cond80"><input type="hidden" name="cond81"><input type="hidden" name="cond82">'."\n";
+$condtpl .= '<input type="hidden" name="cond83"><input type="hidden" name="cond84"><input type="hidden" name="cond85">'."\n";
+$condtpl .= '<input type="hidden" name="cond86"><input type="hidden" name="cond87"><input type="hidden" name="cond88">'."\n";
+$condtpl .= '<input type="hidden" name="cond89"><input type="hidden" name="cond90"><input type="hidden" name="cond91">'."\n";
+$condtpl .= '<input type="hidden" name="cond92"><input type="hidden" name="cond93"><input type="hidden" name="cond94">'."\n";
+$condtpl .= '<input type="hidden" name="cond95"><input type="hidden" name="cond96"><input type="hidden" name="cond97">'."\n";
+$condtpl .= '<input type="hidden" name="cond98"><input type="hidden" name="cond99"><input type="hidden" name="cond100">'."\n";
+$condtpl .= '<input type="hidden" name="cond101"><input type="hidden" name="cond102"><input type="hidden" name="cond103">'."\n";
+$condtpl .= '<input type="hidden" name="cond104"><input type="hidden" name="cond105"><input type="hidden" name="cond106">'."\n";
+$condtpl .= '<input type="hidden" name="cond107"><input type="hidden" name="cond108"><input type="hidden" name="cond109">'."\n";
+$condtpl .= '<input type="hidden" name="cond110">'."\n";
+$condtpl .= '<input type="hidden" name="cond41"><input type="hidden" name="cond42">'."\n";
+$condtpl .= '<input type="hidden" name="cond111"><input type="hidden" name="cond112"><input type="hidden" name="cond113">'."\n";
+$condtpl .= '<input type="hidden" name="cond114"><input type="hidden" name="cond115"><input type="hidden" name="cond116">'."\n";
+$condtpl .= '<input type="hidden" name="cond117"><input type="hidden" name="cond118"><input type="hidden" name="cond119">'."\n";
+$condtpl .= '<input type="hidden" name="cond120"><input type="hidden" name="cond121"><input type="hidden" name="cond122">'."\n";
+$condtpl .= '<input type="hidden" name="cond123"><input type="hidden" name="cond124"><input type="hidden" name="cond125">'."\n";
+$condtpl .= '<input type="hidden" name="cond126"><input type="hidden" name="cond127"><input type="hidden" name="cond128">'."\n";
+$condtpl .= '<input type="hidden" name="cond129"><input type="hidden" name="cond130"><input type="hidden" name="cond131">'."\n";
+$condtpl .= '<input type="hidden" name="cond132"><input type="hidden" name="cond133"><input type="hidden" name="cond134">'."\n";
+$condtpl .= '<input type="hidden" name="cond135"><input type="hidden" name="cond136"><input type="hidden" name="cond137">'."\n";
+$condtpl .= '<input type="hidden" name="cond138"><input type="hidden" name="cond139"><input type="hidden" name="cond140">'."\n";
+$condtpl .= '<input type="hidden" name="cond141"><input type="hidden" name="cond142">'."\n";
+
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja" dir="ltr">
+<head profile="http://purl.org/net/ns/metaprof">
+<title>お店地図検索トップ｜TポイントとTカードの総合サイト[T-SITE]</title>
+<meta http-equiv="Content-Type" content="text/html; charset=EUC-JP" />
+<meta http-equiv="content-script-type" content="text/javascript" />
+<meta http-equiv="content-style-type" content="text/css" />
+<meta http-equiv="imagetoolbar" content="no" />
+<meta name="auther" content="T-SITE" />
+<meta name="description" content="Ｔサイトは、TSUTAYAなど各提携先で貯める・使えるＴポイント、Tカード、 Tポイントがさらに貯まるクレジット機能付きのTSUTAYA Ｗカードのおトクな情報が満載。 Tサイトだけのクーポンやキャンペーンなどのご案内も。" />
+<meta name="keywords" content="TSUTAYA、ツタヤ、Tポイント、Tカード、Tカードプラス" />
+<meta name="robots" content="index,follow" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="stylesheet" type="text/css" href="pc/css/pc_tmpl/import.css" media="screen,tv,print" />
+<link rel="stylesheet" type="text/css" href="pc/css/font_m.css" media="screen,tv,print" title="Default" />
+<link rel="alternate stylesheet" type="text/css" href="pc/css/font_s.css" title="FontSmall" />
+<link rel="alternate stylesheet" type="text/css" href="pc/css/font_l.css" title="FontLarge" />
+<link rel="stylesheet" type="text/css" href="pc/css/map-style.css" />
+<!--<script type="text/javascript" src="pc/js/fontsize.js"></script>
+<script type="text/javascript" src="pc/js/index/switch.js" ></script>
+<script type="text/javascript" src="pc/js/img_output.js" ></script>
+<script type="text/javascript" src="pc/js/index/AC_RunActiveContent.js"></script>
+<script type="text/javascript" src="pc/js/jquery.js"></script>-->
+<script type="text/javascript" src="pc/js/jquery-1.4.2.min.js"></script>
+<script type="text/javascript" src="pc/js/jquery.pngfix.js"></script>
+<script type="text/javascript">
+	$(function(){
+		$('.close').pngFix( );
+	});
+</script>
+<!--<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>-->
+<script type="text/javascript" src="pc/js/jquery.simpletooltip-min.js"></script>
+<script type="text/javascript">
+	$(function(){
+		$("a.tooltiplink").simpletooltip();
+		$("a.clic").simpletooltip({click: true});
+		$("a.delay").simpletooltip({hideDelay: 0.5});
+		$("#hokkaido").simpletooltip({ click: true, hideOnLeave: false });
+		$("#tohoku").simpletooltip({ click: true, hideOnLeave: false });
+		$("#chubu").simpletooltip({ click: true, hideOnLeave: false });
+		$("#chugoku").simpletooltip({ click: true, hideOnLeave: false });
+		$("#kanto").simpletooltip({ click: true, hideOnLeave: false });
+		$("#kinki").simpletooltip({ click: true, hideOnLeave: false });
+		$("#shikoku").simpletooltip({ click: true, hideOnLeave: false });
+		$("#kyusyu").simpletooltip({ click: true, hideOnLeave: false });
+	});
+</script>
+
+<script type="text/javascript" src="pc/js/zdc.js"></script>
+
+<!--ZDC↓-->
+<script type="text/javascript">
+function submit_search_list(frm){
+	with( document.forms["search_list_form"] ){
+		for(var i=0; i<SEL_COND.length; i++){
+			if(SEL_COND[i].checked){
+				if(SEL_COND[i].value == 11){
+					type.value = "AddrW";
+					keyword.value = LIST_FW.value;
+				}else if(SEL_COND[i].value == 21){
+					type.value = "StW";
+					keyword.value = LIST_FW.value;
+				}else if(SEL_COND[i].value == 31){
+					type.value = "ZipW";
+					keyword.value = LIST_FW.value;
+				}
+				break;
+			}
+		}
+	}
+	setcond(frm);
+}
+
+function setcond(frm) {
+	var frmc = document.cond;
+	if(frmc.cond1.checked == true) frm.cond1.value = frmc.cond1.value; else frm.cond1.value = '';
+	if(frmc.cond2.checked == true) frm.cond2.value = frmc.cond2.value; else frm.cond2.value = '';
+	if(frmc.cond3.checked == true) frm.cond3.value = frmc.cond3.value; else frm.cond3.value = '';
+	if(frmc.cond4.checked == true) frm.cond4.value = frmc.cond4.value; else frm.cond4.value = '';
+	if(frmc.cond5.checked == true) frm.cond5.value = frmc.cond5.value; else frm.cond5.value = '';
+	if(frmc.cond6.checked == true) frm.cond6.value = frmc.cond6.value; else frm.cond6.value = '';
+	if(frmc.cond7.checked == true) frm.cond7.value = frmc.cond7.value; else frm.cond7.value = '';
+	if(frmc.cond8.checked == true) frm.cond8.value = frmc.cond8.value; else frm.cond8.value = '';
+	if(frmc.cond9.checked == true) frm.cond9.value = frmc.cond9.value; else frm.cond9.value = '';
+
+	if(frmc.cond10.checked == true) frm.cond10.value = frmc.cond10.value; else frm.cond10.value = '';
+	if(frmc.cond11.checked == true) frm.cond11.value = frmc.cond11.value; else frm.cond11.value = '';
+	if(frmc.cond12.checked == true) frm.cond12.value = frmc.cond12.value; else frm.cond12.value = '';
+	if(frmc.cond13.checked == true) frm.cond13.value = frmc.cond13.value; else frm.cond13.value = '';
+	if(frmc.cond14.checked == true) frm.cond14.value = frmc.cond14.value; else frm.cond14.value = '';
+	if(frmc.cond15.checked == true) frm.cond15.value = frmc.cond15.value; else frm.cond15.value = '';
+//	if(frmc.cond17.checked == true) frm.cond17.value = frmc.cond17.value; else frm.cond17.value = '';
+//	if(frmc.cond18.checked == true) frm.cond18.value = frmc.cond18.value; else frm.cond18.value = '';
+	if(frmc.cond19.checked == true) frm.cond19.value = frmc.cond19.value; else frm.cond19.value = '';
+
+	if(frmc.cond20.checked == true) frm.cond20.value = frmc.cond20.value; else frm.cond20.value = '';
+	if(frmc.cond21.checked == true) frm.cond21.value = frmc.cond21.value; else frm.cond21.value = '';
+	if(frmc.cond22.checked == true) frm.cond22.value = frmc.cond22.value; else frm.cond22.value = '';
+	if(frmc.cond23.checked == true) frm.cond23.value = frmc.cond23.value; else frm.cond23.value = '';
+	if(frmc.cond24.checked == true) frm.cond24.value = frmc.cond24.value; else frm.cond24.value = '';
+	if(frmc.cond25.checked == true) frm.cond25.value = frmc.cond25.value; else frm.cond25.value = '';
+	if(frmc.cond26.checked == true) frm.cond26.value = frmc.cond26.value; else frm.cond26.value = '';
+	if(frmc.cond27.checked == true) frm.cond27.value = frmc.cond27.value; else frm.cond27.value = '';
+	if(frmc.cond28.checked == true) frm.cond28.value = frmc.cond28.value; else frm.cond28.value = '';
+
+	if(frmc.cond30.checked == true) frm.cond30.value = frmc.cond30.value; else frm.cond30.value = '';
+	if(frmc.cond31.checked == true) frm.cond31.value = frmc.cond31.value; else frm.cond31.value = '';
+	if(frmc.cond32.checked == true) frm.cond32.value = frmc.cond32.value; else frm.cond32.value = '';
+	if(frmc.cond33.checked == true) frm.cond33.value = frmc.cond33.value; else frm.cond33.value = '';
+	if(frmc.cond34.checked == true) frm.cond34.value = frmc.cond34.value; else frm.cond34.value = '';
+	if(frmc.cond35.checked == true) frm.cond35.value = frmc.cond35.value; else frm.cond35.value = '';
+	if(frmc.cond36.checked == true) frm.cond36.value = frmc.cond36.value; else frm.cond36.value = '';
+	if(frmc.cond37.checked == true) frm.cond37.value = frmc.cond37.value; else frm.cond37.value = '';
+	if(frmc.cond38.checked == true) frm.cond38.value = frmc.cond38.value; else frm.cond38.value = '';
+	if(frmc.cond39.checked == true) frm.cond39.value = frmc.cond39.value; else frm.cond39.value = '';
+
+	if(frmc.cond40.checked == true) frm.cond40.value = frmc.cond40.value; else frm.cond40.value = '';
+	if(frmc.cond41.checked == true) frm.cond41.value = frmc.cond41.value; else frm.cond41.value = '';
+	if(frmc.cond42.checked == true) frm.cond42.value = frmc.cond42.value; else frm.cond42.value = '';
+
+	if(frmc.cond51.checked == true) frm.cond51.value = frmc.cond51.value; else frm.cond51.value = '';
+	if(frmc.cond52.checked == true) frm.cond52.value = frmc.cond52.value; else frm.cond52.value = '';
+	if(frmc.cond53.checked == true) frm.cond53.value = frmc.cond53.value; else frm.cond53.value = '';
+	if(frmc.cond54.checked == true) frm.cond54.value = frmc.cond54.value; else frm.cond54.value = '';
+	if(frmc.cond57.checked == true) frm.cond57.value = frmc.cond57.value; else frm.cond57.value = '';
+	if(frmc.cond59.checked == true) frm.cond59.value = frmc.cond59.value; else frm.cond59.value = '';
+	if(frmc.cond60.checked == true) frm.cond60.value = frmc.cond60.value; else frm.cond60.value = '';
+	if(frmc.cond61.checked == true) frm.cond61.value = frmc.cond61.value; else frm.cond61.value = '';
+
+//	if(frmc.cond62.checked == true) frm.cond62.value = frmc.cond62.value; else frm.cond62.value = '';
+//	if(frmc.cond63.checked == true) frm.cond63.value = frmc.cond63.value; else frm.cond63.value = '';
+//	if(frmc.cond64.checked == true) frm.cond64.value = frmc.cond64.value; else frm.cond64.value = '';
+//	if(frmc.cond65.checked == true) frm.cond65.value = frmc.cond65.value; else frm.cond65.value = '';
+	if(frmc.cond66.checked == true) frm.cond66.value = frmc.cond66.value; else frm.cond66.value = '';
+	if(frmc.cond67.checked == true) frm.cond67.value = frmc.cond67.value; else frm.cond67.value = '';
+	if(frmc.cond69.checked == true) frm.cond69.value = frmc.cond69.value; else frm.cond69.value = '';
+
+	if(frmc.cond70.checked == true) frm.cond70.value = frmc.cond70.value; else frm.cond70.value = '';
+	if(frmc.cond71.checked == true) frm.cond71.value = frmc.cond71.value; else frm.cond71.value = '';
+	if(frmc.cond72.checked == true) frm.cond72.value = frmc.cond72.value; else frm.cond72.value = '';
+	if(frmc.cond73.checked == true) frm.cond73.value = frmc.cond73.value; else frm.cond73.value = '';
+	if(frmc.cond75.checked == true) frm.cond75.value = frmc.cond75.value; else frm.cond75.value = '';
+	if(frmc.cond76.checked == true) frm.cond76.value = frmc.cond76.value; else frm.cond76.value = '';
+	if(frmc.cond77.checked == true) frm.cond77.value = frmc.cond77.value; else frm.cond77.value = '';
+	if(frmc.cond78.checked == true) frm.cond78.value = frmc.cond78.value; else frm.cond78.value = '';
+	if(frmc.cond79.checked == true) frm.cond79.value = frmc.cond79.value; else frm.cond79.value = '';
+	if(frmc.cond80.checked == true) frm.cond80.value = frmc.cond80.value; else frm.cond80.value = '';
+	if(frmc.cond81.checked == true) frm.cond81.value = frmc.cond81.value; else frm.cond81.value = '';
+	if(frmc.cond82.checked == true) frm.cond82.value = frmc.cond82.value; else frm.cond82.value = '';
+	if(frmc.cond83.checked == true) frm.cond83.value = frmc.cond83.value; else frm.cond83.value = '';
+	if(frmc.cond84.checked == true) frm.cond84.value = frmc.cond84.value; else frm.cond84.value = '';
+	if(frmc.cond85.checked == true) frm.cond85.value = frmc.cond85.value; else frm.cond85.value = '';
+	if(frmc.cond86.checked == true) frm.cond86.value = frmc.cond86.value; else frm.cond86.value = '';
+	if(frmc.cond87.checked == true) frm.cond87.value = frmc.cond87.value; else frm.cond87.value = '';
+	if(frmc.cond88.checked == true) frm.cond88.value = frmc.cond88.value; else frm.cond88.value = '';
+	
+	if(frmc.cond89.checked == true) frm.cond89.value = frmc.cond89.value; else frm.cond89.value = '';
+	if(frmc.cond90.checked == true) frm.cond90.value = frmc.cond90.value; else frm.cond90.value = '';
+	if(frmc.cond91.checked == true) frm.cond91.value = frmc.cond91.value; else frm.cond91.value = '';
+	if(frmc.cond92.checked == true) frm.cond92.value = frmc.cond92.value; else frm.cond92.value = '';
+	if(frmc.cond93.checked == true) frm.cond93.value = frmc.cond93.value; else frm.cond93.value = '';
+	if(frmc.cond94.checked == true) frm.cond94.value = frmc.cond94.value; else frm.cond94.value = '';
+	if(frmc.cond95.checked == true) frm.cond95.value = frmc.cond95.value; else frm.cond95.value = '';
+	if(frmc.cond96.checked == true) frm.cond96.value = frmc.cond96.value; else frm.cond96.value = '';
+	if(frmc.cond97.checked == true) frm.cond97.value = frmc.cond97.value; else frm.cond97.value = '';
+	if(frmc.cond98.checked == true) frm.cond98.value = frmc.cond98.value; else frm.cond98.value = '';
+	if(frmc.cond99.checked == true) frm.cond99.value = frmc.cond99.value; else frm.cond99.value = '';
+	if(frmc.cond100.checked == true) frm.cond100.value = frmc.cond100.value; else frm.cond100.value = '';
+	if(frmc.cond101.checked == true) frm.cond101.value = frmc.cond101.value; else frm.cond101.value = '';
+	if(frmc.cond102.checked == true) frm.cond102.value = frmc.cond102.value; else frm.cond102.value = '';
+	if(frmc.cond103.checked == true) frm.cond103.value = frmc.cond103.value; else frm.cond103.value = '';
+	if(frmc.cond104.checked == true) frm.cond104.value = frmc.cond104.value; else frm.cond104.value = '';
+	if(frmc.cond105.checked == true) frm.cond105.value = frmc.cond105.value; else frm.cond105.value = '';
+	if(frmc.cond106.checked == true) frm.cond106.value = frmc.cond106.value; else frm.cond106.value = '';
+	if(frmc.cond107.checked == true) frm.cond107.value = frmc.cond107.value; else frm.cond107.value = '';
+	if(frmc.cond108.checked == true) frm.cond108.value = frmc.cond108.value; else frm.cond108.value = '';
+	if(frmc.cond109.checked == true) frm.cond109.value = frmc.cond109.value; else frm.cond109.value = '';
+	if(frmc.cond110.checked == true) frm.cond110.value = frmc.cond110.value; else frm.cond110.value = '';
+	if(frmc.cond111.checked == true) frm.cond111.value = frmc.cond111.value; else frm.cond111.value = '';
+	if(frmc.cond112.checked == true) frm.cond112.value = frmc.cond112.value; else frm.cond112.value = '';
+	if(frmc.cond113.checked == true) frm.cond113.value = frmc.cond113.value; else frm.cond113.value = '';
+	if(frmc.cond114.checked == true) frm.cond114.value = frmc.cond114.value; else frm.cond114.value = '';
+	if(frmc.cond115.checked == true) frm.cond115.value = frmc.cond115.value; else frm.cond115.value = '';
+	if(frmc.cond116.checked == true) frm.cond116.value = frmc.cond116.value; else frm.cond116.value = '';
+	if(frmc.cond117.checked == true) frm.cond117.value = frmc.cond117.value; else frm.cond117.value = '';
+	if(frmc.cond118.checked == true) frm.cond118.value = frmc.cond118.value; else frm.cond118.value = '';
+	if(frmc.cond119.checked == true) frm.cond119.value = frmc.cond119.value; else frm.cond119.value = '';
+	if(frmc.cond120.checked == true) frm.cond120.value = frmc.cond120.value; else frm.cond120.value = '';
+	if(frmc.cond121.checked == true) frm.cond121.value = frmc.cond121.value; else frm.cond121.value = '';
+	if(frmc.cond122.checked == true) frm.cond122.value = frmc.cond122.value; else frm.cond122.value = '';
+	if(frmc.cond123.checked == true) frm.cond123.value = frmc.cond123.value; else frm.cond123.value = '';
+	if(frmc.cond124.checked == true) frm.cond124.value = frmc.cond124.value; else frm.cond124.value = '';
+	if(frmc.cond125.checked == true) frm.cond125.value = frmc.cond125.value; else frm.cond125.value = '';
+	if(frmc.cond126.checked == true) frm.cond126.value = frmc.cond126.value; else frm.cond126.value = '';
+	if(frmc.cond127.checked == true) frm.cond127.value = frmc.cond127.value; else frm.cond127.value = '';
+	if(frmc.cond128.checked == true) frm.cond128.value = frmc.cond128.value; else frm.cond128.value = '';
+	if(frmc.cond129.checked == true) frm.cond129.value = frmc.cond129.value; else frm.cond129.value = '';
+	if(frmc.cond130.checked == true) frm.cond130.value = frmc.cond130.value; else frm.cond130.value = '';
+	if(frmc.cond131.checked == true) frm.cond131.value = frmc.cond131.value; else frm.cond131.value = '';
+	if(frmc.cond132.checked == true) frm.cond132.value = frmc.cond132.value; else frm.cond132.value = '';
+	if(frmc.cond133.checked == true) frm.cond133.value = frmc.cond133.value; else frm.cond133.value = '';
+	if(frmc.cond134.checked == true) frm.cond134.value = frmc.cond134.value; else frm.cond134.value = '';
+	if(frmc.cond135.checked == true) frm.cond135.value = frmc.cond135.value; else frm.cond135.value = '';
+	if(frmc.cond136.checked == true) frm.cond136.value = frmc.cond136.value; else frm.cond136.value = '';
+	if(frmc.cond137.checked == true) frm.cond137.value = frmc.cond137.value; else frm.cond137.value = '';
+	if(frmc.cond138.checked == true) frm.cond138.value = frmc.cond138.value; else frm.cond138.value = '';
+	if(frmc.cond139.checked == true) frm.cond139.value = frmc.cond139.value; else frm.cond139.value = '';
+	if(frmc.cond140.checked == true) frm.cond140.value = frmc.cond140.value; else frm.cond140.value = '';
+	if(frmc.cond141.checked == true) frm.cond141.value = frmc.cond141.value; else frm.cond141.value = '';
+	if(frmc.cond142.checked == true) frm.cond142.value = frmc.cond142.value; else frm.cond142.value = '';
+		
+}
+
+function submitarea(frm,area) {
+	frm.area.value = area;
+	setcond(frm);
+	frm.submit();
+}
+
+function MyAreaEdit(frm) {
+	frm.submit();
+}
+function goTsite(flg) {
+	if (flg == "1") {
+		parent.location = "https://stg.tsite.jp/tm/pc/login/STKIp0003001.do?ST_SITE_ID=4009&MOVE_ID=001";
+	} else {
+		parent.location = "https://tsite.jp/tm/pc/login/STKIp0003001.do?ST_SITE_ID=4009&MOVE_ID=001";
+	}
+}
+</script>
+<!--ZDC↑-->
+
+</head>
+<body>
+<div class="Wrapper" id="top">
+	<!-- ▼▼ content ▼▼ --> 
+	<div id="map-content">
+		<p class="map-breadcrumbs">お店検索TOP</p>
+		<div id="map-box">
+<?php
+	$list_cnt = count($myarea_list);
+	if ($list_cnt > 0) {
+	// ログイン状態 Myエリアデータ有り
+?>
+			<div class="map-ttl">
+				<h2 class="map-hidden">Myエリア</h2>
+				<p class="map-ttl_link"><a href="<?php echo $tsite_url; ?>" target="_blank">Myエリアとは？</a></p>
+			</div>
+			<div class="map-box_inner">
+				<div class="pl5">
+				<form action="/pc/index.htm" method="GET" name="formMyArea" onsubmit="">
+					<span class="map-subttl">Myエリアを見る、編集する</span>
+						<input type="hidden" name="cid" value="<?php echo $D_CID; ?>">
+						<input type="hidden" name="myar" value="e">
+						<input type="hidden" name="p_s2" value="<?php echo $p_s2; ?>">
+						<input type="hidden" name="lm" value="<?php echo $lm; ?>">
+						<input type="hidden" name="type" value="MyAreaSel">
+						<input type="hidden" name="user_id" value="<?php echo $p_s2; ?>">
+					<span class="map-areaEdit"><a href="javascript:MyAreaEdit(document.formMyArea);">Myエリアの編集・削除</a></span>
+				</form>
+				</div>
+				<ul class="search_list">
+<?php
+		$area_no = 1;
+		foreach ($myarea_list as $key => $area ) {
+?>
+					<li class="map-fleft"><a href="../../pc/index.htm?cid=<?php echo $D_CID; ?>&myar=e&p_s2=<?php echo urlencode($p_s2); ?>&lm=<?php echo urlencode($lm); ?>&myardisp=1&lat=<?php echo $area['lat']; ?>&lon=<?php echo $area['lon']; ?>&area_no=<?php echo $area_no; ?>"><?php echo $area['myarea_name'] ?></a>&nbsp;
+					
+<?php
+			$area_no++;
+			if ($list_cnt - 1 > $key) {
+?>
+					｜&nbsp;
+<?php
+			}
+?>
+					</li>
+<?php
+		}
+?>
+				</ul>
+				<div class="map-dotted"><hr /></div>
+				<dl class="search_list">
+					<dt><h3 class="map-subttl">Myエリアを追加する</h3></dt>
+					<dd>下の「検索で探す」から登録したいエリアの地図を表示し、登録いただけます。</dd>
+				</dl>
+			</div>
+<?php
+	} else if ($p_s2) {
+	// ログイン状態 Myエリアデータ無し
+?>
+			<div class="map-ttl">
+				<h2 class="map-hidden">Myエリア</h2>
+				<p class="map-ttl_link"><a href="<?php echo $tsite_url; ?>" target="_blank">Myエリアとは？</a></p>
+			</div>
+			<div class="map-box_inner">
+				<dl class="search_list">					
+					<dt><h3 class="map-subttl">表示されている場所をMyエリアに追加する</h3></dt>
+					<dd>自宅の近く、会社・学校の近くなど、<span class="map-txt_red">最大5か所のエリア</span>を登録することができます。<br />
+					<span class="map-txt_red">よく行く場所を検索せずに表示</span>できるので、とても便利！<br />下の「検索で探す」から、Myエリアに登録したい場所を検索して登録してください。</dd>					
+				</dl>
+			</div>
+<?php
+	} else {
+	// 未ログイン状態
+?>
+			<div class="map-ttl">
+				<h2 class="map-hidden">Myエリア</h2>
+				<p class="map-ttl_link"><a href="<?php echo $tsite_url; ?>" target="_blank">Myエリアとは？</a></p>
+			</div>
+			<div class="map-box_inner">
+				<dl class="map-left search_list">
+					<dt><h3 class="map-subttl">表示されている場所をMyエリアに追加する</h3></dt>
+					<dd>自宅の近く、会社・学校の近くなど、<span class="map-txt_red">最大5か所のエリア</span>を登録することができます。<br />
+					<span class="map-txt_red">よく行く場所を検索せずに表示</span>できるので、とっても便利！<br />すでに登録済みの方は、<span class="map-txt_red">ログインしてMyエリアを表示</span>してください。</dd>
+				</dl>
+				<div class="map-fright"><a href='javascript:goTsite("<?php echo $test_flg; ?>");' OnMouseOver='ImgChangeMouseOver("{rval D_DIR_COMPANY}");' OnMouseOut='ImgChangeMouseOut("{rval D_DIR_COMPANY}");'><img src="./pc/image/map/b_add.jpg" name="MyAreaAdd" width="338" height="72" alt="Myエリアに追加" /></a></div>
+			</div>
+<?php
+	}
+?>
+		</div>
+
+		<div id="map-box">
+			<h2 class="map-ttl"><img src="pc/image/map/ttl_search.jpg" width="862" height="36" alt="検索で探す" /></h2>
+			<div class="map-box_inner">
+				<div class="map-image" style="position: relative;">
+				<form action="../../pc/index.htm#wrapper" name="search_area_form" method="get" class="m_0 font_100" onsubmit="submit_search_list(this);">
+					<input type="hidden" name="cid" value="<?php echo $D_CID ?>">
+					<input type="hidden" name="myar" value="e">
+					<input type="hidden" name="p_s2" value="<?php echo $p_s2; ?>">
+					<input type="hidden" name="lm" value="<?php echo $lm; ?>">
+					<input type="hidden" name="type" value="Area">
+					<input type="hidden" name="area">
+<?php echo $condtpl; ?>
+					<img src="pc/image/map/map.gif" width="448" height="336" border="0" usemap="#Map">
+					<div style="position:absolute; top:0px; left:0px; width: 180px;">
+						<h3 class="map-subttl">地図<span class="map-subttl_s">から探す</span></h3>
+					</div>
+				</form>
+				</div>
+				<div class="map-search">
+				<form action="../../pc/index.htm#wrapper" name="search_list_form" method="get" class="m_0 font_100" onsubmit="submit_search_list(this);">
+					
+					<dl class="search_list">
+						<dt><h3 class="map-subttl">住所、駅、郵便番号<span class="map-subttl_s">から探す</span></h3></dt>
+						<dd class="map-lineTop"><input type="radio" name="SEL_COND" value="11" checked="checked"><span class="map-indent">住所から探す（例：松戸市）</span></dd>
+						<dd class="map-line"><input type="radio" name="SEL_COND" value="21"><span class="map-indent">駅名から探す（例：上野）</span></dd>
+						<dd class="map-line"><input type="radio" name="SEL_COND" value="31"><span class="map-indent">郵便番号から探す（例：123-4567）</span></dd>
+						<dd class="mt15 mb15 map-bg_gray"><input type="text" name="LIST_FW" class="map-input"><input type="image" src="pc/image/map/b_search.jpg" alt="検索する" align="middle"></dd>
+					</dl>
+					<input type="hidden" name="cid" value="<?php echo $D_CID ?>">
+					<input type="hidden" name="myar" value="e">
+					<input type="hidden" name="p_s2" value="<?php echo $p_s2; ?>">
+					<input type="hidden" name="lm" value="<?php echo $lm; ?>">
+					<input type="hidden" name="type">
+					<input type="hidden" name="keyword">
+<?php echo $condtpl; ?>
+					<div class="map-delimit"><hr /></div>
+				</form>
+				<form action="../../pc/index.htm#wrapper" name="search_shop_form" method="get" class="m_0 font_100" onsubmit="setcond(this);">
+					<input type="hidden" name="cid" value="<?php echo $D_CID ?>">
+					<input type="hidden" name="myar" value="e">
+					<input type="hidden" name="p_s2" value="<?php echo $p_s2; ?>">
+					<input type="hidden" name="lm" value="<?php echo $lm; ?>">
+					<input type="hidden" name="type" value="ShopW">
+					<input type="hidden" name="col" value="FREE_SRCH">
+<?php echo $condtpl; ?>
+					<dl><dt><h3 class="map-subttl">店舗名、店舗住所<span class="map-subttl_s">から探す</span></h3></dt>
+						<dd class="map-bg_gray"><input type="text" name="keyword" class="map-input"><input type="image" src="pc/image/map/b_search.jpg" alt="検索する" align="middle"></dd>
+					</dl>
+					<span style="font-size:93%;">※複数のキーワードをスペース（空白）で区切って検索することができます。<br>
+ 					（例：TSUTAYA 渋谷）
+					</span>
+				</form>
+				</div>
+				
+				<div class="map-shoplist"><h3 class="map-subttl">提携先<span class="map-subttl_s">を選ぶ</span></h3></div>
+				<div class="map-shoplist_body">
+					<form name="cond" action="javastript:return false;">
+					<div class="map-fleft">
+						<dl class="mr9">
+							<dt>エンターテインメント・趣味・スポーツ</dt>
+							<dd>
+								<table>
+									<tr>
+										<th rowspan="5">映像・音楽・書籍</th>
+										<td><input type="checkbox" name="cond1" value="1"></td>
+										<td><p class="map-indent">TSUTAYA<br />ビデオ100</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond111" value="1"></td>
+										<td><p class="map-indent">WonderGOO</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond112" value="1"></td>
+										<td><p class="map-indent">新星堂</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond82" value="1"></td>
+										<td><p class="map-indent">旭屋書店</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond72" value="1"></td>
+										<td><p class="map-indent">Honya&nbsp;Club&nbsp;With</p></td>
+									</tr>
+									<tr>
+										<th rowspan="3">ホテル・旅行関連</th>
+										<td><input type="checkbox" name="cond32" value="1"></td>
+										<td><p class="map-indent">東急ホテルズ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond89" value="1"></td>
+										<td><p class="map-indent">恩納マリンビューパレス</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond90" value="1"></td>
+										<td><p class="map-indent">喜瀬ビーチパレス</p></td>
+									</tr>
+									<tr>
+										<th rowspan="2">カメラ・写真・素材</th>
+										<td><input type="checkbox" name="cond5" value="1"></td>
+										<td><p class="map-indent">カメラのキタムラ</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond6" value="1"></td>
+										<td><p class="map-indent">スタジオマリオ</p></td>
+									</tr>
+									<tr>
+										<th rowspan="9">スポーツ</th>
+										<td><input type="checkbox" name="cond20" value="1"></td>
+										<td><p class="map-indent">アルペン</td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond21" value="1"></td>
+										<td><p class="map-indent">ゴルフ5</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond19" value="1"></td>
+										<td><p class="map-indent">スポーツデポ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond40" value="1"></td>
+										<td><p class="map-indent">パシフィックゴルフマネージメント</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond124" value="1"></td>
+										<td><p class="map-indent">アシックス</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond125" value="1"></td>
+										<td><p class="map-indent">オニツカタイガー</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond126" value="1"></td>
+										<td><p class="map-indent">ホグロフス</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond91" value="1"></td>
+										<td><p class="map-indent">鹿児島高牧カントリークラブ</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond92" value="1"></td>
+										<td><p class="map-indent">喜瀬カントリークラブ</p></td>
+									</tr>
+								</table>
+							</dd>
+						</dl>
+						<dl class="map-topborder">
+							<dt>ショッピング・グルメ・ファッション</dt>
+							<dd>
+								<table>
+									<tr>
+										<th rowspan="2" >コンビニ</th>
+										<td><input type="checkbox" name="cond2" value="1"></td>
+										<td><p class="map-indent">ファミリーマート</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond15" value="1"></td>
+										<td><p class="map-indent">スリーエフ<br />gooz<br />q’s mart</p></td>
+									</tr>
+									<tr>
+										<th rowspan="11" >スーパー</th>
+										<td><input type="checkbox" name="cond61" value="1"></td>
+										<td><p class="map-indent">マルエツ<br />マルエツ プチ<br />リンコス<br />魚悦</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond70" value="1"></td>
+										<td><p class="map-indent">マミーマート</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond93" value="1"></td>
+										<td><p class="map-indent">タウンプラザかねひで</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond80" value="1"></td>
+										<td><p class="map-indent">東武ストア<br />フエンテ</td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond13" value="1"></td>
+										<td><p class="map-indent">富士シティオ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond28" value="1"></td>
+										<td><p class="map-indent">レッドキャベツ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond34" value="1"></td>
+										<td><p class="map-indent">だいわ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond37" value="1"></td>
+										<td><p class="map-indent">プラッセだいわ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond119" value="1"></td>
+										<td><p class="map-indent">クイーンズ伊勢丹<br />クイーンズ伊勢丹グランデ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond75" value="1"></td>
+										<td><p class="map-indent">リウボウストア</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond60" value="1"></td>
+										<td><p class="map-indent">ヤオマサ<br />クイーンズマート<br />新鮮館</p></td>
+									</tr>
+									<tr>
+										<th rowspan="2">ショッピングセンター</th>
+										<td><input type="checkbox" name="cond136" value="1"></td>
+										<td><p class="map-indent">ゆめタウン<br />ゆめマート<br />LECT</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond77" value="1"></td>
+										<td><p class="map-indent">ハピナハ</p></td>
+									</tr>
+									<tr>
+										<th rowspan="5" >百貨店</th>
+										<td><input type="checkbox" name="cond104" value="1"></td>
+										<td><p class="map-indent">三越</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond105" value="1"></td>
+										<td><p class="map-indent">伊勢丹</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond106" value="1"></td>
+										<td><p class="map-indent">丸井今井</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond107" value="1"></td>
+										<td><p class="map-indent">岩田屋</td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond76" value="1"></td>
+										<td><p class="map-indent">デパートリウボウ</p></td>
+									</tr>
+								</table>
+							</dd>
+						</dl>
+					</div>
+					<div class="map-fleft">
+						<dl class="mr9">
+							<dt>ショッピング・グルメ・ファッション</dt>
+							<dd>
+								<table>
+									<tr>
+										<th rowspan="8">ドラッグストア</th>
+										<td><input type="checkbox" name="cond54" value="1"></td>
+										<td><p class="map-indent">ウエルシア</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond87" value="1"></td>
+										<td><p class="map-indent">ハックドラッグ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond127" value="1"></td>
+										<td><p class="map-indent">マルエドラッグ<br />マルエ薬局</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond109" value="1"></td>
+										<td><p class="map-indent">B.B.ON</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond26" value="1"></td>
+										<td><p class="map-indent">ドラッグイレブン</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond57" value="1"></td>
+										<td><p class="map-indent">ドラッグユタカ<br />ユタカ調剤薬局</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond24" value="1"></td>
+										<td><p class="map-indent">ドラッグストアmac</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond66" value="1"></td>
+										<td><p class="map-indent">金光薬品</p></td>
+									</tr>
+									<tr  class="map-dotline">
+										<th rowspan="1">ホームセンター</th>
+										<td><input type="checkbox" name="cond113" value="1"></td>
+										<td><p class="map-indent">ジョイフル本田<br />ジョイフル2<br />アンティークショップ グローブ</p></td>
+									</tr>
+									<tr>
+										<th rowspan="2">家電</th>
+										<td><input type="checkbox" name="cond73" value="1"></td>
+										<td><p class="map-indent">エディオン</p></td>
+									</tr>
+									<tr  class="map-dotline">
+										<td><input type="checkbox" name="cond59" value="1"></td>
+										<td><p class="map-indent">日立チェーンストール</p></td>
+									</tr>
+									<tr>
+										<th rowspan="23">飲食関連</th>
+										<td><input type="checkbox" name="cond7" value="1"></td>
+										<td><p class="map-indent">ガスト<br />ステーキガスト</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond8" value="1"></td>
+										<td><p class="map-indent">バーミヤン</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond9" value="1"></td>
+										<td><p class="map-indent">夢庵<br />ゆめあん食堂</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond11" value="1"></td>
+										<td><p class="map-indent">グラッチェガーデンズ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond10" value="1"></td>
+										<td><p class="map-indent">藍屋</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond27" value="1"></td>
+										<td><p class="map-indent">ジョナサン</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond120" value="1"></td>
+										<td><p class="map-indent">とんから亭</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond121" value="1"></td>
+										<td><p class="map-indent">かつ久</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond71" value="1"></td>
+										<td><p class="map-indent">THANKS ON THE TABLE．</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond141" value="1"></td>
+										<td><p class="map-indent">ラ　オハナ</p></td>							
+									</tr>	
+									<tr>
+										<td><input type="checkbox" name="cond128" value="1"></td>
+										<td><p class="map-indent">しゃぶ葉</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond129" value="1"></td>
+										<td><p class="map-indent">むさしの森珈琲</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond35" value="1"></td>
+										<td nowrap><p class="map-indent">ドトールコーヒーショップ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond36" value="1"></td>
+										<td nowrap><p class="map-indent">エクセルシオール カフェ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond138" value="1"></td>
+										<td nowrap><p class="map-indent">カフェ レクセル</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond84" value="1"></td>
+										<td nowrap><p class="map-indent">吉野家</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond85" value="1"></td>
+										<td nowrap><p class="map-indent">そば処吉野家</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond14" value="1"></td>
+										<td><p class="map-indent">牛角</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond22" value="1"></td>
+										<td><p class="map-indent">ロッテリア</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond131" value="1"></td>
+										<td><p class="map-indent">ステーキのどん</td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond132" value="1"></td>
+										<td><p class="map-indent">どん亭</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond133" value="1"></td>
+										<td><p class="map-indent">フォルクス</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond134" value="1"></td>
+										<td><p class="map-indent">donイタリアーノ<br />パスタリアーノ</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<th>デリバリー</th>
+										<td><input type="checkbox" name="cond31" value="1"></td>
+										<td><p class="map-indent">上海エクスプレス</p></td>
+									</tr>
+									<tr>
+										<th rowspan="9">ファッション・コスメ</th>
+										<td><input type="checkbox" name="cond52" value="1"></td>
+										<td><p class="map-indent">洋服の青山</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond53" value="1"></td>
+										<td><p class="map-indent">THE SUIT COMPANY</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond88" value="1"></td>
+										<td><p class="map-indent">WHITE THE SUIT COMPANY</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond25" value="1"></td>
+										<td><p class="map-indent">キャラジャ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond69" value="1"></td>
+										<td><p class="map-indent">NEXT BLUE</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond114" value="1"></td>
+										<td><p class="map-indent">Polo Ralph Lauren Factory Store</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond81" value="1"></td>
+										<td><p class="map-indent">ミフト</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond130" value="1"></td>
+										<td><p class="map-indent">ファミリア</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond135" value="1"></td>
+										<td><p class="map-indent">ISETAN MiRROR</p></td>
+									</tr>
+									<tr>
+										<th rowspan="6">眼鏡・コンタクト</th>
+										<td><input type="checkbox" name="cond115" value="1"></td>
+										<td><p class="map-indent">眼鏡市場</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond116" value="1"></td>
+										<td><p class="map-indent">ALOOK</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond117" value="1"></td>
+										<td><p class="map-indent">レンズスタイル</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond118" value="1"></td>
+										<td><p class="map-indent">レンズダイレクト</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond33" value="1"></td>
+										<td><p class="map-indent">コンタクトのアイシティ</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond83" value="1"></td>
+										<td><p class="map-indent">コンタクトランド</p></td>
+									</tr>
+								</table>
+							</dd>
+						</dl>
+					</div>
+					<div class="map-fleft">
+						<dl><dt>生活・サービス</dt>
+							<dd>
+								<table>
+									<tr>
+										<th rowspan="2">通信</th>
+										<td><input type="checkbox" name="cond41" value="1"></td>
+										<td><p class="map-indent">ソフトバンク</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond78" value="1"></td>
+										<td><p class="map-indent">トーンモバイル</p></td>
+									</tr>
+									<tr>
+										<th rowspan="6">車関連</th>
+										<td><input type="checkbox" name="cond4" value="1"></td>
+										<td><p class="map-indent">ENEOS</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond38" value="1"></td>
+										<td><p class="map-indent">三井のリパーク</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond23" value="1"></td>
+										<td><p class="map-indent">ニッポンレンタカー</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond12" value="1"></td>
+										<td><p class="map-indent">オートバックスグループ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond99" value="1"></td>
+										<td><p class="map-indent">滋賀トヨペット</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond86" value="1"></td>
+										<td><p class="map-indent">沖縄トヨペット</p></td>
+									</tr>
+									<tr  class="map-dotline">
+										<th rowspan="1">不動産・引越</th>
+										<td><input type="checkbox" name="cond39" value="1"></td>
+										<td><p class="map-indent">ミニミニ</p></td>
+									</tr>
+									<tr>
+										<th rowspan="9">住まい・暮らし</th>
+										<td><input type="checkbox" name="cond94" value="1"></td>
+										<td><p class="map-indent">LIXILショールーム</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond95" value="1"></td>
+										<td><p class="map-indent">LIXILリフォームショップ</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond96" value="1"></td>
+										<td><p class="map-indent">LIXILリフォームネット</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond101" value="1"></td>
+										<td><p class="map-indent">アイフルホーム</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond102" value="1"></td>
+										<td><p class="map-indent">フィアスホーム</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond103" value="1"></td>
+										<td><p class="map-indent">GLホーム</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond110" value="1"></td>
+										<td><p class="map-indent">ERAジャパン</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond79" value="1"></td>
+										<td><p class="map-indent">MADOショップ<br />MADOショップパートナー</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond42" value="1"></td>
+										<td><p class="map-indent">シャディ・サラダ館</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<th>美容関連</th>
+										<td><input type="checkbox" name="cond30" value="1"></td>
+										<td><p class="map-indent">スタイルデザイナー</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<th>ペット</th>
+										<td><input type="checkbox" name="cond51" value="1"></td>
+										<td><p class="map-indent">GREEN DOG</p></td>
+									</tr>
+									<tr>
+										<th rowspan="10">決済・金融サービス</th>
+										<td><input type="checkbox" name="cond97" value="1"></td>
+										<td><p class="map-indent">青森銀行</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond122" value="1"></td>
+										<td><p class="map-indent">足利銀行</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond139" value="1"></td>
+										<td><p class="map-indent">きらやか銀行</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond137" value="1"></td>
+										<td><p class="map-indent">興能信用金庫</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond98" value="1"></td>
+										<td><p class="map-indent">常陽銀行</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond100" value="1"></td>
+										<td><p class="map-indent">新生銀行</p></td>
+									</tr>
+									<tr>
+										<td><input type="checkbox" name="cond140" value="1"></td>
+										<td><p class="map-indent">仙台銀行</p></td>
+									</tr>									
+									<tr>
+										<td><input type="checkbox" name="cond142" value="1"></td>
+										<td><p class="map-indent">但馬銀行</p></td>
+									</tr>									
+									<tr>
+										<td><input type="checkbox" name="cond123" value="1"></td>
+										<td><p class="map-indent">宮崎太陽銀行</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond67" value="1"></td>
+										<td><p class="map-indent">琉球銀行</p></td>
+									</tr>
+								</table>
+							</dd>
+						</dl>
+						<dl class="map-topborder">
+							<dt>その他</dt>
+							<dd>
+								<table>
+									<tr>
+										<th rowspan="2" style="width:99px;">&nbsp;</th>
+										<td style="width:13px;"><input type="checkbox" name="cond108" value="1"></td>
+										<td><p class="map-indent">T-SITE店舗</p></td>
+									</tr>
+									<tr class="map-dotline">
+										<td><input type="checkbox" name="cond3" value="1"></td>
+										<td class="map-shopname"><p class="map-indent">街のお店</p></td>
+									</tr>
+								</table>
+							</dd>
+						</dl>
+					</div>
+					</form>
+				</div>
+				<br clear="all" />
+			</div>
+		</div>
+		
+		<dl class="map-attention">
+			<dt>注意事項</dt>
+			<dd>※ 更新タイミングにより、閉店店舗や変更前の店舗情報が表示される場合がございます。</dd>
+			<dd>※ 一部店舗においては店舗形態や名称などが、同店舗系列の別店舗に変更となっている場合がございます。</dd>
+			<dd>※ 店舗位置がずれて表示される場合がございます。正確な位置については各店舗へお問い合わせください。</dd></dl>
+		<div id="map-under">
+			<a href="#top"><img src="pc/image/map/pagetop.gif" width="62" height="11" alt="PageTop" /></a>
+		</div>
+	</div>
+	<!-- ▲▲ content end ▲▲ -->
+
+</div>
+<!-- /Wrapper -->
+
+<map name="Map" id="Map">
+	<area href="#tooltip_hokkaido" id="hokkaido" shape="rect" coords="237,14,305,43" alt="北海道" />
+	<area href="#tooltip_tohoku" id="tohoku" shape="rect" coords="324,149,378,177" alt="東北地方" />
+	<area href="#tooltip_chubu" id="chubu" shape="rect" coords="161,143,216,173" alt="中部地方" />
+	<area href="#tooltip_chugoku" id="chugoku" shape="rect" coords="77,166,132,193" alt="中国地方" />
+	<area href="#tooltip_kanto" id="kanto" shape="rect" coords="291,213,350,244" alt="関東地方" />
+	<area href="#tooltip_kinki" id="kinki" shape="rect" coords="177,265,232,299" alt="近畿地方" />
+	<area href="#tooltip_shikoku" id="shikoku" shape="rect" coords="82,284,141,313" alt="四国地方" />
+	<area href="#tooltip_kyusyu" id="kyusyu" shape="rect" coords="-1,192,59,220" alt="九州地方" />
+</map>
+
+<div>
+<div id="tooltip_hokkaido" class="map_image">
+	<img src="pc/image/map/s_hokkaido.png" width="265" height="171" border="0" usemap="#Map2" />
+	<p class="close"><a href="#" rel="close"><img src="pc/image/map/btn_close.png" width="19" height="19" alt="close" /></a></p>
+	<!--<div ><a href="#" class="aaaa test11">&nbsp;</a></div>-->
+	<map name="Map2" id="Map2">
+		<area shape="rect" coords="14,15,68,59" href="javascript:submitarea(document.search_area_form,'01a');" alt="北海道（西）" />
+		<area shape="rect" coords="191,118,251,159" href="javascript:submitarea(document.search_area_form,'01b');" alt="北海道（東）" />
+	</map>
+</div>
+<div id="tooltip_tohoku" class="map_image">
+	<img src="pc/image/map/s_tohoku.png" width="190" height="190" border="0" usemap="#Map3" />
+	<p class="close"><a href="#" rel="close"><img src="pc/image/map/btn_close.png" width="19" height="19" alt="close" /></a></p>
+	<map name="Map3" id="Map3">
+		<area shape="rect" coords="33,12,76,35" href="javascript:submitarea(document.search_area_form,'02');" alt="青森" />
+		<area shape="rect" coords="142,57,180,80" href="javascript:submitarea(document.search_area_form,'03');" alt="岩手" />
+		<area shape="rect" coords="14,53,56,77" href="javascript:submitarea(document.search_area_form,'05');" alt="秋田" />
+		<area shape="rect" coords="3,90,49,116" href="javascript:submitarea(document.search_area_form,'06');" alt="山形" />
+		<area shape="rect" coords="135,104,177,130" href="javascript:submitarea(document.search_area_form,'04');" alt="宮城" />
+		<area shape="rect" coords="118,150,160,173" href="javascript:submitarea(document.search_area_form,'07');" alt="福島" />
+	</map>
+</div>
+<div id="tooltip_kanto" class="map_image">
+	<img src="pc/image/map/s_kanto.png" width="175" height="160" border="0" usemap="#Map4" />
+	<p class="close"><a href="#" rel="close"><img src="pc/image/map/btn_close.png" width="19" height="19" alt="close" /></a></p>
+	<map name="Map4" id="Map4">
+		<area shape="rect" coords="87,12,127,35" href="javascript:submitarea(document.search_area_form,'09');" alt="栃木" />
+		<area shape="rect" coords="14,14,56,36" href="javascript:submitarea(document.search_area_form,'10');" alt="群馬" />
+		<area shape="rect" coords="8,65,46,85" href="javascript:submitarea(document.search_area_form,'11');" alt="埼玉" />
+		<area shape="rect" coords="124,67,166,90" href="javascript:submitarea(document.search_area_form,'08');" alt="茨城" />
+		<area shape="rect" coords="9,93,47,115" href="javascript:submitarea(document.search_area_form,'13');" alt="東京" />
+		<area shape="rect" coords="11,126,71,151" href="javascript:submitarea(document.search_area_form,'14');" alt="神奈川" />
+		<area shape="rect" coords="117,124,162,149" href="javascript:submitarea(document.search_area_form,'12');" alt="千葉" />
+	</map>
+</div>
+<div id="tooltip_chubu" class="map_image">
+	<img src="pc/image/map/s_chubu.png" width="199" height="200" border="0" usemap="#Map5" />
+	<p class="close"><a href="#" rel="close"><img src="pc/image/map/btn_close.png" width="19" height="19" alt="close" /></a></p>
+	<map name="Map5" id="Map5">
+		<area shape="rect" coords="77,10,117,33" href="javascript:submitarea(document.search_area_form,'16');" alt="富山" />
+		<area shape="rect" coords="23,26,65,48" href="javascript:submitarea(document.search_area_form,'17');" alt="石川" />
+		<area shape="rect" coords="150,66,191,93" href="javascript:submitarea(document.search_area_form,'15');" alt="新潟" />
+		<area shape="rect" coords="6,62,44,82" href="javascript:submitarea(document.search_area_form,'18');" alt="福井" />
+		<area shape="rect" coords="144,98,186,121" href="javascript:submitarea(document.search_area_form,'20');" alt="長野" />
+		<area shape="rect" coords="10,125,48,147" href="javascript:submitarea(document.search_area_form,'21');" alt="岐阜" />
+		<area shape="rect" coords="154,130,192,152" href="javascript:submitarea(document.search_area_form,'19');" alt="山梨" />
+		<area shape="rect" coords="20,158,64,183" href="javascript:submitarea(document.search_area_form,'23');" alt="愛知" />
+		<area shape="rect" coords="77,170,119,192" href="javascript:submitarea(document.search_area_form,'22');" alt="静岡" />
+	</map>
+</div>
+<div id="tooltip_kinki" class="map_image">
+	<img src="pc/image/map/s_kinki.png" width="180" height="170" border="0" usemap="#Map6" />
+	<p class="close"><a href="#" rel="close"><img src="pc/image/map/btn_close.png" width="19" height="19" alt="close" /></a></p>
+	<map name="Map6" id="Map6">
+		<area shape="rect" coords="86,7,126,30" href="javascript:submitarea(document.search_area_form,'26');" alt="京都" />
+		<area shape="rect" coords="11,35,53,57" href="javascript:submitarea(document.search_area_form,'28');" alt="兵庫" />
+		<area shape="rect" coords="132,44,173,71" href="javascript:submitarea(document.search_area_form,'25');" alt="滋賀" />
+		<area shape="rect" coords="8,87,46,107" href="javascript:submitarea(document.search_area_form,'27');" alt="大阪" />
+		<area shape="rect" coords="128,114,170,137" href="javascript:submitarea(document.search_area_form,'24');" alt="三重" />
+		<area shape="rect" coords="14,116,52,138" href="javascript:submitarea(document.search_area_form,'29');" alt="奈良" />
+		<area shape="rect" coords="57,138,123,163" href="javascript:submitarea(document.search_area_form,'30');" alt="和歌山" />
+	</map>
+</div>
+<div id="tooltip_chugoku" class="map_image">
+	<img src="pc/image/map/s_chugoku.png" width="175" height="130" border="0" usemap="#Map7" />
+	<p class="close"><a href="#" rel="close"><img src="pc/image/map/btn_close.png" width="19" height="19" alt="close" /></a></p>
+	<map name="Map7" id="Map7">
+		<area shape="rect" coords="103,8,143,31" href="javascript:submitarea(document.search_area_form,'31');" alt="鳥取" />
+		<area shape="rect" coords="36,15,78,37" href="javascript:submitarea(document.search_area_form,'32');" alt="島根" />
+		<area shape="rect" coords="10,96,48,116" href="javascript:submitarea(document.search_area_form,'35');" alt="山口" />
+		<area shape="rect" coords="127,89,169,112" href="javascript:submitarea(document.search_area_form,'33');" alt="岡山" />
+		<area shape="rect" coords="67,100,105,122" href="javascript:submitarea(document.search_area_form,'34');" alt="広島" />
+	</map>
+</div>
+<div id="tooltip_shikoku" class="map_image">
+	<img src="pc/image/map/s_shikoku.png" width="151" height="125" border="0" usemap="#Map8" />
+	<p class="close"><a href="#" rel="close"><img src="pc/image/map/btn_close.png" width="19" height="19" alt="close" /></a></p>
+	<map name="Map8" id="Map8">
+		<area shape="rect" coords="62,7,102,30" href="javascript:submitarea(document.search_area_form,'37');" alt="香川" />
+		<area shape="rect" coords="8,23,50,45" href="javascript:submitarea(document.search_area_form,'38');" alt="愛媛" />
+		<area shape="rect" coords="101,77,143,100" href="javascript:submitarea(document.search_area_form,'36');" alt="徳島" />
+		<area shape="rect" coords="55,94,93,116" href="javascript:submitarea(document.search_area_form,'39');" alt="高知" />
+	</map>
+</div>
+<div id="tooltip_kyusyu" class="map_image">
+	<img src="pc/image/map/s_kyusyu.png" width="209" height="186" border="0" usemap="#Map9" />
+	<p class="close"><a href="#" rel="close"><img src="pc/image/map/btn_close.png" width="19" height="19" alt="close" /></a></p>
+	<map name="Map9" id="Map9">
+		<area shape="rect" coords="77,10,117,33" href="javascript:submitarea(document.search_area_form,'41');" alt="佐賀" />
+		<area shape="rect" coords="22,18,64,40" href="javascript:submitarea(document.search_area_form,'42');" alt="長崎" />
+		<area shape="rect" coords="136,19,178,42" href="javascript:submitarea(document.search_area_form,'40');" alt="福岡" />
+		<area shape="rect" coords="26,71,64,93" href="javascript:submitarea(document.search_area_form,'43');" alt="熊本" />
+		<area shape="rect" coords="162,53,204,78" href="javascript:submitarea(document.search_area_form,'44');" alt="大分" />
+		<area shape="rect" coords="148,106,193,129" href="javascript:submitarea(document.search_area_form,'45');" alt="宮崎" />
+		<area shape="rect" coords="100,146,168,172" href="javascript:submitarea(document.search_area_form,'46');" alt="鹿児島" />
+		<area shape="rect" coords="17,155,55,180" href="javascript:submitarea(document.search_area_form,'47');" alt="沖縄" />
+	</map>
+</div>
+</div>
+</body>
+
+
+</html>

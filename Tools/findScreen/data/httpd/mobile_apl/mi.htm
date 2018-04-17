@@ -1,0 +1,610 @@
+<?php
+// ------------------------------------------------------------
+// 地図イメージ画像生成モジュール
+// 
+// 新規作成 : Y.Hayashida
+// 2008/09/09 Y.Matsukawa	英字対応
+// 2008/12/15 Y.Matsukawa	デフォルトアイコン非表示モード
+// 2009/06/18 Y.Matsukawa	携帯３キャリア以外でも本番を閲覧可能にする機能を追加
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2012/12/17 H.Osamoto		神奈川電通広告向けカスタマイズ
+// 2016/06/01 Y.Matsukawa	開発機のmi.htmのレスポンスにPHPメッセージが出力されてしまうのを回避
+// 2016/06/01 Y.Matsukawa	最寄りアイコン10個表示
+// ------------------------------------------------------------
+include("inc/function.inc");
+//include("inc/carrier.inc");		del 2009/06/18 Y.Matsukawa ↓define_mobile.incの後に移動
+//include("inc/hpl.inc");
+include("./inc/define_mobile.inc");  // 基本設定
+include("inc/carrier.inc");			// add 2009/06/18 Y.Matsukawa
+include("./inc/define_get_icon.inc");  // アイコン定義取得	2007/09/26 add matsukawa
+
+if($D_EMAP_ENV=='dev') error_reporting(E_ERROR | E_WARNING);		// add 2016/06/01 Y.Matsukawa
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+// キャリア判定処理
+$USER_AGENT = $_SERVER["HTTP_USER_AGENT"];
+$carrier = new CARRIER($USER_AGENT);
+
+// キャリア毎のサポート画像種別判断
+$img_type = $carrier->G_SUPPORT_CMDN_TYP;
+$ext      = $carrier->G_SUPPORT_IMAGE_EXT;
+
+// 地図画像サイズ取得
+$mapw = $carrier->G_DISPLAY_W;
+$maph = $carrier->G_DISPLAY_H;
+
+$date= date("Ymd");
+
+// HTTPヘッダ出力
+header("Content-type: image/".strtolower($ext));
+//php5で使用禁止
+//i18n_http_output(pass);
+
+include("inc/proc_param_dec.inc");
+
+// パラメータの位置情報デコード処理
+// mod 2011/07/05 Y.Nakajima 
+//$enc = split("_",$pos);
+$enc = explode("_",$pos);
+
+// 地図中心
+$ret = ZdcMakeMobileDec($enc[0], &$g, &$l, &$lv, &$lim);
+$lv = intval($lv);
+
+dbl("lng=$g, lat=$l");
+// プロットアイコン情報
+$c = ZdcMakeUnPackLatLng($enc[1], &$mode, &$num, 
+	&$lng[0], &$lat[0], &$icon[0],
+	&$lng[1], &$lat[1], &$icon[1],
+	&$lng[2], &$lat[2], &$icon[2],
+	&$lng[3], &$lat[3], &$icon[3],
+	&$lng[4], &$lat[4], &$icon[4],
+	// add 2016/06/01 Y.Matsukawa [
+	&$lng[5], &$lat[5], &$icon[5],
+	&$lng[6], &$lat[6], &$icon[6],
+	&$lng[7], &$lat[7], &$icon[7],
+	&$lng[8], &$lat[8], &$icon[8],
+	&$lng[9], &$lat[9], &$icon[9]
+	// add 2016/06/01 Y.Matsukawa ]
+);
+
+if(!$ret || $lim < date("Ymd")){
+	$errimg = @ImageCreate($mapw, $maph);
+	$background_color = @Imagecolorallocate($errimg, 255,255,204);
+	$font_color = @Imagecolorallocate($errimg, 255, 0, 0);
+	@imagestring($errimg, 3, 10, 10, "Invalid Parameter", $font_color);
+	// 対応するイメージにて画像を出力
+	if($img_type == 0){
+		ImageGif ($errimg);
+	} else if ($img_type == 1){
+		ImagePng ($errimg);
+	} else if ($img_type == 3){
+		ImageJpg ($errimg);
+	}
+	@Imagedestroy($errimg);
+	erl("有効期限が無効かチェックディジットエラー LIMIT[$lim] RET[$ret]");
+	exit;
+}
+
+dbl("--------------------------");
+dbl("mode=$mode, (".$lat[0].",".$lng[0].")(".$lat[1].",".$lng[1].")");
+dbl("map center ($l,$g) level=$lv");
+$polyxy = "";
+if($mode == "5" || $mode == "6"){
+	// ちょっぴりルート探索結果をキャッシュさせてみる。
+	$file_name = "tmp/".date("Ymd").$lng[0]."_".$lat[0]."_".$lng[1]."_".$lat[1]."txt";
+	$cache = false;
+
+	$prm = "?key=".$D_SSAPI_KEY."&stx=".$lng[1]."&sty=".$lat[1]."&edx=".$lng[0]."&edy=".$lat[0];
+
+	// 4km 以上、自動車指定なら自動車に切替
+	if(getDistance($lat[0],$lng[0],$lat[1],$lng[1]) > $D_PROUTE_DIST || $SETTING["routesearch"] == "2"){
+		$prm.= "&car=1";
+	}
+	// 駅からルートの場合は、「始点＝駅」とする		2007/08/28 add matsukawa
+	//	if ($mode == "6") {
+	//		$prm.= "&stt=2000";
+	//	}
+	// ※ルートが怪しいのでとりあえず元のままにする
+
+	$cgi = $D_SSAPI["searchrout_m"].$prm;
+	dbl("ROUTE SEARCH[$cgi]");
+	$route = ZdcHttpRead($cgi,false,5);
+	$status = array_shift($route);
+// mod 2011/07/05 Y.Nakajima [
+	//$status_arr = split("/", $status);
+	//if(ereg("\(([0-9]+)\,([0-9]+)\)\,\(([0-9]+)\,([0-9]+)\)", $status_arr[2], $route_info)){
+	$status_arr = explode("/", $status);
+	if(preg_match("/\(([0-9]+)\,([0-9]+)\)\,\(([0-9]+)\,([0-9]+)\)/", $status_arr[2], $route_info)){
+// mod 2011/07/05 Y.Nakajima ]
+		// 初回のみ全体が入る地図レベル算出
+		if($p == "rx"){
+			$icon_lng = array();
+			$icon_lat = array();
+			$icon_lng[0] = $route_info[1];
+			$icon_lat[0] = $route_info[2];
+			
+			$icon_lng[1] = $route_info[3];
+			$icon_lat[1] = $route_info[4];
+
+			ZdcGetZoomLevel($mapw, $maph, $icon_lng, $icon_lat, &$cent_lng, &$cent_lat, &$lv);
+
+			$g = $cent_lng;
+			$l = $cent_lat;
+		}
+		list($LBL, $LBG, $RTL, $RTG, $PXLAT, $PXLON) = getMapInfo($l, $g, $lv, $mapw, $maph);
+		$px2ms_lon = $PXLON;
+		$px2ms_lat = $PXLAT;
+		$polyxy = convLatLon2PolylinePx($route, $status_arr[1], $l, $g, $mapw, $maph, $px2ms_lon, $px2ms_lat);
+
+	} else {
+		erl("ROUTE SEARCH STATUS=[$status] PARAM=[{$cgi}{$prm}] CACHE=[$cache]");
+	}
+}
+//**********************************************************************
+if(isset($debug)){
+	dbl("ICON_COUNT=$num MODE=$mode");
+	for($i = 0 ; $i < 5 ; $i++){
+		dbl("$i:LAT=".$lat[$i].", LNG=".$lng[$i].", ICON=".$icon[$i]);
+	}
+}
+//**********************************************************************
+// 地図画像をサーバーサイドＣＧＩを呼び出して取得
+$lv = ($lv == "" || intval($lv) == 0) ? $D_DEFAULT_LEVEL : intval($lv);
+//$im = getMapImage($l, $g, $lv, $mapw, $maph, $img_type, $D_LAYER_NO, $D_MARK_TYPE);	mod 2008/09/09 Y.Matsukawa
+$im = getMapImage($l, $g, $lv, $mapw, $maph, $img_type, $D_LAYER_NO, $D_MARK_TYPE, $D_MAP_LANG);
+if(substr($im, 0, 3) == "400"){
+	erl("GET MAP ERROR RET[$im]");
+
+	$errimg = @ImageCreate($mapw, $maph);
+	if(substr($im, 3, 4) == "9999"){
+		$background_color = @Imagecolorallocate($errimg, 255,204,255);
+	} else {
+		$background_color = @Imagecolorallocate($errimg, 255,255,204);
+	}
+	$font_color = @Imagecolorallocate($errimg, 255, 0, 0);
+
+	@imagestring($errimg, 3, 10, 10, "Can't Display Map", $font_color);
+	if($img_type == 0){
+		@ImageGif ($errimg);
+	} else if ($img_type == 1){
+		@ImagePng ($errimg);
+	} else if ($img_type == 3){
+		ImageJPEG ($errimg);
+	}
+	@Imagedestroy($errimg);
+	exit;
+}
+
+if(isset($im) && $im != "") {
+	dbl("地図取得OK。($l,$g,$lv,$mapw,$maph)");
+
+	// 地図画像からGDImage作成
+	$map_img = ImageCreateFromString($im);
+
+	list($LBL, $LBG, $RTL, $RTG) = getMapInfo($l, $g, intval($lv), $mapw, $maph);
+dbl("getMapInfo RET");
+dbl("--------------------------");
+	$px2ms_lon = ($RTG - $LBG) / $mapw;
+	$px2ms_lat = ($RTL - $LBL) / $maph;
+dbl("px2ms_lon=$px2ms_lon, px2ms_lat=$px2ms_lat");
+
+	// 地図の中心とレベルから１ピクセル当たりのＭＳを算出
+	$px = ($mapw * $px2ms_lon);
+	$py = ($maph * $px2ms_lat);
+
+	// 地図左下緯度経度を算出
+	$left_side = $g - ($px / 2);
+	$left_under= $l - ($py / 2);
+
+	// ルート探索結果が取得できていたら描写を行う。
+	// mod 2011/07/05 Y.Nakajima
+	if(isset($mode) && ($mode == 5 || $mode == 6)){
+		if($polyxy != ""){
+			dbl("ROUTE SEARCH OK!!!!!!!!!!!!!!!!!!!!");
+
+			// ルート重畳用のベース画像作成
+			$canvas = @imagecreate ($mapw, $maph);
+			// 背景は、白で
+			$canvas_color = ImageColorAllocate ($canvas, 255, 255, 255);
+			// 透過設定ありに
+			imagecolortransparent ($canvas, $canvas_color);
+
+			$r1 = @ImageCreateFromPng($D_R_NORM_IMAGE);
+			@imagesetbrush($canvas, $r1);
+
+dbl("count(polyxy)=".count($polyxy));
+			// 線のノード数分ループ
+			for($i = 0 ; $i < count($polyxy) - 1 ; $i++){
+				// convLatLon2PolylinePxの返却値は、[X#Y#道路種別#構造] XとYはピクセル座標（左上基準点）
+				// mod 2011/07/05 Y.Nakajima [
+				//$fromxy = split("#", $polyxy[$i]);
+				//$toxy   = split("#", $polyxy[$i+1]);
+				$fromxy = explode("#", $polyxy[$i]);
+				$toxy   = explode("#", $polyxy[$i+1]);
+				// mod 2011/07/05 Y.Nakajima ]
+
+				// 地図範囲と、ノードの直線を矩形化して、交差判定を行う。
+				$x0 = 0;          $y0 = 0;
+				$x1 = $mapw;      $y1 = $maph;
+				$x2 = $fromxy[0]; $y2 = $fromxy[1];
+				$x3 = $toxy[0];   $y3 = $toxy[1];
+
+				if($x2>$x3){ $w=$x3; $x3=$x2; $x2=$w; }
+				if($y2>$y3){ $w=$y3; $y3=$y2; $y2=$w; }
+
+				// 交差、内包しているルートノードのみ描写する。
+				if($x0 < $x3 && $x2 < $x1 && $y0 < $y3 && $y2 < $y1){
+					@imageline ($canvas, $fromxy[0], $fromxy[1], $toxy[0], $toxy[1], IMG_COLOR_BRUSHED);
+				}
+			}
+			@imagecopymerge ( $map_img, $canvas, 0, 0, 0, 0, $mapw, $maph, 60);
+			@imagedestroy($canvas);
+		}
+
+		// 始点と終点に独自アイコンを描写
+		$fromxy = explode("#", $polyxy[0]);
+		$toxy   = explode("#", $polyxy[count($polyxy)-1]);
+
+		// アイコン合成のピクセル座標計算
+		$sicon_x = ($lng[1] - $left_side) / $px2ms_lon;
+		$sicon_y = $maph - (($lat[1] - $left_under) / $px2ms_lat);
+		$gicon_x = ($lng[0] - $left_side) / $px2ms_lon;
+		$gicon_y = $maph - (($lat[0] - $left_under) / $px2ms_lat);
+
+		if($mapw < 150){
+			$sicon_offy = 8;
+			$sicon_offx = 8;
+		} else {
+			$sicon_offy = 34;
+			$sicon_offx = 3;
+		}
+
+		// アイコン合成判定
+		if($sicon_x > ($D_MARGIN_PX*-1) && $sicon_x < ($mapw+$D_MARGIN_PX) && $sicon_y > ($D_MARGIN_PX*-1) && $sicon_y < ($maph+$D_MARGIN_PX)){
+			if($mapw < 150){
+				$D_START_IMAGE = str_replace("600001","601001", $D_START_IMAGE);
+			} else {
+				$sicon_offy = 34;
+				$sicon_offx = 3;
+			}
+			$start_icon_img = @ImageCreateFromGif($D_START_IMAGE);
+			@ImageCopyMerge($map_img, $start_icon_img, $sicon_x-$sicon_offx, $sicon_y-$sicon_offy, 0,0, imagesx($start_icon_img), imagesy($start_icon_img), 100);
+		}
+
+		if($gicon_x > ($D_MARGIN_PX*-1) && $gicon_x < ($mapw+$D_MARGIN_PX) && $gicon_y > ($D_MARGIN_PX*-1) && $gicon_y < ($maph+$D_MARGIN_PX)){
+			if($mapw < 150){
+				$D_END_IMAGE = str_replace("600002","601002", $D_END_IMAGE);
+			}
+			$goal_icon_img  = @ImageCreateFromGif($D_END_IMAGE);
+			@ImageCopyMerge($map_img, $goal_icon_img , $gicon_x-$sicon_offx, $gicon_y-$sicon_offy, 0,0, imagesx($goal_icon_img) , imagesy($goal_icon_img) , 100);
+		}
+		
+		// add 2009/07/15 Y.Matsukawa [
+		// 指定パラメータにアイコン緯度経度情報があれば、アイコンを重畳
+		// ※AD対応
+		for($i = $num - 1 ; $i >= 0 ; $i--){
+			$icon_x = ($lng[$i] - $left_side) / $px2ms_lon;
+			$icon_y = $maph - (($lat[$i] - $left_under) / $px2ms_lat);
+			if(!($icon_x > ($D_MARGIN_PX*-1) && $icon_x < ($mapw+$D_MARGIN_PX) && $icon_y > ($D_MARGIN_PX*-1) && $icon_y < ($maph+$D_MARGIN_PX))) continue;
+			$icon_img = null;
+			if(substr($icon[$i], 0, 5) == "30000" || substr($icon[$i], 0, 5) == "31000"){
+				$icon_img = @ImageCreateFromGif($D_IMAGE_BASE.$icon[$i].".gif");
+			}
+			// アイコンイメージが取得できれば、重畳処理
+			if($icon_img){
+				$icon_x -= round(imagesx($icon_img)/2);
+				$icon_y -= round(imagesy($icon_img)/2);
+				dbl("draw icon($i)=".$icon[$i].",x=".($icon_x - round(imagesx($icon_img)/2)).", y=".($icon_y - (imagesy($icon_img)/2)).", width=".imagesx($icon_img));
+				// 合成
+				@ImageCopyMerge($map_img, $icon_img, 
+					$icon_x,
+					$icon_y,
+					0,0, 
+					imagesx($icon_img), imagesy($icon_img), 
+					100
+				);
+			}
+		}
+		// add 2009/07/15 Y.Matsukawa ]
+
+	} else {
+		// 最寄検索の場合は、中心に＋アイコン表示
+		if($p == "ns"){
+			$icon_img = @ImageCreateFromGif($D_CENTER_IMAGE);
+			if($icon_img){
+				$icon_x = $mapw / 2;
+				$icon_y = $maph / 2;
+
+				@ImageCopyMerge($map_img, $icon_img, 
+					$icon_x - round(imagesx($icon_img)/2),
+					$icon_y - round(imagesy($icon_img)/2),
+					0,0, 
+					imagesx($icon_img), imagesy($icon_img), 
+					100
+				);
+			}
+		}
+		
+		// add 2012/12/17 H.osamoto [
+		if(isset($D_KANA_DEN) && $D_KANA_DEN){
+			// 電柱位置アイコン
+			$icon_x = ($p_s2 - $left_side) / $px2ms_lon;
+			$icon_y = $maph - (($p_s1 - $left_under) / $px2ms_lat);
+			$icon_img = null;
+			$icon_img = @ImageCreateFromGif($D_DIAMOND_IMAGE);
+			// アイコンイメージが取得できれば、重畳処理
+			if($icon_img){
+				$icon_x -= round(imagesx($icon_img)/2);
+				$icon_y -= round(imagesy($icon_img)/2);
+				// 合成
+				@ImageCopyMerge($map_img, $icon_img, 
+					$icon_x,
+					$icon_y,
+					0,0, 
+					imagesx($icon_img), imagesy($icon_img), 
+					100
+				);
+			}
+			
+			// 目的地アイコン
+			if ($mode != 2) {
+				$icon_x = ($lng[0] - $left_side) / $px2ms_lon;
+				$icon_y = $maph - (($lat[0] - $left_under) / $px2ms_lat);
+				$icon_img = null;
+				$icon_img = @ImageCreateFromGif($D_STAR_IMAGE);
+				// アイコンイメージが取得できれば、重畳処理
+				if($icon_img){
+					$icon_x -= round(imagesx($icon_img)/2);
+					$icon_y -= round(imagesy($icon_img)/2);
+					// 合成
+					@ImageCopyMerge($map_img, $icon_img, 
+						$icon_x,
+						$icon_y,
+						0,0, 
+						imagesx($icon_img), imagesy($icon_img), 
+						100
+					);
+				}
+			}
+		}
+		// add 2012/12/17 H.osamoto ]
+
+		if($mapw < 150){
+			$D_WAKU_PLOT = false;
+			$D_CPNT_DB_ICON = false;
+			$D_CPNT_ICON_NO = $D_STAR_IMAGE;
+		}
+
+		if(!ereg("(".$D_WAKU_MODE.")", $mode) || $SETTING["animation"] == "2") $D_WAKU_PLOT = false;
+		if($D_WAKU_PLOT){
+			//$waku_img = @ImageCreateFromGif($D_WAKU_IMAGE);		2007/09/26 mod matsukawa
+			$waku_img = @ImageCreateFromGif($D_ICON["@SEL"]["IMG"]);
+		}
+		// 指定パラメータにアイコン緯度経度情報があれば、アイコンを重畳
+		// アイコン番号が"000000"の場合、企業アイコンを取得する必要あり。
+		for($i = $num - 1 ; $i >= 0 ; $i--){
+			if((isset($D_KANA_DEN) && $D_KANA_DEN) && ($i == 0)) break;	// add 2012/12/17 H.osamoto
+			$icon_x = ($lng[$i] - $left_side) / $px2ms_lon;
+			$icon_y = $maph - (($lat[$i] - $left_under) / $px2ms_lat);
+
+			if(!($icon_x > ($D_MARGIN_PX*-1) && $icon_x < ($mapw+$D_MARGIN_PX) && $icon_y > ($D_MARGIN_PX*-1) && $icon_y < ($maph+$D_MARGIN_PX))) continue;
+
+			// アイコン番号の先頭が@の場合、ＤＢのアイコンNOが入っているのでＣＧＩでアイコンを取得（ＤＢは５バイトのため）
+			if(substr($icon[$i],0,1) == "@"){
+				$icon_fn = str_replace("@","",$icon[$i]);
+				// アイコン番号が未指定でＤＢから取得設定の場合
+				if($D_CPNT_ICON_NO == "" && $D_CPNT_DB_ICON){
+					$icon_img = @ImageCreateFromString(getUserIconImage($icon_fn));
+				// アイコン番号が指定で、ＤＢから取得の場合
+				} else if($D_CPNT_ICON_NO != "" && $D_CPNT_DB_ICON){
+					$icon_img = @ImageCreateFromString(getUserIconImage($D_CPNT_ICON_NO));
+				// アイコン番号が指定でＤＢからは取得しない場合（用意されたものから選択）
+				} else if($D_CPNT_ICON_NO != ""){
+					$icon_img = @ImageCreateFromGif($D_CPNT_ICON_NO);
+				// 設定ミスなど考えられるがその場合は、デフォルトの★アイコンを強制
+				} else {
+					$icon_img = "";
+				}
+				// お客様の登録アイコンが取得できない場合☆アイコンに強制置き換え
+				//if(!$icon_img){		mod 2008/12/15 Y.Matsukawa
+				//if(!$icon_img && (!$D_NO_DEFAULT_ICN || $mode == 2)){
+				if(!$icon_img && !$D_NO_DEFAULT_ICN){
+					$icon_img = @ImageCreateFromGif($D_STAR_IMAGE);
+				}
+			} else {
+				if($mapw < 150){
+					$icon[$i] = substr($icon[$i],0,2)."1".substr($icon[$i],3,3);
+				}
+				$icon_img = @ImageCreateFromGif($D_IMAGE_BASE.$icon[$i].".gif");
+			}
+			// アイコンイメージが取得できれば、重畳処理
+			if($icon_img){
+				// アイコンの配置ピクセル取得
+				switch($mode){
+				case 3:		// 最寄地図描写
+					if($D_WAKU_PLOT) $waku_icon_x = $icon_x - round(imagesx($waku_img)/2);
+					if($D_WAKU_PLOT) $waku_icon_y = $icon_y - round(imagesy($waku_img)/2);
+					$icon_x -= round(imagesx($icon_img)/2);
+					$icon_y -= round(imagesy($icon_img)/2);
+					break;
+				case 2:		// 最寄駅描写
+					if($i > 0){
+						if($D_WAKU_PLOT) $waku_icon_x = $icon_x - round(imagesx($waku_img)/2);
+						if($D_WAKU_PLOT) $waku_icon_y = $icon_y - round(imagesy($waku_img)-5);
+						$icon_x -= round(imagesx($icon_img)/2);
+						$icon_y -= round(imagesy($icon_img));
+					} else {
+						if($D_WAKU_PLOT) $waku_icon_x = $icon_x - round(imagesx($waku_img)/2);
+						if($D_WAKU_PLOT) $waku_icon_y = $icon_y - round(imagesy($waku_img)/2);
+						$icon_x -= round(imagesx($icon_img)/2);
+						$icon_y -= round(imagesy($icon_img)/2);
+					}
+					break;
+				default:	//通常地図描写
+					if($D_WAKU_PLOT) $waku_icon_x = $icon_x - round(imagesx($waku_img)/2);
+					if($D_WAKU_PLOT) $waku_icon_y = $icon_y - round(imagesy($waku_img)/2);
+					$icon_x -= round(imagesx($icon_img)/2);
+					$icon_y -= round(imagesy($icon_img)/2);
+					break;
+				}
+				// add 2009/07/15 Y.Matsukawa [
+				if ($SETTING["noncpdata"] == "A") {
+					switch($icon_fn) {
+						case 'm03':
+							$waku_icon_y -= 16;
+							break;
+						case 'm04':
+						case 'm05':
+							$waku_icon_y -= 20;
+							break;
+					}
+				}
+				// add 2009/07/15 Y.Matsukawa ]
+				dbl("draw icon($i)=".$icon[$i].",x=".($icon_x - round(imagesx($icon_img)/2)).", y=".($icon_y - (imagesy($icon_img)/2)).", width=".imagesx($icon_img));
+
+				// 合成
+				@ImageCopyMerge($map_img, $icon_img, 
+					$icon_x,
+					$icon_y,
+					0,0, 
+					imagesx($icon_img), imagesy($icon_img), 
+					100
+				);
+				//if($D_WAKU_PLOT){		mod 2009/07/15 Y.Matsukawa ※数字アイコンには枠を付けない（AD対応）
+				if($D_WAKU_PLOT && substr($icon[$i], 0, 5) != "30000" && substr($icon[$i], 0, 5) != "31000"){
+					@ImageCopyMerge($map_img, $waku_img, 
+						$waku_icon_x,
+						$waku_icon_y,
+						0,0, 
+						imagesx($waku_img), imagesy($waku_img), 
+						100
+					);
+				}
+			}
+		}
+	}
+
+	if($mapw > 160){
+		if($D_COMPASS_IMAGE){
+			$comp_img = @ImageCreateFromGif($D_COMPASS_IMAGE);
+			if($comp_img){
+				@ImageCopyMerge($map_img, $comp_img, 
+					$mapw - 2 - imagesx($comp_img),
+					1,
+					0,0, 
+					imagesx($comp_img), imagesy($comp_img), 
+					70
+				);
+			}
+		}
+	}
+
+	// 対応するイメージにて画像を出力
+	if($img_type == 0){
+		if($SETTING["animation"] == "2" && $mode != 3){
+			$merge = false;
+
+			// 枠を読み込んで合成する。
+			for($i = $num - 1 ; $i >= 0 ; $i--){
+				// アイコンの配置ピクセル取得
+				$icon_x = ($lng[$i] - $left_side) / $px2ms_lon;
+				$icon_y = $maph - (($lat[$i] - $left_under) / $px2ms_lat);
+
+				if(!($icon_x > ($D_MARGIN_PX*-1) && $icon_x < ($mapw+$D_MARGIN_PX) && $icon_y > ($D_MARGIN_PX*-1) && $icon_y < ($maph+$D_MARGIN_PX))) continue;
+
+				// ここに一度目に来た場合は、初期化処理
+				if($merge == false){
+					// 枠なしの地図画像をまず出力
+					$tmpfname = tempnam("./tmp", "map");
+					ImageGif ($map_img, $tmpfname);
+
+					// 点滅させる枠アイコン取得
+					//$icon_img = ImageCreateFromGif($D_WAKU_IMAGE);		2007/09/26 mod matsukawa
+					$icon_img = ImageCreateFromGif($D_ICON["@SEL"]["IMG"]);
+					// 枠のみ作るＧＤのキャンバス作成
+					$ani = @imagecreate ($mapw, $maph) or die ("Cannot Initialize new GD image stream");
+
+					// 背景を白で
+					$background_color = ImageColorAllocate ($ani, 255, 255, 255);
+
+					// 透過設定ありに
+					imagecolortransparent ($ani, $canvas_color);
+				}
+
+				// アイコンの配置ピクセル取得
+				switch($mode){
+				case 6:		// ルート探索での始点終点アイコン重畳
+				case 5:		// ルート探索での始点終点アイコン重畳
+					$icon_x -= 8;
+					$icon_y -= (imagesy($icon_img)-8);
+					break;
+				case 2:		// 最寄駅描写
+					if($i > 0){
+						$icon_x -= round(imagesx($icon_img)/2);
+						$icon_y -= round(imagesy($icon_img)-5);
+					} else {
+						$icon_x -= round(imagesx($icon_img)/2);
+						$icon_y -= round(imagesy($icon_img)/2);
+					}
+					break;
+				default:	//通常地図描写
+					$icon_x -= round(imagesx($icon_img)/2);
+					$icon_y -= round(imagesy($icon_img)/2);
+					break;
+				}
+
+				// アイコン画像を合成する。
+				@ImageCopyMerge($ani, $icon_img, 
+					$icon_x,
+					$icon_y,
+					0,0, 
+					imagesx($icon_img), imagesy($icon_img), 
+					100
+				);
+				// 合成有無フラグＯＮ
+				$merge=true;
+			}
+
+			if($merge){
+				// 枠を付けてファイル出力
+				$tmpfname2 = tempnam("./tmp", "map");
+				@ImageGif ($ani, $tmpfname2);
+				@Imagedestroy($ani);
+
+				require('inc/GifMerge.inc');
+
+				// GifMerge機能の初期設定
+				$i = array($tmpfname,$tmpfname2);
+				$d = array(50, 50);
+				$x = array(0, 0);
+				$y = array(0, 0);
+				// アニメーションGIF化
+				$anim = new GifMerge($i, 255, 255, 255, 0, $d, $x, $y, 'C_FILE');
+
+				unlink($tmpfname);
+				unlink($tmpfname2);
+
+				// メモリから画像出力
+				echo $anim->getAnimation();
+
+			} else {
+				ImageGif ($map_img);
+			}
+		} else {
+			ImageGif ($map_img);
+		}
+	} else if ($img_type == 1){
+//		imagetruecolortopalette($map_img, True, 128);
+		ImagePng ($map_img);
+	} else if ($img_type == 3){
+		ImageJPEG ($map_img);
+	}
+	imagedestroy($map_img);
+} else {
+	ZdcMapErrorImage($ext);
+}
+
+?>

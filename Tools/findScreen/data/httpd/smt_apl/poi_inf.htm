@@ -1,0 +1,92 @@
+<?PHP
+// ------------------------------------------------------------
+// 施設詳細
+// 
+// 2012/12/17 H.Osamoto		新規作成
+// 2015/09/07 Y.Matsukawa	【不具合修正】神奈川電通広告：一覧で選んだ施設と違うものが詳細に表示される
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理
+//-------------------
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');
+
+include('/home/emap/src/smt/inc/act_get_cp_img.inc');
+
+if(!isset($err)) {
+	//-------------------
+	// アイコン情報取得
+	//-------------------
+	require_once('/home/emap/src/smt/inc/define_get_icon.inc');
+	//-------------------
+	// 施設データ取得
+	//-------------------
+	$cgi = $D_SSAPI['searchpoi'];
+	$prm = sprintf("&cid=%s&sid=%s&pos=%d&cnt=%d&frewd=%s",
+				//$D_SEARCH_CORPID, $D_SRARCH_SRVSID, 1, $D_SEARCH_POIL_PAGE, urlencode($pnm));		mod 2015/09/07 Y.Matsukawa
+				$D_SEARCH_CORPID, $D_SRARCH_SRVSID, 1, 999, urlencode($pnm));
+	$url = sprintf('%s?enc=EUC&key=%s&opt=%s%s', $cgi, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+	$dat = ZdcHttpRead($url, false, 5);
+	$status = explode("\t", $dat[0]);
+	$cnt = count($dat) - 1;
+	// データなし
+	if($cnt == 0){
+		erl('SEARCHPOI NOT FOUND['.$dat[0]."][$url]");
+		$tpl['errmsg'] = $D_MSG_SEARCH_NODATA['PoiL'];
+		$err = true;
+	// データあり
+	} else {
+		$kid = $p_s3;
+		//$rec = explode("\t",$dat[1]);		del 2015/09/07 Y.Matsukawa
+		// add 2015/09/07 Y.Matsukawa [
+		for($i = 0; $i < $cnt; $i++) {
+			$rec = explode("\t", $dat[$i + 1]);
+			if (trim($rec[0]) == $pcd) {
+		// add 2015/09/07 Y.Matsukawa ]
+				$tpl["poi_name"]  = $rec[3];
+				$tpl["addr"]  = $rec[4];
+				$tpl["tel"]  = $rec[6];
+				$tpl['url'] = $D_DIR_BASE_G.'map/'.$kid.'/?mode=np';
+				$tpl['url'] .= '&lat='.$rec[1].'&lon='.$rec[2];
+				$tpl['url'] .= '&pnm='.urlencode(mb_convert_encoding($rec[3], 'UTF8', 'EUC-JP'));
+				$tpl['url'] .= '&pjnrmn='.$rec[9];
+				$tpl['url'] .= ($freeparms_enc?'&'.$freeparms_enc:'');
+		// add 2015/09/07 Y.Matsukawa [
+				break;
+			}
+		}
+		// add 2015/09/07 Y.Matsukawa ]
+	}
+}
+
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'inf.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

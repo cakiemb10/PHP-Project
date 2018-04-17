@@ -1,0 +1,6 @@
+log4php.logger.API=debug, EMAP_API
+log4php.appender.EMAP_API=LoggerAppenderDailyFile
+log4php.appender.EMAP_API.DatePattern=YmdH
+log4php.appender.EMAP_API.file=/home/emap/logs/log_api_%s.log
+log4php.appender.EMAP_API.layout=LoggerPatternLayout
+log4php.appender.EMAP_API.layout.ConversionPattern=%d %t %p %c %L %x %m%n

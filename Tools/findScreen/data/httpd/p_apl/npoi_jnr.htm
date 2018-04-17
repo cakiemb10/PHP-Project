@@ -1,0 +1,30 @@
+<?PHP
+// ------------------------------------------------------------
+// 施設ジャンル絞込み
+// 
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2011/12/05 Y.Matsukawa	別CID参照
+// 2016/07/27 Y.Uesugi		SSL許可時のアイコンCGI SSL対応
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+//-------------------
+// 画面設定
+//-------------------
+$tpl["_jsSearch"] = "ZdcEmapSearchNpoi()";
+$tpl["_jsNpoi"]   = "ZdcEmapPoiClick(0)";
+//$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+//$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+$tpl["_cgiSysIconimgSSL"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select_ssl"], $D_DATA_CID);	//add 2016/07/27 Y.Uesugi
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+htmloutput($D_SYSDIR_COMPANY.'npoi_jnr.tpl', $tpl);
+?>

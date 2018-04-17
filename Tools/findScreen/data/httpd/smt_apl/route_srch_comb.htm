@@ -1,0 +1,385 @@
+<?PHP
+// ------------------------------------------------------------
+// 複合ルート検索画面
+// 
+// 2017/01/17 N.Wada	新規作成
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理
+//-------------------
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');
+
+if(!isset($err) || !$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+
+	if (isset($kid) && $kid != '') {
+		$kyoten_info = ZdcSearchCgiKyotenid($kid, 5, false, $jkn);
+		$kyoten_info = zdcHtmlspecialchars_arr($kyoten_info);
+		$tpl = array_merge($tpl, $kyoten_info);
+		$to = $kyoten_info['lat_dec'].",".$kyoten_info['lon_dec'];
+	}
+	
+	$param = '';
+	if (isset($D_SEARCH_COMB_ROUTE_USE_BUS) && $D_SEARCH_COMB_ROUTE_USE_BUS) {
+		$param .= "&usetype=comb_bus";
+	} else {
+		$param .= "&usetype=comb";
+	}
+	
+	if ($from != '') $param .= "&from=".$from;
+	if ($fromname != '') $param .= "&fromname=".urlencode($fromname);
+	if ($to != '') $param .= "&to=".$to;
+	if ($toname != '') $param .= "&toname=".urlencode($toname);
+	//-------------------
+	// データ取得
+	//-------------------
+	$cgi = $D_SSAPI["comb_route/searchlist"];
+	$url = sprintf("%s?if_clientid=%s&if_auth_type=ip%s", $cgi, $D_CORE_IF_V3_KEY, $param);
+	$json = ZdcHttpReadCoreIF($url);
+	mb_convert_variables("EUC-JP", "UTF-8", $json);
+	if ($json['status']['code'] != 0) {
+		$err = $D_MSG_ERR_JS_ROUTE;
+	} else {
+		$routetypes = array('comb', 'drive', 'walk');
+		foreach ($routetypes as $routetype) {
+			foreach ($json['routelist'][$routetype] as $idx => $route) {
+				// ルート情報
+				$record = array();
+				$route_no = ($idx + 1);
+				// ルート情報番号
+				$record['no'] = $route_no;
+				$record['no_'.$route_no] = 1;
+				// ナビゲーションID
+				$record['naviid'] = $route['naviid'];
+				// 詳細地図URL
+				$record['url'] = sprintf($D_DIR_BASE_G.'map/%s/?mode=comb&naviid=%s%s',
+										$kid,
+										$route['naviid'],
+										($freeparms_enc?'&'.$freeparms_enc:'')
+										);
+				// 所用時間(分単位)
+				$record['total_time'] = $route['total_time'];
+				if ($route['total_time'] >= 60) {
+					$record['total_time_hour'] = floor($route['total_time'] / 60);	// 時間
+					$record['total_time_min'] = $route['total_time'] % 60;			// 分
+				} else {
+					$record['total_time_min'] = $route['total_time'];				// 分
+				}
+				// 出発地
+				$record['from']['lat'] = $route['from']['lat'];
+				$record['from']['lon'] = $route['from']['lon'];
+				// 目的地
+				$record['to']['lat'] = $route['to']['lat'];
+				$record['to']['lon'] = $route['to']['lon'];
+				// 乗換回数
+				if (isset($route['transcnt'])) {
+					$record['transcnt'] = $route['transcnt'];
+				}
+				// ルートの種別情報
+				if (isset($route['routetype'])) {
+					if (isset($route['routetype']['code'])) {
+						$record['routetype_code'] = $route['routetype']['code'];
+					}
+					if (isset($route['routetype']['text'])) {
+						$record['routetype_text'] = $route['routetype']['text'];
+					}
+				}
+				// 車種情報
+				if (isset($route['cartype'])) {
+					if (isset($route['cartype']['code'])) {
+						$record['cartype_code'] = $route['cartype']['code'];
+					}
+					if (isset($route['cartype']['text'])) {
+						$record['cartype_text'] = $route['cartype']['text'];
+					}
+				}
+				// 金額
+				if (isset($route['fare'])) {
+					$record['fare'] = $route['fare'];
+					$record['fare_format'] = number_format($route['fare']);			// カンマ入り
+				}
+				// IC利用時の金額
+				if (isset($route['ic_fare'])) {
+					$record['ic_fare'] = $route['ic_fare'];
+					$record['ic_fare_format'] = number_format($route['ic_fare']);	// カンマ入り
+				}
+				// 総距離(ｍ単位)
+				if (isset($route['distance'])) {
+					$record['distance'] = $route['distance'];
+					if ($route['distance'] >= 1000) {
+						$record['distance_km'] = round($route['distance'] / 1000, 1);	// (ｋｍ単位)小数点第２位を四捨五入
+					}
+				}
+				// ルート内の移動手段情報
+				foreach($route['nodes'] as $idx2 => $nodes) {
+					$list = array();
+					$list_no = ($idx2 + 1);
+					// 移動手段番号
+					$list['no'] = $list_no;
+					$list['no_'.$list_no] = 1;
+					// 移動種別情報
+					$list['nodetype_code'] = $nodes['nodetype']['code'];
+					$list['nodetype_text'] = $nodes['nodetype']['text'];
+					// 出発地名称
+					$list['start_name'] = $nodes['start_info']['name'];
+					// 出発時刻
+					$tmp_start_datetime = splitDatetime($nodes['start_info']['date'], $prefix='start_');
+					$list = array_merge($list, $tmp_start_datetime);
+					// 到着地名称
+					$list['end_name'] = $nodes['end_info']['name'];
+					// 到着時刻
+					$tmp_end_datetime = splitDatetime($nodes['end_info']['date'], $prefix='end_');
+					$list = array_merge($list, $tmp_end_datetime);
+					// 金額
+					if (isset($nodes['fare'])) {
+						$list['fare'] = $nodes['fare'];
+						$list['fare_format'] = number_format($nodes['fare']);		// カンマ入り
+					}
+					// IC利用時の金額
+					if (isset($nodes['ic_fare'])) {
+						$list['ic_fare'] = $nodes['ic_fare'];
+						$list['ic_fare_format'] = number_format($nodes['ic_fare']);	// カンマ入り
+					}
+					// 距離(ｍ単位)
+					if (isset($nodes['distance'])) {
+						$list['distance'] = $nodes['distance'];
+						if ($nodes['distance'] >= 1000) {
+							$list['distance_km'] = round($nodes['distance'] / 1000, 1);	// (ｋｍ単位)小数点第２位を四捨五入
+						}
+					}
+					switch ($nodes['nodetype']['code']) {
+						case 2:		// 電車
+							$record['train'] = 1;
+							$list['train'] = 1;
+							// 出発駅コード
+							$list['start_stcd'] = $nodes['start_info']['stcd'];
+							// 到着駅コード
+							$list['end_stcd'] = $nodes['end_info']['stcd'];
+							// 路線種別
+							$list['railkind'] = $nodes['railkind'];
+							// 路線名称
+							$list['linenm'] = $nodes['linenm'];
+							// 列車区分
+							if (isset($nodes['trainkind'])) {
+								$list['trainkind'] = $nodes['trainkind'];
+							}
+							// 乗車時間
+							$list['time_ride'] = $nodes['time_ride'];
+							// 待ち時間
+							$list['time_wait'] = $nodes['time_wait'];
+							// 直通電車ならばtrue
+							$list['join'] = $nodes['join'];
+							// 方面名称
+							$list['dir_name'] = $nodes['dir_name'];
+							// 乗車位置情報
+							if (isset($nodes['position'])) {
+								// 乗車駅名称
+								$list['position_stnm'] = $nodes['position']['stnm'];
+								// 車両編成数乗車位置情報
+								foreach($nodes['position']['detail'] as $idx3 => $info) {
+									$work = array();
+									$info_no = ($idx3 + 1);
+									// 車両編成数乗車位置番号
+									$work['no'] = $info_no;
+									$work['no_'.$info_no] = 1;
+									// 車両編成数
+									$work['train_form'] = $info['train_form'];
+									// 乗車位置
+									$work['ride_pos'] = $info['ride_pos'];
+									$list['position_detail'][] = $work;
+								}
+							}
+							// 路線色
+							$list['linecolor'] = $nodes['linecolor'];
+							// 発車番線
+							if (isset($nodes['platformfrom'])) {
+								$list['platformfrom'] = $nodes['platformfrom'];
+							}
+							// 到着番線
+							if (isset($nodes['platformto'])) {
+								$list['platformto'] = $nodes['platformto'];
+							}
+							// 途中停車駅数
+							if (isset($nodes['passingcnt'])) {
+								$list['passingcnt'] = $nodes['passingcnt'];
+							}
+							// 停車駅情報
+							if (isset($nodes['passing_stations'])) {
+								foreach($nodes['passing_stations'] as $idx3 => $info) {
+									$work = array();
+									$info_no = ($idx3 + 1);
+									// 停車駅情報番号
+									$work['no'] = $info_no;
+									$work['no_'.$info_no] = 1;
+									// 停車駅コード
+									$work['stcd'] = $info['stcd'];
+									// 停車駅到着時刻
+									$work['arrive_time'] = $info['arrive_time'];
+									// 停車駅名称
+									$work['name'] = $info['name'];
+									$list['passing_stations'][] = $work;
+								}
+							}
+							break;
+						case 3:		// 徒歩
+							$record['walk'] = 1;
+							$list['walk'] = 1;
+							// 出入口名称
+							$list['doorways'] = $nodes['doorways'];
+							break;
+						case 4:		// 車
+							$record['drive'] = 1;
+							$list['drive'] = 1;
+							// 乗車時間
+							$list['time_ride'] = $nodes['time_ride'];
+							// 経路情報
+							foreach($nodes['route_info'] as $idx3 => $info) {
+								$work = array();
+								$info_no = ($idx3 + 1);
+								// 経路情報番号
+								$work['no'] = $info_no;
+								$work['no_'.$info_no] = 1;
+								// 経路種別コード
+								$work['code'] = $info['code'];
+								// 道路名称
+								$work['name'] = $info['name'];
+								// 料金
+								$work['fare'] = $info['fare'];
+								$work['fare_format'] = number_format($info['fare']);		// カンマ入り
+								// 有料区間ならばtrue
+								$work['pay'] = $info['pay'];
+								$list['route_info'][] = $work;
+							}
+							break;
+						case 5:		// 飛行機
+							$record['airplane'] = 1;
+							$list['airplane'] = 1;
+							// 路線名称
+							$list['linenm'] = $nodes['linenm'];
+							// 乗車時間
+							$list['time_ride'] = $nodes['time_ride'];
+							// 待ち時間
+							$list['time_wait'] = $nodes['time_wait'];
+							break;
+						case 6:		// バス
+							$record['bus'] = 1;
+							$list['bus'] = 1;
+							// 路線名称
+							$list['linenm'] = $nodes['linenm'];
+							// 乗車時間
+							$list['time_ride'] = $nodes['time_ride'];
+							// 待ち時間
+							$list['time_wait'] = $nodes['time_wait'];
+							// 途中停車駅数
+							if (isset($nodes['passingcnt'])) {
+								$list['passingcnt'] = $nodes['passingcnt'];
+							}
+							// 停車駅情報
+							if (isset($nodes['passing_stations'])) {
+								foreach($nodes['passing_stations'] as $idx3 => $info) {
+									$work = array();
+									$info_no = ($idx3 + 1);
+									// 停車駅情報番号
+									$work['no'] = $info_no;
+									$work['no_'.$info_no] = 1;
+									// 停車駅到着時刻
+									$work['arrive_time'] = $info['arrive_time'];
+									// 停車駅名称
+									$work['name'] = $info['name'];
+									$list['passing_stations'][] = $work;
+								}
+							}
+							break;
+					}
+					// 最初の移動手段情報
+					if ($list_no == 1) {
+						// ルートの最初を示すフラグ
+						$list['route_start'] = 1;
+						// ルートの出発時間
+						$record = array_merge($record, $tmp_start_datetime);
+					}
+					// 最後の移動手段情報
+					if ($list_no == count($route['nodes'])) {
+						// ルートの最後を示すフラグ
+						$list['route_end'] = 1;
+						// ルートの到着時間
+						$record = array_merge($record, $tmp_end_datetime);
+					}
+					$record['list'][] = $list;
+				}
+				$tpl[$routetype][] = $record;
+			}
+		}
+	}
+	
+	//-------------------
+	// 画面設定
+	//-------------------
+	if (isset($mode) && $mode != '') {
+		$tpl['mode'] = $mode;
+		$tpl['mode_'.$mode] = 1;
+	}
+	// js
+	$j = 0;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'common.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'search.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+}
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'route_srch_comb.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	//err
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+
+//-------------------
+// 日時分割関数
+//-------------------
+function splitDatetime($datetime, $prefix='') {
+	list($tmp_date, $tmp_time) = explode(" ", $datetime);
+	list($tmp_year, $tmp_month, $tmp_day) = explode("-", $tmp_date);
+	list($tmp_hour, $tmp_min, $tmp_sec) = explode(":", $tmp_time);
+	return array(
+		$prefix.'year'	=> $tmp_year,
+		$prefix.'month'	=> $tmp_month,
+		$prefix.'day'	=> $tmp_day,
+		$prefix.'hour'	=> $tmp_hour,
+		$prefix.'min'	=> $tmp_min,
+		$prefix.'sec'	=> $tmp_sec
+	);
+}
+?>

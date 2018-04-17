@@ -1,0 +1,102 @@
+<?PHP
+// ------------------------------------------------------------
+// 最寄り駅一覧
+// 
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2011/12/05 Y.Matsukawa	別CID参照
+// 2012/03/28 Y.Matsukawa	【不具合修正】最寄り駅／最寄り施設一覧の名称マウスオーバー時に、点滅フレームアイコンが表示不正
+// 2012/05/21 H.osamoto		【不具合修正】最寄り駅／最寄り施設一覧が文字化けする
+// 2016/07/27 Y.Uesugi		SSL許可時のアイコンCGI SSL対応
+// 2017/02/16 N.Wada		Google Maps版はルート検索のJS変更
+// 2017/02/20 N.Wada		ルート検索世界測地系保持
+// 2017/03/05 N.Wada		印刷画面用パラメータ追加
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+//-------------------
+// パラメーターの処理
+//-------------------
+$pos = $page * $D_ST_PAGE + 1;
+
+//-------------------
+// データアクセス
+//-------------------
+$cgi = $D_SSAPI["neki"];
+// mod 2012/05/21 H.osamoto [
+//	$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&lat=%s&lon=%s&knsu=%s&rad=%s&pflg=%d&datum=%s&lang=%s",
+//					$cgi, $D_SEARCH_CORPID, $cid, $D_SRARCH_SRVSID, $D_SSAPI_KEY, $pos, $D_ST_PAGE,
+//					//$lat, $lon, $D_ST_MAX, $D_ST_RAD, $D_PFLG, $D_DATUM, $D_EKI_LANG);		mod 2012/03/28 Y.Matsukawa
+//					$lat, $lon, $D_ST_MAX, $D_ST_RAD, 1, $D_DATUM, $D_EKI_LANG);
+$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&knsu=%s&rad=%s&pflg=%d&datum=%s&lang=%s",
+				$cgi, $D_SEARCH_CORPID, $cid, $D_SRARCH_SRVSID, $D_SSAPI_KEY, $pos, $D_ST_PAGE, "EUC",
+				$lat, $lon, $D_ST_MAX, $D_ST_RAD, 1, $D_DATUM, $D_EKI_LANG);
+// mod 2012/05/21 H.osamoto ]
+$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+$status = explode("\t", $dat[0]);
+$cnt = count($dat);
+
+//-------------------
+// 画面設定
+//-------------------
+//$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+//$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+$tpl["_cgiSysIconimgSSL"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select_ssl"], $D_DATA_CID);	//add 2016/07/27 Y.Uesugi
+//ページ制御
+if($page) $tpl["_jsPrev"]  = sprintf("javascript:ZdcEmapStationListClick(%d);", ($page - 1));
+if(substr($status[0], -1, 1) == '1') $tpl["_jsNext"] = sprintf("javascript:ZdcEmapStationListClick(%d);", ($page + 1));
+$tpl["max"] = intval($status[2]);
+$tpl["start"] = $pos;
+$tpl["end"]   = $pos + $cnt - 2;
+//施設一覧
+for ($i = 0; $i < $cnt - 1; $i++) {
+	$tpl["list"][$i]["id"] = $i;
+	$tpl["list"][$i]["no"] = ($i+1);
+	$rec = ZdcConvertEncoding($dat[$i+1]);
+	$rec = explode("\t", $rec);
+	$tpl["list"][$i]["id"] = $rec[0];
+	$tpl["list"][$i]["lat"] = $rec[1];
+	$tpl["list"][$i]["lon"] = $rec[2];
+	$tpl["list"][$i]["name"] = $rec[3];
+	$tpl["list"][$i]["kana"] = $rec[4];
+	$tpl["list"][$i]["code"] = $rec[5];
+	$tpl["list"][$i]["addr"] = $rec[6];
+	$tpl["list"][$i]["zip"]  = $rec[7];
+	$tpl["list"][$i]["tel"]  = $rec[8];
+	$tpl["list"][$i]["dist"] = $rec[9];
+	if($rec[9] > 1000){
+		$tpl["list"][$i]["dist_m"] = round($rec[9]/1000,2)."km";
+	} else {
+		$tpl["list"][$i]["dist_m"] = round($rec[9],0)."m";
+	}
+	$tpl["list"][$i]["_jsMsg"]       = sprintf("ZdcEmapTipsClick('%s')", ($i+$pos-1));
+	// add 2017/02/16 N.Wada [
+	if ($D_GOOGLEMAPS) {
+		// add 2017/02/20 N.Wada [
+		if ($D_KYOTEN_WGS_COL) {
+			$tpl["list"][$i]["_jsRoute"] = sprintf("ZdcEmapRouteSearch('%s','%s','%s','%s', 1)", $rec[1], $rec[2], cnv_dms2hour($lat), cnv_dms2hour($lon));
+		} else {
+		// add 2017/02/20 N.Wada ]
+			$tpl["list"][$i]["_jsRoute"] = sprintf("ZdcEmapRouteSearch('%s','%s','%s','%s')", $rec[1], $rec[2], cnv_dms2hour($lat), cnv_dms2hour($lon));
+		}
+		// 印刷画面用パラメータ		add 2017/03/05 N.Wada
+		$tpl["list"][$i]["print_param"] = sprintf("&mode=rs&s_lat=%s&s_lon=%s&e_lat=%s&e_lon=%s&routetype=walk", $rec[1], $rec[2], cnv_dms2hour($lat), cnv_dms2hour($lon));
+	} else {
+	// add 2017/02/16 N.Wada ]
+		$tpl["list"][$i]["_jsRoute"]     = sprintf("ZdcEmapRouteSearchApi2(%d)", ($i+$pos-1));
+	}
+	$tpl["list"][$i]["_jsCurSet"]    = sprintf("ZdcEmapMapCursorSet('%s','%s');ZdcEmapMapFrontPoi(%s)", $rec[1], $rec[2], ($i+$pos-1));
+	$tpl["list"][$i]["_jsCurRemove"] = sprintf("ZdcEmapMapCursorRemove()");
+}
+if($cnt < 2) $tpl["msg"] = $D_MSG_NEKI_NOLIST;
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+htmloutput($D_SYSDIR_COMPANY.'neki.tpl', $tpl);
+?>

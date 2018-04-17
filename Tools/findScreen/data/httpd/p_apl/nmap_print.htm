@@ -1,0 +1,129 @@
+<?PHP
+// ------------------------------------------------------------
+// 最寄店舗地図印刷画面
+// 
+// 開発履歴
+// 2012/11/06 H.Osamoto		新規作成
+// 2013/03/12 H.Osamoto		地図付き拠点リスト印刷画面にて数字アイコン利用
+// 2015/03/18 N.Wada		地図表示枠外での拠点アイコン表示対応
+// 2015/03/18 N.Wada		絞り込み：任意カラムの部分一致
+// 2015/03/26 H.Osamoto		拠点詳細からの印刷用に詳細表示拠点除外処理追加
+// 2015/03/30 N.Wada		最寄画面印刷時に最初の検索の印刷かどうかで検索範囲を切り替える
+// 							最寄画面と最寄印刷画面の検索地図範囲を同じにする
+// 							最寄画面と最寄印刷画面の検索結果件数を同じにする
+// 2015/10/20 N.Wada		common.jsの読み込み追加
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	if($lat && $lon) {
+		//緯度経度接続
+		$lat = cnv_dms2hour($lat);
+		$lon = cnv_dms2hour($lon);
+		$tpl["_jsInit"] .= sprintf("ZdcEmapSearchSet('%s','%s',true);", $lat, $lon);
+		$init_lat = $lat;
+		$init_lon = $lon;
+		if( $lvl >= 1 && $lvl <= 18 ){
+			$init_lvl = $lvl;
+		}
+	}
+
+	if ($init_lat && $init_lon) {
+		if( $init_lvl ){
+			$tpl["_jsInit"] = sprintf("ZdcEmapInit('%s','%s','%s');", $init_lat, $init_lon,$init_lvl).$tpl["_jsInit"];
+			$tpl["_jsInit"] .= sprintf("ZdcEmapPrintInit('%s','%s','%s','%s','%s');",cnv_dms2hour($tpl["lat"]),cnv_dms2hour($tpl["lon"]),$tpl["icon"],$tpl["new"],$init_lvl);
+		} else {
+			$tpl["_jsInit"] = sprintf("ZdcEmapInit('%s','%s');", $init_lat, $init_lon).$tpl["_jsInit"];
+			$tpl["_jsInit"] .= sprintf("ZdcEmapPrintInit('%s','%s','%s','%s','%s');",cnv_dms2hour($tpl["lat"]),cnv_dms2hour($tpl["lon"]),$tpl["icon"],$tpl["new"]);
+		}
+	} else {
+		$err = $D_MSG_EMAPVIEW_NOPRM;
+	}
+	
+	// 地図移動または表示縮尺時に再検索を行わない
+	$D_SHOP_NO_SEARCH_USER_ACT = 1;
+
+	//-------------------
+	// 画面設定
+	//-------------------
+	$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);	// add 2015/03/18 N.Wada
+	// リンク
+	$tpl['_urlArea'] = 'search_area.htm';
+	$tpl['_urlRosen'] = 'search_rail.htm';
+	$tpl['_urlSearch'] = 'search.htm';
+	$tpl['_jsArea'] = 'ZdcEmapSubmitArea';
+	$tpl['_jsRosen'] = 'ZdcEmapSubmitRail';
+	$tpl['_jsSetCond'] = 'ZdcEmapSetCond';
+	// js
+	$D_JS[] = $D_DIR_BASE_G.'common.js';	// add 2015/10/20 N.Wada
+	$D_JS[] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$D_JS[] = $D_DIR_BASE_G.'nkyoten.js';
+	//$D_JS[] = $D_DIR_BASE_G.'emapview.js?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').'&print_flg=1';		mod 2015/03/18 N.Wada
+	$D_JS[] = $D_DIR_BASE_G.'emapview.js?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').'&print_flg=1';
+	// 2013/03/12 H.Osamoto mod [
+	//	$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'').'&print_flg=1';
+	if ($D_NUM_ICON_P) {
+		//$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'').'&print_flg=1'.'&num_icon_p=1';		mod 2015/03/18 N.Wada
+		$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'').'&print_flg=1'.'&num_icon_p=1';
+	} else {
+		//$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'').'&print_flg=1';		mod 2015/03/18 N.Wada
+		//$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'').'&print_flg=1';	mod 2015/03/26 H.Osamoto
+		// add 2015/03/30 N.Wada [
+		if(isset($D_NMAP_PRINT_CNT_FIX) && $D_NMAP_PRINT_CNT_FIX) {
+			// 最寄画面から渡された検索結果件数と検索地図範囲を渡す
+			$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'').'&print_flg=1'.($pexkid?'&pexkid='.$pexkid:'').($cntfix?'&cntfix='.$cntfix:'').($arealatlon?'&arealatlon='.$arealatlon:'');
+		} else {
+			$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'').'&print_flg=1'.($pexkid?'&pexkid='.$pexkid:'');
+		}
+		// add 2015/03/30 N.Wada ]
+	}
+	// 2013/03/12 H.Osamoto mod ]
+	// add 2015/03/30 N.Wada [
+	if(isset($D_NMAP_PRINT_CNT_FIX) && $D_NMAP_PRINT_CNT_FIX) {
+		// 最寄画面から渡された最初の検索の印刷かどうかのフラグを渡す
+		$D_JS[] = $D_DIR_BASE_G.'print_list.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($first_print?'&first_print='.$first_print:'');
+	} else {
+		$D_JS[] = $D_DIR_BASE_G.'print_list.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');
+	}
+	// add 2015/03/30 N.Wada ]
+	$j = 0;
+	foreach ($D_JS as $value) {
+		$tpl['js'][$j]['src'] = $value;
+		$tpl['js'][$j]['charset'] = $D_JSAPI_charset;
+		$j++;
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+//header('X-UA-Compatible: IE=emulateIE7');
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'shop_print_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'nmap_print.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'shop_print_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+
+?>

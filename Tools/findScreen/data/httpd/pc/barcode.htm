@@ -1,0 +1,38 @@
+<?PHP
+// ------------------------------------------------------------
+// qrコード出力
+// 
+// 開発履歴
+//   2007/07/11 bando@D&I
+//     新規開発
+//   2008/03/17 Y.Matsukawa Maplinkの二次元バーコード画像対応時、共通inc内でのパラメータ値初期化によってURLが破壊されるので、共通inc読込を変更（define.inc→d_serv_emap.inc）
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+//include("./inc/define.inc");		2008/03/17 del Y.Matsukawa function.incの中で、パラメータ内の「&」をHTMLエンティティ化しているので、includeしちゃだめです。（MaplinkのURLが壊れます）
+include("d_serv_emap.inc");
+
+//-------------------
+// cgiからイメージ読み込み
+//-------------------
+$cgi = $D_SSAPI["qr_img"];
+$prm = sprintf("&enc=EUC&d=%s&e=%s&v=%s&s=%s",urlencode($d),$D_QRIMG_E,$D_QRIMG_V,$D_QRIMG_S);
+$url = sprintf("%s?key=%s&opt=%s%s",$cgi,$D_SSAPI_KEY,$cid,$prm);
+
+$fp = fopen($url, "rb");
+$img = "";
+while (!feof($fp)) {
+  $img .= fread($fp, 8192);
+}
+fclose($fp);
+
+//-------------------
+// 出力
+//-------------------
+header("Content-type: image/png");
+echo $img;
+?>

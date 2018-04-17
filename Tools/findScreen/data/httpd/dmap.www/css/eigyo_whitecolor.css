@@ -1,0 +1,55 @@
+/* 営業支援　白背景 */
+
+/* formスタイル */
+.formstyle{
+	background-color: #FFFFFF;
+	position        : absolute;
+	top             : 11px;
+	left            : 9px;
+}
+
+/* ヘッダ */
+.headerstyle{
+	position        : absolute;
+	top             : 10px;
+    left            : 10px;
+	height          : 50px;
+	width           : 98%;
+	padding         : 12px;
+	background-color: #0066FF;
+    color           : #FFFFFF;
+}
+
+/* 戻るボタン:前画面へ画像使用 */
+.bgimg_prev{
+    background: url('./button/prev_other.png');
+    border: 0px solid #000;
+}
+/* 戻るボタン:次画面へ画像使用 */
+.bgimg_next{
+    background: url('./button/next_other.png');
+    border: 0px solid #000;
+}
+/* 戻るボタン:閉じる画像使用 */
+.bgimg_close{
+    background: url('./button/close_other.png');
+    border: 0px solid #000;
+}
+
+/* 50音部品　目隠し */
+.selectword-mekakusi{
+	position:absolute;
+	width:303px;
+	height:32px;
+	background-color:#FFFFFF;
+}
+
+/* 自動押下ボタン隠しDIV */
+.hide-autobutton {
+    height:50px;
+    width:100px;
+    background-color:#FFFFFF;
+    position:absolute;
+    top:0px;
+    left:0px;
+}

@@ -1,0 +1,736 @@
+<?PHP
+// ------------------------------------------------------------
+// 【クリック版（非対応ブラウザ対応）】
+// 地図制御 メイン
+// 
+// 開発履歴
+// 2008/02/15 Y.Matsukawa	新規作成
+// 2008/08/22 Y.Matsukawa	英字対応
+// 2008/09/02 Y.Matsukawa	Maplink住所文字列接続時に、ヒットした住所文字列を画面に表示
+// 2009/08/24 Y.Matsukawa	IP制限
+// 2010/07/20 Y.Matsukawa	SSL対応
+// 2011/07/05 Y.nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// 2013/02/13 K.Masuda		サービス期間の判定時、サービス種別も判定する
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");  // 基本設定
+include("./inc/define_cmdn.inc");  // CMDN設定
+include("./inc/c_function.inc");  // 画面遷移タイプ用関数定義
+
+//-------------------
+// Basic認証
+//-------------------
+include("./inc/act_basic_auth.inc");
+
+//-------------------
+// 動作許可チェック
+//-------------------
+// サービス期間
+//$url = sprintf("%s?cid=%s&opt=%s",$D_SSAPI["getsdate"],$D_CID,$cid);	// mod 20130213 K.Masuda
+$url = sprintf("%s?cid=%s&opt=%s&sys=%s",$D_SSAPI["getsdate"],$D_CID,$cid,"P");
+$dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+$status  = explode("\t",$dat[0]);
+if($status[0] = "89000000") {
+	$rec  = explode("\t",$dat[1]);
+	$flg = intval($rec[0]);
+}
+if($flg == 0) {
+	$err = $D_MSG_EMAPVIEW_NOSEARVICE;
+}
+// リファラ
+if($HTTP_REFERER && $D_ALLOW_REFERER && $D_ALLOW_REFERER != "*") {
+	//該当のチェック
+	$arr = explode(";",$D_ALLOW_REFERER.";");
+	//$arr[] = $D_DIR_BASE;		mod 2010/07/20 Y.Matsukawa
+	$arr[] = $D_DIR_BASE_G;
+	$ok = 0;
+	for($i = 0;$i < count($arr);$i ++) {
+		if($arr[$i])
+			if(strpos(" ".$HTTP_REFERER,$arr[$i]) == 1) $ok = 1;
+	}
+	if(!$ok) $err = $D_MSG_EMAPVIEW_NOREFERER;
+} else if(!$HTTP_REFERER && $D_ALLOW_REFERER_NULL != 1) {
+	//NULLのチェック
+	$err = $D_MSG_EMAPVIEW_NOREFERER;
+}
+// ディレクトリ有無
+if(!file_exists($D_SYSDIR_COMPANY)) {
+	//header("Location: ".$D_NOCID_URL);
+	echo $D_MSG_EMAPVIEW_NOCID;
+	exit;
+}
+//IP制限チェック			add 2009/08/24 Y.Matsukawa
+if (!ip_check()) {
+	$err = $D_MSG_EMAPVIEW_INVALIDIP;
+}
+
+//-------------------
+// クリック版の動作制限
+//-------------------
+// 周辺拠点
+if ($D_SHOP_MAX > $D_CLK_SHOP_MAX) $D_SHOP_MAX = $D_CLK_SHOP_MAX;	//最大数
+// 最寄駅
+if ($D_ST_PAGE > $D_CLK_ST_PAGE) $D_ST_PAGE = $D_CLK_ST_PAGE;		//１ページ件数
+if ($D_ST_MAX > $D_CLK_ST_MAX) $D_ST_MAX = $D_CLK_ST_MAX;			//最大数
+// 最寄施設
+if ($D_POI_PAGE > $D_CLK_POI_PAGE) $D_POI_PAGE = $D_CLK_POI_PAGE;	//１ページ件数
+if ($D_POI_MAX > $D_CLK_POI_MAX) $D_POI_MAX = $D_CLK_POI_MAX;		//最大数
+
+if(!$err) {
+	//-------------------
+	// GETパラメータ
+	//-------------------
+	// cid					企業ID
+	// kid					拠点ID
+	// lv					地図縮尺
+	// plat, plon			地図中心緯度経度
+	// initlat, initlon		初期地図中心緯度経度
+	// x, y					地図クリック位置
+	// mapsc				スクロール移動
+	// neki					最寄駅表示
+	// eroute				駅ルート表示
+	// erlat, erlon			駅ルート表示駅緯度経度
+
+	//-------------------
+	// $tpl
+	//-------------------
+	// $tpl["plat"]					地図中心緯度
+	// $tpl["plon"]					地図中心経度
+	// $tpl["initlat"]				初期地図中心緯度（スクロール中央ボタンで移動する地点）
+	// $tpl["initlon"]				初期地図中心経度（スクロール中央ボタンで移動する地点）
+	// $tpl["iclat"]				拠点アイコン緯度
+	// $tpl["iclon"]				拠点アイコン経度
+	// $tpl["lv"]					地図縮尺
+	// $tpl["zoomout"]				コントローラ：ズームアウト縮尺レベル
+	// $tpl["zoomin"]				コントローラ：ズームイン縮尺レベル
+	// $tpl["zoom1"]〜["zomm18"]	コントローラ：ズーム指定縮尺レベル
+	// $tpl["c_lup"]				コントローラ：スクロール（左上）
+	// $tpl["c_up"]					コントローラ：スクロール（上）
+	// $tpl["c_rup"]				コントローラ：スクロール（右上）
+	// $tpl["c_l"]					コントローラ：スクロール（左）
+	// $tpl["c_r"]					コントローラ：スクロール（右）
+	// $tpl["c_ldw"]				コントローラ：スクロール（左下）
+	// $tpl["c_dw"]					コントローラ：スクロール（下）
+	// $tpl["c_rdw"]				コントローラ：スクロール（右下）
+
+	//-------------------
+	// 地図縮尺
+	//-------------------
+	$tpl["lv"] = ($lv == "" || intval($lv) == 0) ? $D_INIT_LVL : intval($lv);
+
+	switch($D_SEVICE_TYPE) {
+		//-------------------
+		// Standard
+		//-------------------
+		case "S":
+			break;
+		//-------------------
+		// Light
+		//-------------------
+		case "L":
+			//-------------------
+			// 拠点接続
+			//-------------------
+			if($kid != "") {
+				if (!$plat && !$plon && !$neki && !$npoi) {
+					$arr = ZdcSearchCgiKyotenid($kid,1);
+				} else {
+					$arr = ZdcSearchCgiKyotenid($kid,1,false);
+				}
+				$arr = zdcHtmlspecialchars_arr($arr);		// 2012/08/03 H.osamoto add
+				if($arr == false) {
+					$err = $D_MSG_EMAPVIEW_NOKID;
+				} else {
+					$tpl = array_merge($tpl,$arr);//拠点情報の取得
+				}
+				$tpl["iclat"] = $tpl["lat"];
+				$tpl["iclon"] = $tpl["lon"];
+				$tpl["initlat"] = $tpl["lat"];
+				$tpl["initlon"] = $tpl["lon"];
+				if ($plat && $plon) {
+					$tpl["plat"] = $plat;
+					$tpl["plon"] = $plon;
+				} else {
+					$tpl["plat"] = $tpl["lat"];
+					$tpl["plon"] = $tpl["lon"];
+				}
+				$s_tplname = "c_emapview.tpl";
+			//-------------------
+			// 緯度経度接続
+			//-------------------
+			} else if($lat && $lon) {
+				if ($initlat && $initlon) {
+					$tpl["iclat"] = $initlat;
+					$tpl["iclon"] = $initlon;
+					$tpl["initlat"] = $initlat;
+					$tpl["initlon"] = $initlon;
+				} else {
+					$tpl["iclat"] = $lat;
+					$tpl["iclon"] = $lon;
+					$tpl["initlat"] = $lat;
+					$tpl["initlon"] = $lon;
+				}
+				if ($plat && $plon) {
+					$tpl["plat"] = $plat;
+					$tpl["plon"] = $plon;
+				} else {
+					$tpl["plat"] = $lat;
+					$tpl["plon"] = $lon;
+				}
+				$tpl["lat"] = $lat;
+				$tpl["lon"] = $lon;
+				$s_tplname = "c_emapview.tpl";
+			} else {
+				$err = $D_MSG_EMAPVIEW_NOPRM;
+			}
+			break;
+		//-------------------
+		// Maplink
+		//-------------------
+		case "N":
+			// add 2008/09/02 Y.Matsukawa ↓
+			if ($D_ADDR_MATCH_DISP == 1) {
+				if ($maddr) {
+					$tpl["maddr"] = $maddr;
+					$tpl["maddr_head"] = $D_ADDR_MATCH_HEAD;
+					$tpl["maddr_tail"] = $D_ADDR_MATCH_TAIL;
+					$tpl["maddr_ex"] = $D_ADDR_MATCH_EXP;
+				}
+			}
+			// add 2008/09/02 Y.Matsukawa ↑
+			//-------------------
+			// 住所接続
+			//-------------------
+			if (!($lat && $lon) && $addr && $D_MAPLINK_ADDR_IF) {
+				$addr_e = urlencode(ZdcConvertEncoding($addr));
+				//ジオコーディング
+				$url = sprintf("%s?key=%s&opt=%s&enc=%s&mclv=%d&sep=&tod=&frewd=%s",$D_SSAPI["selectaddr"],$D_SSAPI_KEY,$cid,"EUC",6,$addr_e);
+				$dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+				$status  = explode("\t",$dat[0]);
+				if($status[0] = "21300000") {
+					$rec  = explode("\t",$dat[1]);
+					// add 2008/09/02 Y.Matsukawa ↓
+					if ($D_ADDR_MATCH_DISP == 1) {
+						$tpl["maddr"] = $rec[4];
+						$tpl["maddr_head"] = $D_ADDR_MATCH_HEAD;
+						$tpl["maddr_tail"] = $D_ADDR_MATCH_TAIL;
+						$tpl["maddr_ex"] = $D_ADDR_MATCH_EXP;
+					}
+					// add 2008/09/02 Y.Matsukawa ↑
+					$lat = intval($rec[5]);
+					$lon = intval($rec[6]);
+				}
+			}
+			//-------------------
+			// 緯度経度接続
+			//-------------------
+			if($lat && $lon) {
+				$tpl["mobileurl"] = sprintf("%s?lat=%s&lon=%s&lv=%s&nm=%s&icn=%s",$D_MOBILE_URL,$lat,$lon,$tpl["lv"],urlencode($nm),$icn);
+				$tpl["mobileurl_encode"] = urlencode($tpl["mobileurl"]);
+				$mobileurl_euc = sprintf("%s?lat=%s&lon=%s&lv=%s&nm=%s&icn=%s",$D_MOBILE_URL,$lat,$lon,$lv,urlencode(urlencode(ZdcConvertEncoding($nm))),$icn);
+				$tpl["qrimgurl"]  = sprintf("%s?cid=%s&d=%s",$D_QRIMG_URL,$D_CID,urlencode($mobileurl_euc));
+				$tpl["name"] .= ZdcConvertEncoding($nm); //拠点名セット
+				if ($initlat && $initlon) {
+					$tpl["iclat"] = $initlat;
+					$tpl["iclon"] = $initlon;
+					$tpl["initlat"] = $initlat;
+					$tpl["initlon"] = $initlon;
+				} else {
+					$tpl["iclat"] = $lat;
+					$tpl["iclon"] = $lon;
+					$tpl["initlat"] = $lat;
+					$tpl["initlon"] = $lon;
+				}
+				if ($plat && $plon) {
+					$tpl["plat"] = $plat;
+					$tpl["plon"] = $plon;
+				} else {
+					$tpl["plat"] = $lat;
+					$tpl["plon"] = $lon;
+				}
+				$tpl["lat"] = $lat;
+				$tpl["lon"] = $lon;
+				$tpl["icon"] = $icn;
+				$tpl["icn"] = $icn;
+				$tpl["nm"] = htmlspecialchars($nm, ENT_QUOTES);
+				$s_tplname = "c_emapview.tpl";
+			} else {
+				$err = $D_MSG_EMAPVIEW_NOPRM;
+			}
+			break;
+	}
+
+	//-------------------
+	// 最寄駅表示
+	//-------------------
+	if ($neki) {
+		$cgi = $D_SSAPI["neki"];
+		//$url = sprintf("%s?cid=%s&opt=%s&key=%s&pos=%d&cnt=%d&lat=%s&lon=%s&knsu=%s&rad=%s&pflg=%d&datum=%s",		mod 2008/08/22 Y.Matsukawa
+		$url = sprintf("%s?cid=%s&opt=%s&key=%s&pos=%d&cnt=%d&lat=%s&lon=%s&knsu=%s&rad=%s&pflg=%d&datum=%s&lang=%s",
+				$cgi, $D_SEARCH_CORPID, $cid, $D_SSAPI_KEY, 1, $D_ST_MAX,
+				//$tpl["iclat"], $tpl["iclon"], $D_ST_MAX, $D_ST_RAD, $D_PFLG, $D_DATUM);		mod 2008/08/22 Y.Matsukawa
+				$tpl["iclat"], $tpl["iclon"], $D_ST_MAX, $D_ST_RAD, $D_PFLG, $D_DATUM, $D_EKI_LANG);
+		$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+		list($status, $cnt) = explode("\t", $dat[0]);
+		if (substr($status[0], 3, 1) == "0") {
+			$eki_cnt = 0;
+			$eki_maxlat = 0;
+			$eki_maxlon = 0;
+			for ($i=0; $i<$cnt; $i++) {
+				$rec = ZdcConvertEncoding($dat[$i+1]);
+				$rec = explode("\t", $rec);
+				$eki_lat[] = $rec[1];
+				$eki_lon[] = $rec[2];
+				$eki_nm[] = $rec[3];
+				$eki_num_icon[] = sprintf($D_ICON_NUM_POINT_IMAGE, $i+1);
+				if ($eki_lat > $eki_maxlat) $eki_maxlat = $eki_lat;
+				if ($eki_lon > $eki_maxlon) $eki_maxlon = $eki_lon;
+				$tpl["ekilist"][$eki_cnt]["lat"] = $rec[1];
+				$tpl["ekilist"][$eki_cnt]["lon"] = $rec[2];
+				$tpl["ekilist"][$eki_cnt]["name"] = $rec[3];
+				$tpl["ekilist"][$eki_cnt]["numimg"]= sprintf($D_ICON_NUM_CUBE_IMAGE, $i+1);
+				$eki_cnt++;
+			}
+			$tpl["max"] = $cnt;
+			$tpl["start"] = 1;
+			$tpl["end"] = $cnt;
+			if ($eki_cnt) {
+				// ルート描画の場合
+				if ($eroute) {
+					// 全てのアイコンが入る縮尺レベルと中心緯度経度を算出
+					$route_lat[0] = $erlat;
+					$route_lon[0] = $erlon;
+					$route_lat[1] = $tpl["iclat"];
+					$route_lon[1] = $tpl["iclon"];
+					ZdcGetZoomLevel($D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, $route_lon, $route_lat, &$clon, &$clat, &$clv, 0, 1);
+					$tpl["plat"] = $clat;
+					$tpl["plon"] = $clon;
+					$tpl["lv"] = $clv;
+				// 駅表示の場合
+				} else {
+					// 全てのアイコンが入る縮尺レベルと中心緯度経度を算出
+					$eki_lat[] = $tpl["iclat"];
+					$eki_lon[] = $tpl["iclon"];
+					ZdcGetZoomLevel($D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, $eki_lon, $eki_lat, &$clon, &$clat, &$clv, 1);
+					array_pop($eki_lat);
+					array_pop($eki_lon);
+					if (!$plat && !$plon) {
+						$tpl["plat"] = $clat;
+						$tpl["plon"] = $clon;
+					}
+					if (!$lv) {
+						$tpl["lv"] = $clv;
+					}
+				}
+			}
+		}
+	}
+
+	//-------------------
+	// 縮尺最小最大範囲内に収める
+	//-------------------
+	if ($tpl["lv"] < $D_MAP_SCALE_MAX) $tpl["lv"] = $D_MAP_SCALE_MAX;
+	if ($tpl["lv"] > $D_MAP_SCALE_MIN) $tpl["lv"] = $D_MAP_SCALE_MIN;
+	
+	//-------------------
+	// アイコン表示可能な縮尺かどうか
+	//-------------------
+	if ($tpl["lv"] >= $D_VIEW_ICON_MAX && $tpl["lv"] <= $D_VIEW_ICON_MIN) $view_icon = true;
+
+	//-------------------
+	// スクロールボタン操作
+	//-------------------
+	if ($mapsc) {
+		$movX = (int)($D_CLK_MAP_IMG_WIDTH * 0.5);
+		$movY = (int)($D_CLK_MAP_IMG_HEIGHT * 0.5);
+		switch ($mapsc) {
+			case "LEFTUP":
+				$x = ($D_CLK_MAP_IMG_WIDTH / 2) - $movX;
+				$y = ($D_CLK_MAP_IMG_HEIGHT / 2) - $movY;
+				break;
+			case "UP":
+				$x = ($D_CLK_MAP_IMG_WIDTH / 2);
+				$y = ($D_CLK_MAP_IMG_HEIGHT / 2) - $movY;
+				break;
+			case "RIGHTUP":
+				$x = ($D_CLK_MAP_IMG_WIDTH / 2) + $movX;
+				$y = ($D_CLK_MAP_IMG_HEIGHT / 2) - $movY;
+				break;
+			case "LEFT":
+				$x = ($D_CLK_MAP_IMG_WIDTH / 2) - $movX;
+				$y = ($D_CLK_MAP_IMG_HEIGHT / 2);
+				break;
+			case "RIGHT":
+				$x = ($D_CLK_MAP_IMG_WIDTH / 2) + $movX;
+				$y = ($D_CLK_MAP_IMG_HEIGHT / 2);
+				break;
+			case "LEFTDOWN":
+				$x = ($D_CLK_MAP_IMG_WIDTH / 2) - $movX;
+				$y = ($D_CLK_MAP_IMG_HEIGHT / 2) + $movY;
+				break;
+			case "DOWN":
+				$x = ($D_CLK_MAP_IMG_WIDTH / 2);
+				$y = ($D_CLK_MAP_IMG_HEIGHT / 2) + $movY;
+				break;
+			case "RIGHTDOWN":
+				$x = ($D_CLK_MAP_IMG_WIDTH / 2) + $movX;
+				$y = ($D_CLK_MAP_IMG_HEIGHT / 2) + $movY;
+				break;
+		}
+	}
+
+	//-------------------
+	// 地図移動
+	//-------------------
+	if (strlen($x) >0  && strlen($y) > 0) {
+		if (!$plat || !$plon) {
+			$plat = $tpl["plat"];
+			$plon = $tpl["plon"];
+		}
+		$arr_ll = getMapClickLL($plat, $plon, $x, $y, $tpl["lv"], $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT);
+		if ($arr_ll) {
+			$tpl["plat"] = $arr_ll[0];
+			$tpl["plon"] = $arr_ll[1];
+		}
+	} else {
+		if ($mapsc == "CENTER") {
+			$tpl["plat"] = $tpl["initlat"];
+			$tpl["plon"] = $tpl["initlon"];
+		}
+	}
+
+	//-------------------
+	// 駅アイコンのクリッカブルマップ
+	//-------------------
+	if ($eki_lat && $eki_lon && $view_icon) {
+		for ($i=count($eki_nm)-1; $i>=0; $i--) {
+			$eki_icon[$i] = $D_ICON_EKI_IMAGE;
+		}
+		$tpl["mapcoords"]["eki"] = ZdcGetMapIconCoords($tpl["plat"], $tpl["plon"], $tpl["lv"], $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, "GIF", $eki_icon, $eki_lat, $eki_lon);
+		for ($i=count($eki_nm)-1; $i>=0; $i--) {
+			$tpl["mapcoords"]["eki"][$i]["lat"] = $eki_lat[$i];
+			$tpl["mapcoords"]["eki"][$i]["lon"] = $eki_lon[$i];
+			$tpl["mapcoords"]["eki"][$i]["name"] = $eki_nm[$i];
+		}
+		//-------------------
+		// 数字アイコンのクリッカブルマップ
+		//-------------------
+		if ($D_HIDE_NEKI_LIST != 1) {
+			$tpl["mapcoords"]["ekinum"] = ZdcGetMapIconCoords($tpl["plat"], $tpl["plon"], $tpl["lv"], $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, "GIF", $eki_num_icon, $eki_lat, $eki_lon, $D_ICON_NUM_POINT_OFFSET_X, $D_ICON_NUM_POINT_OFFSET_Y);
+			for ($i=count($eki_nm)-1; $i>=0; $i--) {
+				$tpl["mapcoords"]["ekinum"][$i]["lat"] = $eki_lat[$i];
+				$tpl["mapcoords"]["ekinum"][$i]["lon"] = $eki_lon[$i];
+				$tpl["mapcoords"]["ekinum"][$i]["name"] = $eki_nm[$i];
+			}
+		}
+	}
+
+	if ($D_SEVICE_TYPE != "N" && !$neki) {
+		//-------------------
+		// 周辺拠点アイコン表示
+		//-------------------
+		if (!$D_DSP_OTHER_KBN && $D_SHOP_MAX) {
+			// アイコン表示縮尺の場合
+			if ($view_icon) {
+				// 周辺拠点取得
+				$cgi = $D_SSAPI["nkyoten"];
+				$url = sprintf("%s?key=%s&cid=%s&opt=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&latlon=%s&jkn=%s&rad=%s&knsu=%d",
+						$cgi, $D_SSAPI_KEY, $D_CID, $cid, 1, $D_SHOP_MAX, "EUC", $tpl["plat"], $tpl["plon"], "", urlencode($jkn), $D_SHOP_RAD, $D_SHOP_MAX);
+				$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+				list($status, $cnt) = explode("\t", $dat[0]);
+
+
+				if (substr($status[0], 3, 1) == "0") {
+					if ($D_KYO_COL_NAME[0]) $name_idx = array_search("name", $D_KYO_COL_NAME[0]);
+					for ($i=0; $i<$cnt; $i++) {
+						$rec = ZdcConvertEncoding($dat[$i+1]);
+						$rec = explode("\t", $rec);
+						$nkyoten_lat[] = $rec[1];
+						$nkyoten_lon[] = $rec[2];
+						$nkyoten_iconid[] = $rec[3];
+						if ($name_idx !== false) {
+							if ($rec[6+$name_idx]) {
+								//	$nkyoten_name[] = $rec[6+$name_idx];	2012/08/03 H.osamoto mod
+								$nkyoten_name[] = htmlspecialchars($rec[6+$name_idx]);
+							}
+						}
+					}
+				}
+				// 周辺拠点アイコンのクリッカブルマップ
+				$tpl["mapcoords"]["nkyoten"] = ZdcGetMapIconCoords($tpl["plat"], $tpl["plon"], $tpl["lv"], $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, "ID", $nkyoten_iconid, $nkyoten_lat, $nkyoten_lon);
+				if ($nkyoten_name) {
+					for ($i=count($nkyoten_name)-1; $i>=0; $i--) {
+						$tpl["mapcoords"]["nkyoten"][$i]["name"] = htmlspecialchars($nkyoten_name[$i], ENT_QUOTES);
+					}
+				}
+			}
+		}
+	}
+
+	//-------------------
+	// 最寄施設検索
+	//-------------------
+	if ($npoi) {
+		$tpl["npoi"] = $npoi;
+		$cgi = $D_SSAPI["npoi"];
+		// 半径
+		if ($D_CLK_MAP_IMG_WIDTH >= $D_CLK_MAP_IMG_HEIGHT) {
+			// 地図幅（pixel）の距離で取得
+			$radius = floor(($D_CLK_MAP_METER_PER_PIXEL[$lv] * $D_CLK_MAP_IMG_WIDTH) / 2.1);
+		} else {
+			// 地図高さ（pixel）の距離で取得
+			$radius = floor(($D_CLK_MAP_METER_PER_PIXEL[$lv] * $D_CLK_MAP_IMG_HEIGHT) / 2.1);
+		}
+		// ジャンルメニュー
+		$tpl["jnrmn"] = $jnrmn;
+		if (!$jnrmn) $jnrmn = $D_POI_JNRMN;
+		if ($tpl["jnrmn"]) {
+			$arr_jnrmn = explode(",", $tpl["jnrmn"]);
+			foreach ($arr_jnrmn as $i => $jmcd) {
+				$tpl["jnrmn".$jmcd] = "1";
+			}
+		}
+		// ジャンル
+		$jnr = "";
+		// 取得位置
+		$pos = ($pos)?$pos:1;
+		$tpl["pos"] = $pos;
+		//$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&jnrmn=%s&jnr=%s&lat=%s&lon=%s&knsu=%s&frewd=%s&pflg=%d&datum=%s",	mod 2008/08/22 Y.Matsukawa
+		$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&jnrmn=%s&jnr=%s&lat=%s&lon=%s&knsu=%s&frewd=%s&pflg=%d&datum=%s&lang=%s",
+					//$cgi, $D_SEARCH_CORPID, $cid, $D_SRARCH_SRVSID, $D_SSAPI_KEY, $pos, $D_POI_PAGE, $jnrmn, $jnr,
+					$cgi, $D_SEARCH_CORPID, $cid, $D_SRARCH_SRVSID, $D_SSAPI_KEY, 1, $D_POI_MAX, $jnrmn, $jnr,
+					//$tpl["plat"], $tpl["plon"], $D_POI_MAX, $keyword, $D_PFLG, $D_DATUM);		mod 2008/08/22 Y.Matsukawa
+					$tpl["plat"], $tpl["plon"], $D_POI_MAX, $keyword, $D_PFLG, $D_DATUM,$D_POI_LANG);
+		$url_rad = $url.sprintf("&rad=%s", $radius);
+		// 半径指定して検索
+		$dat = ZdcHttpRead($url_rad, 0, $D_SOCKET_TIMEOUT);
+		list($status, $cnt, $allcnt) = explode("\t", $dat[0]);
+		if (substr($status, 3) == "19200") {
+			// 半径上限値エラーの場合は半径指定せずに再検索
+			$url_rad = $url."&rad=0";
+			$dat = ZdcHttpRead($url_rad, 0, $D_SOCKET_TIMEOUT);
+			list($status, $cnt, $allcnt) = explode("\t", $dat[0]);
+		}
+		if (substr($status, 3, 1) == "0") {
+			//$poi_more = (substr($status, 7) == "1");
+			$poi_more = ($pos+$D_POI_PAGE <= $allcnt);
+			$n = 0;
+			$out_cnt = 0;
+			for ($i=0; $i<$cnt; $i++) {
+				$rec = ZdcConvertEncoding($dat[$i+1]);
+				$rec = explode("\t", $rec);
+				// 全アイコンの入りきる縮尺を求めるために、対象データ全ての経緯度を取得
+				$all_poi_lat[] = $rec[1];
+				$all_poi_lon[] = $rec[2];
+				$all_poi_name[] = $rec[3];
+				$all_poi_icon[] = $D_ICON_POI_IMAGE_DIR.$rec[8].".gif";
+				// 現ページのデータ
+				if ($i >= $pos-1 && $i < $pos+$D_POI_PAGE-1) {
+					$poi_lat[] = $rec[1];
+					$poi_lon[] = $rec[2];
+					$poi_name[] = $rec[3];
+					$poi_addr[] = $rec[4];
+					$poi_tel[] = $rec[6];
+					$poi_dist[] = $rec[7];
+					$poi_jnrmn[] = $rec[8];
+					$poi_icon[] = sprintf($D_ICON_NUM_POINT_IMAGE, $n+1);
+					$tpl["poilist"][$n]["id"] = $n;
+					$tpl["poilist"][$n]["no"] = ($n+1);
+					$tpl["poilist"][$n]["cid"] = $rec[0];
+					$tpl["poilist"][$n]["lat"] = $rec[1];
+					$tpl["poilist"][$n]["lon"] = $rec[2];
+					$tpl["poilist"][$n]["name"] = $rec[3];
+					$tpl["poilist"][$n]["addr"] = $rec[4];
+					$tpl["poilist"][$n]["zip"]  = $rec[5];
+					$tpl["poilist"][$n]["tel"]  = $rec[6];
+					$tpl["poilist"][$n]["dist"] = $rec[7];
+					if($rec[7] > 1000){
+						$tpl["poilist"][$n]["dist_m"] = round($rec[7]/1000,2)."km";
+					} else {
+						$tpl["poilist"][$n]["dist_m"] = round($rec[7],0)."m";
+					}
+					$tpl["poilist"][$n]["jnrmn"] = $rec[8];
+					$tpl["poilist"][$n]["jnr"]   = $rec[9];
+					$tpl["poilist"][$n]["jnrnm"] = $rec[10];
+					$tpl["poilist"][$n]["jnrimg"]= sprintf("%s%s.gif",$D_ICON_POI_IMAGE_DIR,$rec[8]);
+					$tpl["poilist"][$n]["numimg"]= sprintf($D_ICON_NUM_CUBE_IMAGE, $n+1);
+					$n++;
+				// 現ページ以外のデータ
+				} else {
+					// ※あまり多くのアイコンを重畳すると画像が壊れるので、最大100個まで
+					if ($out_cnt <= $D_CLK_NPOI_DARKICON_MAX) {
+						$poi_out_lat[] = $rec[1];
+						$poi_out_lon[] = $rec[2];
+						$poi_out_jnrmn[] = $rec[8];
+						$out_cnt++;
+					}
+				}
+			}
+			if ($pos > 1) {
+				$tpl["prev_pos"] = $pos - $D_POI_PAGE;
+			}
+			if ($poi_more) {
+				$tpl["next_pos"] = $pos + $D_POI_PAGE;
+			}
+			$tpl["max"] = $cnt;
+			$tpl["start"] = $pos;
+			$tpl["end"] = $pos + $n - 1;
+			// 全てのアイコンが入る縮尺レベルを算出（検索実行時のみ）
+			if ($npoisrch) {
+				$all_poi_lat[] = $tpl["plat"];
+				$all_poi_lon[] = $tpl["plon"];
+				ZdcGetZoomLevel($D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, $all_poi_lon, $all_poi_lat, &$clon, &$clat, &$clv, 1);
+				array_pop($all_poi_lat);
+				array_pop($all_poi_lon);
+				if ($clv > $tpl["lv"]) $tpl["lv"] = $clv;
+			}
+			if ($poi_out_lat && $poi_out_lon) {
+				if ($tpl["lv"] < $D_CLK_NPOI_DARKICON_MIN_LV) {
+					unset($poi_out_lat);
+					unset($poi_out_lon);
+				}
+			}
+			//-------------------
+			// 施設アイコンのクリッカブルマップ
+			//-------------------
+			if ($all_poi_lat && $all_poi_lon && $view_icon) {
+				$tpl["mapcoords"]["poijnr"] = ZdcGetMapIconCoords($tpl["plat"], $tpl["plon"], $tpl["lv"], $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, "GIF", $all_poi_icon, $all_poi_lat, $all_poi_lon);
+				for ($i=count($all_poi_name)-1; $i>=0; $i--) {
+					$tpl["mapcoords"]["poijnr"][$i]["lat"] = $all_poi_lat[$i];
+					$tpl["mapcoords"]["poijnr"][$i]["lon"] = $all_poi_lon[$i];
+					$tpl["mapcoords"]["poijnr"][$i]["name"] = $all_poi_name[$i];
+				}
+			}
+			//-------------------
+			// 数字アイコンのクリッカブルマップ
+			//-------------------
+			if ($poi_lat && $poi_lon && $view_icon) {
+				$tpl["mapcoords"]["poi"] = ZdcGetMapIconCoords($tpl["plat"], $tpl["plon"], $tpl["lv"], $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, "GIF", $poi_icon, $poi_lat, $poi_lon, $D_ICON_NUM_POINT_OFFSET_X, $D_ICON_NUM_POINT_OFFSET_Y);
+				for ($i=count($poi_name)-1; $i>=0; $i--) {
+					$tpl["mapcoords"]["poi"][$i]["lat"] = $poi_lat[$i];
+					$tpl["mapcoords"]["poi"][$i]["lon"] = $poi_lon[$i];
+					$tpl["mapcoords"]["poi"][$i]["name"] = $poi_name[$i];
+				}
+			}
+		} else {
+			$tpl["msg"] = $D_MSG_NPOI_NOLIST;
+		}
+	}
+
+	//-------------------
+	// 画面設定
+	//-------------------
+	$tpl["cid"] = $cid;
+	$tpl["neki"] = $neki;
+	$tpl["erlat"] = $erlat;
+	$tpl["erlon"] = $erlon;
+	$tpl["D_CLK_MAP_IMG_WIDTH"] = $D_CLK_MAP_IMG_WIDTH;
+	$tpl["D_CLK_MAP_IMG_HEIGHT"] = $D_CLK_MAP_IMG_HEIGHT;
+	// css
+	$j = 0;
+	if ($D_JSCSS) {
+		foreach ($D_JSCSS as $key => $value) {
+			$tpl["css"][$j]["src"] = $value;
+			$j ++;
+		}
+	}
+	// js
+	$j = 0;
+	$tpl["js"][$j]["charset"]  = "EUC-JP";
+	//$tpl["js"][$j++]["src"] = $D_DIR_BASE."drag.js?".$prm;		mod 2010/07/20 Y.Matsukawa
+	$tpl["js"][$j++]["src"] = $D_DIR_BASE_G."drag.js?".$prm;
+	// コントローラ（スクロール）
+	$tpl["c_lup"]	= "LEFTUP";
+	$tpl["c_up"]	= "UP";
+	$tpl["c_rup"]	= "RIGHTUP";
+	$tpl["c_l"]		= "LEFT";
+	$tpl["c_r"]		= "RIGHT";
+	$tpl["c_ldw"]	= "LEFTDOWN";
+	$tpl["c_dw"]	= "DOWN";
+	$tpl["c_rdw"]	= "RIGHTDOWN";
+	$tpl["c_c"]		= "CENTER";
+	// コントローラ（ズーム）
+	$i = 0;
+	foreach ($D_ZOOM as $lvno => $z) {
+		$i++;
+		if ($lvno >= $D_MAP_SCALE_MAX && $lvno <= $D_MAP_SCALE_MIN) {
+			if ($tpl["lv"] == $lvno) {
+				$tpl["zoomcrr".$i] = $lvno;
+			} else {
+				$tpl["zoom".$i] = $lvno;
+			}
+			if ($i == $D_MAP_SCALE_MAX) $min_lvno = $lvno;
+			if ($i == $D_MAP_SCALE_MIN) $max_lvno = $lvno;
+		}
+	}
+	if ($tpl["lv"] > $min_lvno) $tpl["zoomout"] = $tpl["lv"] - 1;
+	if ($tpl["lv"] < $max_lvno) $tpl["zoomin"] = $tpl["lv"] + 1;
+	// ルート
+	if ($D_ROUTE_TYPE) $tpl["D_ROUTE_TYPE"] = $D_ROUTE_TYPE;
+	// キャッシュ抑制
+	$tpl["nocache"] = time();
+}
+
+//-------------------
+// 画面出力
+//-------------------
+$tpl["err"] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	$tpl["c_mapurl"] = sprintf("%s?cid=%s&lat=%d&lon=%d&lv=%d&lay=%s",
+			"c_map.htm", $cid, $tpl["plat"], $tpl["plon"], $tpl["lv"], $D_MAP_LAYER_KBN);
+	if ($view_icon) {
+		$tpl["c_mapurl"] .= sprintf("&icon=%s&iclat=%d&iclon=%d", $tpl["icon"], $tpl["iclat"], $tpl["iclon"]);
+	}
+	// 周辺拠点アイコン
+	if ($nkyoten_iconid) {
+		$tpl["c_mapurl"] .= sprintf("&nkic=%s&nklat=%s&&nklon=%s", implode(",", $nkyoten_iconid), implode(",", $nkyoten_lat), implode(",", $nkyoten_lon));
+	}
+	// 最寄駅アイコン
+	if ($eki_lat && $eki_lon && $view_icon) {
+		$tpl["c_mapurl"] .= sprintf("&eiclat=%s&eiclon=%s", implode(",", $eki_lat), implode(",", $eki_lon));
+		if ($D_HIDE_NEKI_LIST != 1) {
+			$tpl["c_mapurl"] .= "&ekinumicon=1";
+		}
+	}
+	// 最寄駅ルート
+	if ($erlat && $erlon && $view_icon) {
+		$tpl["c_mapurl"] .= sprintf("&rstpos=%s&redpos=%s", $erlat.",".$erlon, $tpl["iclat"].",".$tpl["iclon"]);
+	}
+	// 最寄施設アイコン
+	if ($poi_lat && $poi_lon && $view_icon) {
+		$tpl["c_mapurl"] .= sprintf("&piclat=%s&piclon=%s&picjnrmn=%s", implode(",", $poi_lat), implode(",", $poi_lon), implode(",", $poi_jnrmn));
+		if ($poi_out_lat && $poi_out_lon) {
+			$tpl["c_mapurl"] .= sprintf("&pxiclat=%s&pxiclon=%s&pxicjnrmn=%s", implode(",", $poi_out_lat), implode(",", $poi_out_lon), implode(",", $poi_out_jnrmn));
+		}
+	}
+	// mod 2011/07/05 Y.Nakajima [
+	$HtmlTemplate = new HtmlTemplate();
+	if (file_exists($D_SYSDIR_COMPANY.$s_tplname)) {
+		$HtmlTemplate->t_include($D_SYSDIR_COMPANY.$s_tplname,$tpl);
+	}
+	//@HtmlTemplate::t_include($D_SYSDIR_COMPANY.$s_tplname,$tpl);
+	// mod 2011/07/05 Y.Nakajima ]
+
+} else {
+	ZdcLogPut(1);
+	// mod 2011/07/05 Y.Nakajima [
+	$HtmlTemplate = new HtmlTemplate();
+	$HtmlTemplate->t_include($D_SYSDIR_COMPANY."emapview_error.tpl",$tpl);
+	//@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_error.tpl",$tpl);
+	for($i = 0;$i < 10;$i ++) {
+		if (file_exists($D_SYSDIR_COMPANY."emapview_error_".$i.".tpl")) {
+			$HtmlTemplate->t_include($D_SYSDIR_COMPANY."emapview_error_".$i.".tpl",$tpl);
+		}
+		//@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_error_".$i.".tpl",$tpl);
+	}
+	// mod 2011/07/05 Y.Nakajima ]
+}
+
+?>

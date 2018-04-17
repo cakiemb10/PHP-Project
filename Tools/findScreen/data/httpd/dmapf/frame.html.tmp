@@ -1,0 +1,12 @@
+<html lang="ja">
+<head>
+<meta http-equiv="Content-type" content="text/html; charset=euc-jp">
+<meta http-equiv="Content-Style-type" content="text/css">
+<title>###########</title>
+<style type="text/css"><!--
+--></style>
+</head>
+<frameset rows="80%,*" onmousewheel="">
+  <frame src="http://test.e-map.ne.jp/dmap/init.html" style="touch-action: manipulation;"></frame>
+</frameset>
+</html>

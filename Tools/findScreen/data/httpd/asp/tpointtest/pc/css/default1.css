@@ -1,0 +1,59 @@
+*{margin:0; padding:0;}
+body{font-family:"MS P Gothic",sans-serif;
+ margin:0 auto;
+ padding:0px;
+ border:none;
+ font-size:80%;
+ line-height:1.4;
+ text-align:center;
+ color:#333333;
+}
+div,h1,h2,h3,h4,h5,h6,p,ul,ol,li,dl,dt,dd,form,textarea,select,img,a{
+ margin:0px;
+ padding:0px;
+ list-style:none;
+ border:none;
+}
+
+table,caption,thead,tfoot,tbody,tr,th,td{
+ font-style:normal;
+ font-weight:normal;
+ border-collapse:collapse;
+ border:none;
+}
+a:link, a:hover, a:active {
+ color:#0033CC;
+ text-decoration:underline;
+}
+a:visited {
+ color:#990099;
+}
+li img{vertical-align:bottom;}
+
+
+.clearfix:after{
+ content:".";
+ display:block;
+ clear:both;
+ height:0;
+ visibility:hidden;
+}
+.clearfix{display:inline-block;}
+
+/* exlude MacIE5 \*/
+* html .clearfix{height:1%}
+.clearfix{display:block;}
+/* end MacIE5 */ 
+
+.clearfix2:after{
+ content: "";
+ display: block;
+ height: 0;
+ clear: both;
+}
+.clearfix2{
+ display: inline-block;
+}
+
+.clearfix3{overflow: hidden;}
+* html .clearfix3{height: 1%;}

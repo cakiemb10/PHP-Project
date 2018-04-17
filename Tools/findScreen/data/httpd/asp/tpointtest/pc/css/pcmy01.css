@@ -1,0 +1,28 @@
+@charset "shift_jis";
+
+/* CAM */
+
+#MypageCampaignArea .BoxWrapper{
+	width:656px;
+	background:url(../img/pcmy01/box.gif) repeat-y;
+	margin-bottom:10px;
+	clear:both;
+	position:relative;
+	background-image: url(../img/pcmy01/box.gif);
+}
+#MypageCampaignArea .BoxArea {background:url(../img/pcmy01/box_bottom.gif) left bottom no-repeat; padding:6px 10px 10px 10px;}
+#MypageCampaignArea .BoxArea .box_left  {width:310px;height:55px;float:left;}
+#MypageCampaignArea .BoxArea .box_right {width:310px;height:55px;float:left;}
+#MypageCampaignArea .BoxArea .thm{text-align:left;padding:0px 20px 7px 20px;float:left;}
+#MypageCampaignArea .BoxArea .txt{width:190px;height:auto;text-align:left;padding:0 5px 7px 0;float:left;}
+
+#MypageCampaignArea .RnSearch {background:url(../img/pcmy01/bg_line.gif) repeat-x; margin-top:6px; padding-top:7px;height:50px;clear:both;}
+#MypageCampaignArea .RnSearch .box_left  {width:310px;height:50px;float:left;}
+#MypageCampaignArea .RnSearch .box_right {width:310px;height:50px;float:left;}
+#MypageCampaignArea .RnSearch .thm{text-align:left;padding:0 20px 7px 20px;float:left;}
+#MypageCampaignArea .RnSearch .txt{width:190px;height:auto;text-align:left;padding:0 5px 7px 0;float:left;}
+
+.MypageInformationList{position:absolute; top:10px; right:13px;}
+.MypageInformationList2{position:absolute; top:33px; right:13px;}
+
+

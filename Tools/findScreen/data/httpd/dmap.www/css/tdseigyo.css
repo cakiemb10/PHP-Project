@@ -1,0 +1,634 @@
+/* Java画面標準スタイルシート */
+
+/* 全体 */
+.bodystyle{
+	font            : normal normal normal 14px 'MS UI Gothic',monospace;
+	margin          : 0px;
+	padding         : 0px;
+}
+
+/* formスタイル */
+.formstyle{
+	background-color: #F3FAFA;
+	position        : absolute;
+	top             : 11px;
+	left            : 9px;
+}
+
+/* ヘッダ */
+.headerstyle{
+	position        : absolute;
+	top             : 10px;
+    left            : 10px;
+	height          : 50px;
+	width           : 98%;
+	padding         : 12px;
+	background-color: #2255a4;
+    color           : #FFFFFF;
+}
+
+/* ヘッダー画面名スタイル */
+.headerstyle-gamen {
+    position        : absolute;
+	left            : 5px;
+    font-family     : 'MS UI Gothic',monospace;
+	font-size       : 24px;
+    vertical-align  : middle;
+    line-height	    : 24px;
+    font-weight     : bold;
+}
+
+/* ヘッダーログイン情報 */
+.headerstyle-linfo {
+    position        : absolute;
+    right           : 0px;
+    font-family     : 'MS UI Gothic',monospace;
+    font-size       : 12px;
+    vertical-align  : middle;
+    line-height	    : 24px;
+}
+
+/* メッセージエリア */
+.style-messagearea{
+    position        : absolute;
+    left            : 0px;
+    bottom          : 0px;
+    width           : 100%;
+    height          : 35px;
+    color           : black;
+}
+
+/* メッセージエリアエラー */
+.msgarea-err{
+    color           : red;
+}
+
+/* 業務画面 */
+/* フォントサイズ：特大 */
+.font_x-big{
+    font-size       : 18px;
+    font-weight     : bold;
+}
+/* フォントサイズ：大 */
+.font_big{
+    font-size       : 16px;
+}
+/* フォントサイズ：中 */
+.font_normal{
+    font-size       : 14px;
+}
+/* フォントサイズ：小 */
+.font_small{
+	font-size       : 12px;
+}
+
+/* ラベル背景色:通常 */
+.label_bgcol_normal{
+    color           : #000000;
+}
+/* ラベル背景色:注意喚起 */
+.label_bgcol_warn{
+    color           : #FF0000;
+}
+/* グリッド背景色:通常 */
+.grid_bgcol_normal{
+    background-color: #FFFFFF;
+}
+/* 背景色:通常 */
+.bgcol_normal{
+}
+/* 背景色:注意喚起 */
+.bgcol_warn{
+    background-color: #FFFF00;
+}
+/* 背景色:注意喚起 */
+.bgcol_warn_grid{
+    background-color: #FFFF00 !important;
+}
+/* 背景色:エラー */
+.bgcol_error{
+    background-color: #FFC0CB;
+}
+/* 背景色:エラー */
+.bgcol_error_grid{
+    background-color: #FFC0CB !important;
+}
+/* 背景色:参照項目 */
+.bgcol_inactive{
+    background-color: #E0E0E0;
+}
+/* ボタン背景色:照会系 */
+.bgcol_view{
+    background-color: #C0C0C0;
+}
+/* ボタン背景色:操作系 */
+.bgcol_action{
+    background-color: #C0C0C0;
+}
+/* ボタン背景色:戻る系 */
+.bgcol_return{
+    background-color: #FFC0CB;
+}
+
+.bgcol_btnactive{
+    background-color: #00BBFF !important;
+}
+
+/* 処理中のボタン背景色 */
+.bgcol_btnexecute{
+    background-color: #333399 !important;
+}
+
+/* ボタン背景:前画面へ画像使用 */
+.bgimg_prev{
+    background: url('./button/prev.png');
+    border: 0px solid #000;
+}
+/* ボタン背景:次画面へ画像使用 */
+.bgimg_next{
+    background: url('./button/next.png');
+    border: 0px solid #000;
+}
+/* ボタン背景:閉じる画像使用 */
+.bgimg_close{
+    background: url('./button/close.png');
+    border: 0px solid #000;
+}
+
+/* 非表示 */
+.style-hidden{
+    visibility      : hidden;
+    z-index         : -1;
+}
+
+.bold{
+    font-weight     : bold;
+}
+.red{
+    color           : #FF0000;
+}
+
+/* リンク */
+A:link{
+    color           : #3366CC;
+}
+A:visited{
+    color           : #A1005F;
+}
+A:active{
+    color           : #FF0000;
+}
+
+.style-button{
+    height          : 20px;
+    font-family     : 'MS UI Gothic';
+}
+.style-textbox{
+    font-family     : 'MS UI Gothic';
+    border          : 1px solid gray;
+    padding-top     : 3px;
+}
+.style-textarea{
+    font-family     : 'MS UI Gothic';
+}
+.style-label{
+    background-color: #98FB98;
+    border          : 1px solid black;
+    vertical-align  : middle
+}
+.style-label-transparent{
+    border          : 0px solid black;
+    vertical-align  : middle
+}
+.style-select{
+    font-family     : 'MS UI Gothic';
+}
+.style-radio{
+    vertical-align  : top;
+}
+.style-check{
+    vertical-align  : top;
+}
+.fakeContainer {
+    margin          : 0 0 22px;
+    border          : none;
+    overflow        : hidden;
+}
+
+
+/* グリッド関連 */
+.style-grid {
+    border-style    : none;
+    table-layout    : fixed;
+}
+.style-grid-designtime {
+    border-style    : none;
+}
+.style-grid-base {
+    background-color: #D0D0D0;
+}
+.style-grid-line {
+    border          : 1px solid black;
+}
+.style-overflow-x-scroll {
+    overflow-x      : scroll;
+}
+.style-overflow-y-scroll {
+    overflow-y      : scroll;
+}
+.style-overflow-x-hidden {
+    overflow-x      : hidden;
+}
+.style-overflow-y-hidden {
+    overflow-y      : hidden;
+}
+
+th{
+    background-color: #90ee90 !important;
+    font-weight     : normal;
+    white-space     : nowrap;
+    border-width    : 0px 1px 1px 0px;
+    padding         : 2px 0px 2px 0px;
+    cursor          : default;
+    overflow        : hidden;
+    white-space     : nowrap;
+/*  height          : 20px;  */
+    table-layout    : fixed;
+}
+table.style-grid tr {
+    font-family     : 'MS UI Gothic';
+    vertical-align  : middle;
+}
+.style-grid-td {
+    margin          : 0px 0px 1px 0px;
+    padding         : 0px 1px 0px 1px;
+    height          : 20px;
+    table-layout    : fixed;
+    border-width    : 0px 1px 1px 0px;
+}
+.gridstyle-input{
+    font-family     : 'MS UI Gothic';
+    border          : 0px;
+    cursor          : default;
+    padding-right   : 2px;
+}
+.gridstyle-select{
+    font-family     : 'MS UI Gothic';
+    border          : 1px solid red;
+}
+.top_freezing {
+    z-index         : 2;
+    position        : relative;
+}
+.left_freezing{
+    z-index         : 1;
+    position        : relative;
+    border-width    : 0px 1px 1px 0px;
+}
+.selected {
+    background-color: #B0E0E6 !important;
+}
+.fixed-no {
+    background-color: #F0F0F0;
+    cursor          : default;
+}
+.fixed-col {
+    cursor          : default;
+}
+.gbutton_negative{
+    background-color: #C0C0C0;
+    height          : 22px;
+    font-family     : 'MS UI Gothic';
+}
+.gbutton_active{
+
+    background-color: #ffd700;
+    height          : 22px;
+    font-family     : 'MS UI Gothic';
+}
+.gridstyle-center {
+    text-align      : center;
+}
+.gridstyle-right {
+    text-align      : right;
+}
+.gridstyle-left {
+	text-align      : left;
+}
+/* 罫線（無し）*/
+TABLE.linetype0 td {
+    border-left-style  : none;
+    border-right-style : none;
+    border-top-style   : none;
+    border-bottom-style: none;
+}
+/* 罫線（縦のみ）*/
+TABLE.linetype1 td {
+    border-top-style   : none;
+    border-bottom-style: none;
+}
+/* 罫線（横のみ） */
+TABLE.linetype2 td {
+    border-left-style  : none;
+    border-right-style : none;
+}
+/* 罫線（縦横）*/
+TABLE.linetype3 td {
+}
+
+/* ボタンエリア */
+/* メッセージエリア */
+
+
+
+/* 倉本追加スタイル */
+/* textalign */
+.textalign-left{
+	text-align      : left;
+}
+.textalign-right{
+	text-align      : right;
+}
+.textalign-center{
+	text-align      : center;
+}
+
+.overflow-hidden{
+	overflow		: hidden;
+    white-space     : nowrap;
+}
+
+.style-combo-choice{
+	height          : 20px;
+	font-family     : 'MS UI Gothic';
+	border          : 1px solid gray;
+	padding-top     : 3px;
+}
+.style-combo-text{
+	height          : 20px;
+	font-family     : 'MS UI Gothic';
+    position        : absolute;
+}
+.style-image{
+    border          : 1px solid black;
+}
+.style-image-nosolid{
+    border          : 0px solid black;
+}
+
+/* IE限定スタイル */
+/* 縦書き */
+.style-writingmode{
+    writing-mode    : tb-rl;
+}
+
+/* IME-MODE */
+.ime-disabled{
+	ime-mode		: disabled;
+}
+.ime-active{
+	ime-mode		: active;
+}
+/* ライン */
+.style-line{
+	color           : black;
+}
+
+.italic{
+    font-style:italic;
+}
+.style-font-MSGothic{
+    font-family:'MS Gothic',monospace;
+}
+.style-font-MSPGothic{
+    font-family:'MS PGothic',monospace;
+}
+.style-font-MSPMincho{
+    font-family:'MS PMincho',serif;
+}
+
+.frame{
+    border:none;
+}
+
+/* ラベル枠線定義 */
+.frame-type0{
+    border: 1px #000000 solid;
+}
+
+.frame-type1{
+    border-width : 0px 1px 1px 1px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type2{
+    border-width : 1px 1px 0px 1px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type3{
+    border-width : 1px 1px 1px 0px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type4{
+    border-width : 1px 0px 1px 1px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type5{
+    border-width : 0px 1px 0px 1px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type6{
+    border-width : 1px 0px 1px 0px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type7{
+    border-width : 0px 0px 1px 1px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type8{
+    border-width : 0px 1px 1px 0px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type9{
+    border-width : 1px 0px 0px 1px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type10{
+    border-width : 1px 1px 0px 0px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type11{
+    border-width : 0px 1px 0px 0px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type12{
+    border-width : 0px 0px 0px 1px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type13{
+    border-width : 0px 0px 1px 0px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-type14{
+    border-width : 1px 0px 0px 0px ;
+    border-color : #000000;
+    border-style : solid;
+}
+
+.frame-typeNone{
+    border       : none ;
+}
+
+.style-label-roundedge{
+    border-radius: 8px;            /* 角丸(CSS3)*/
+    -moz-border-radius: 5px;       /* Firefox用 */
+    border-width: 1px;
+    border-color: #000000;
+    border-style: solid;
+    behavior: url(../../resources/PIE.htc);  /* for CSS3-PIE */
+}
+
+.shadow{
+    box-shadow: 2px 2px 0px #000;         /* 影付BOX(CSS3)*/
+    behavior: url(../../resources/PIE.htc);  /* for CSS3-PIE */
+}
+
+
+/* ５０音選択部品 */
+.selectword-txt-NORMAL{
+	position:absolute;
+	text-align:center;
+    width:32px;
+    height:32px;
+	margin:0px;
+	padding:6px;
+	font-size:14px;
+    color           : #000000;
+    background-color: #FFFFFF;
+}
+.selectword-txt-ERROR{
+	position:absolute;
+	text-align:center;
+    width:32px;
+    height:32px;
+	margin:0px;
+	padding:6px;
+	font-size:14px;
+    color           : #FFFFFF;
+    background-color: #000000;
+}
+
+.selectword-btn{
+	position:absolute;
+	width:24px;
+	height:32px;
+}
+.selectword-mekakusi{
+	position:absolute;
+	width:303px;
+	height:32px;
+	background-color:#F3FAFA;
+}
+.selectword-sentaku50-table {
+	border-collapse: collapse;
+	width: 360px;
+	height: 410px;
+}
+.selectword-sentaku50-td {
+	border: 1px solid black;
+	padding: 1px;
+	margin: 0px;
+	width: 70px;
+	height: 41px;
+	text-align: center;
+	vertical-align: middle;
+	font-size:28px;
+	font-weight: bold;
+	background-color:#FFFFFF;
+}
+.selectword-sentaku50-td2 {
+	border: 1px solid black;
+	padding: 1px;
+	margin: 0px;
+	width: 140px;
+	height: 41px;
+	text-align: center;
+	vertical-align: middle;
+	font-size:28px;
+	font-weight: bold;
+	background-color:#FFFFFF;
+}
+.selectword-table-hidden{
+    visibility      : hidden;
+    z-index         : -1;
+    width           : 360px;
+    height          : 410px;
+}
+
+/* グリッド項番列非表示 */
+.gridstyle-nodisp {
+	display: none;
+}
+
+/* 通信中ダイアログ */
+.msgdiv_style{
+	position        : absolute;
+	top             : 50%;
+    left            : 50%;
+    margin-left     : -200px;
+    margin-top      : -100px;
+	height          : 200px;
+	width           : 400px;
+	padding         : 0px;
+    background-color: #ffffff;
+    filter          :alpha(opacity=95);
+    color           : #000000;
+    z-index         : 9999;
+    border-style    : ridge;
+}
+.msgdiv_back_style{
+    position        : absolute;
+    top             : 0px;
+    left            : 0px;
+    height          : 100%;
+    width           : 100%;
+    padding         : 0px;
+    background-color: #ffffff;
+    filter          : alpha(opacity=1);
+    z-index         : 9998;
+}
+
+/* 自動押下ボタン隠しDIV */
+.hide-autobutton {
+    height:50px;
+    width:100px;
+    background-color:#F3FAFA;
+    position:absolute;
+    top:0px;
+    left:0px;
+}

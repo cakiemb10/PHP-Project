@@ -1,0 +1,107 @@
+<?PHP
+// ------------------------------------------------------------
+// 信用組合一覧（住所絞り込み）
+// 画面遷移
+// 1.住所リスト→信用組合一覧（住所絞り込み）→店舗分布（信用組合絞り込み）
+// 2.現在地取得（GPS)→信用組合一覧（住所絞り込み）→店舗分布（信用組合絞り込み）
+// 
+// 開発履歴
+// 2016/02/29 H.Yasunaga	新規作成
+// 2016/03/20 H.Yasunaga	フッターの文言の表示は一覧表示ではなく画像表示で行う
+// 2016/03/22 H.Yasunaga	管轄エリア画像表示に渡すパラメータを拡張子を除外したパラメータに変更
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+
+//-------------------
+// パラメーターの処理
+//-------------------
+$pos = $page * $D_ST_PAGE + 1;
+if (isset($adcd) && adcd != '') {
+	$prefectures_code = substr($adcd, 0, 2);
+	$city_code = substr($adcd, 2);
+} else {
+	// 緯度経度から住所コードの取得
+	$cgi = sprintf("%s?key=%s&opt=%s&enc=%s&mclv=%d&sep=0&lat=%s&lon=%s&pflg=%d&datum=%s",
+			$D_SSAPI["getadstr"], $D_SSAPI_KEY, $D_LOG_CID, "EUC", 6, $lat, $lon, 2, "TOKYO");
+	$dat = ZdcHttpRead($cgi, false, 5, $D_Z2H_OPTION);
+	$status = explode("\t", $dat[0]);
+	$rec = explode("\t", $dat[1]);
+	$adcd = $rec[0];	// 住所コード
+	$prefectures_code = substr($adcd, 0, 2);	// 都道府県コード
+	$city_code = substr($adcd, 2, 3);			// 市区町村コード
+}
+
+//-------------------
+// データアクセス
+//-------------------
+//$cgi = $D_SSAPI["neki"];
+$cgi =  "http://".$EMAP_SSAPI_SRV."/cgi/zskr_unionlist.cgi";
+$url = sprintf("%s?&pcd=%s&ccd=%s", $cgi, $prefectures_code, $city_code);
+$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+$status = explode("\t", $dat[0]);
+$cnt = count($dat);
+
+//-------------------
+// 画面設定
+//-------------------
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+//ページ制御
+if($page) $tpl["_jsPrev"]  = sprintf("javascript:ZdcEmapStationListClick(%d);", ($page - 1));
+if(substr($status[0], -1, 1) == '1') $tpl["_jsNext"] = sprintf("javascript:ZdcEmapStationListClick(%d);", ($page + 1));
+$tpl["max"] = intval($status[2]);
+$tpl["start"] = $pos;
+$tpl["end"]   = $pos + $cnt - 2;
+//施設一覧
+for ($i = 0; $i < $cnt - 1; $i++) {
+	$tpl["list"][$i]["id"] = $i;
+	$tpl["list"][$i]["no"] = ($i+1);
+	$rec = ZdcConvertEncoding($dat[$i+1]);
+	$rec = explode("\t", $rec);
+	$tpl["list"][$i]["union_id"] = $rec[0];
+	$tpl["list"][$i]["union_name"] = $rec[1];
+	$tpl["list"][$i]["union_name_kana"] = $rec[2];
+	$tpl["list"][$i]["nation_wide_flg"] = $rec[3];
+	$tpl["list"][$i]["lat"] = $rec[4];
+	$tpl["list"][$i]["lon"] = $rec[5];
+	$tpl["list"][$i]["jurisdiction_file"] = $rec[6];
+	$tpl["list"][$i]["next_url"] = sprintf("n.htm?lat=%s&lon=%s&cond1=COL_01:%s", $lat, $lon, $rec[0]);
+	// add  2016/03/20 // add  2016/03/20 H.Yasunaga 管轄エリア画像用URL [
+	// 管轄エリア用遷移URL
+	// mod 2016/03/22 H.Yasunaga 管轄エリア画像表示に渡すパラメータを拡張子を除いたファイル名にする[
+	//$tpl["list"][$i]["areamap_url"] = sprintf("zskr_union_areamap.htm?areamap_filename=%s", $rec[6]);
+	$tpl["list"][$i]["areamap_url"] = sprintf("zskr_union_areamap.htm?areamap_filename=%s", preg_replace("/(.+)(\.[^.]+$)/", "$1", $rec[6]));
+	// mod 2016/03/22 H.Yasunaga ]
+	// add 2016/03/20 H.Yasunaga]
+}
+if($cnt < 2) $tpl["msg"] = "選択した地域に該当する信用組合はありませんでした。";
+
+// del 2016/03/20 H.Yasunaga フッターの文言は信用組合管轄エリア画像表示でおこなう
+// テンプレートに信用組合リスト表示であることのフラグを付与
+//$tpl["zskr_union_list"] = 1;
+//$tpl["footer_note"] = $ZSKR_AREA_FOOTER_NOTE;
+// del 2016/03/20 H.Yasunaga ]
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'zskr_unionlist.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	//err
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+
+?>

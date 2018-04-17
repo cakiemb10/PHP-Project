@@ -1,0 +1,202 @@
+<?PHP
+// ------------------------------------------------------------
+// 住所接続IF
+// 住所を元に緯度経度を求めて、マッチングレベルや周辺の拠点の有無などにより
+// 然るべきページにリダイレクトする
+// 
+// 2012/01/11 N.Wada		新規作成
+// 2012/01/19 N.Wada		別CID参照
+// 2012/10/15 H.Osamoto		検索範囲の指定を実距離で指定可能に変更
+// 2017/04/14 H.Yasunaga	日本郵便カスタマイズ
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理
+//-------------------
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');
+
+dbl("QUERY_STRING=".$_SERVER['QUERY_STRING']);
+
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	//-------------------
+	// 住所接続IF
+	//-------------------
+	// 最寄拠点検索は行う
+	$nkyoten_chk_flg = true;
+	
+	if (isset($D_STANDARD_ADDR_IF) && $D_STANDARD_ADDR_IF && isset($addr)) {
+		// リダイレクト先
+		$pg_addrlist = 'search_addr.htm';		// 住所リスト一覧画面
+		$pg_redirect = $D_ADDR_REDIRECT_PAGE;	// オプション設定ファイルで設定したリダイレクト先
+
+		if ( $addr ) {
+			// 住所から緯度経度等を取得
+			$addr_e = urlencode($addr);
+			$url = sprintf("%s?key=%s&opt=%s&enc=%s&mclv=%d&sep=&tod=&frewd=%s", $D_SSAPI["selectaddr"], $D_SSAPI_KEY, $cid, "EUC", 6, $addr_e);
+			$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+			$status = explode("\t", $dat[0]);
+			if($status[0] == "21300000") {
+				$rec = explode("\t", $dat[1]);
+				$lat = intval($rec[5]);
+				$lon = intval($rec[6]);
+				$mlvl = $rec[0];
+				$adcd = $rec[3];
+				$plname = $rec[4];
+				$plname_utf8_enc = urlencode(mb_convert_encoding($plname, 'UTF-8', 'EUC-JP'));
+				// add 2017/04/14 H.Yasunaga 日本郵便カスタマイズ [
+				if ($D_JPOST_CUSTOM_ENCODE) {
+					$plname_jpost_enc = urlencode(mb_convert_encoding($plname, $tpl['jp_param_enc'], 'EUC-JP'));
+				}
+				// add 2017/04/14 H.Yasunaga ]
+			}
+			// マッチングレベルを比較
+			if ($mlvl && isset($D_ADCD_LVL[$mlvl])) {
+				// しきい値が設定されていれば、しきい値チェック
+				if (isset($D_ADDR_MATCH_LIST_LEVEL) && $D_ADDR_MATCH_LIST_LEVEL && isset($D_ADCD_LVL[$D_ADDR_MATCH_LIST_LEVEL])) {
+					if ($D_ADCD_LVL[$mlvl] <= $D_ADCD_LVL[$D_ADDR_MATCH_LIST_LEVEL]) {
+						$pg_url = sprintf("%s?pg=1&adcd=%s",
+										$pg_addrlist,
+										$adcd
+										);
+						$nkyoten_chk_flg = false;	// 最寄拠点検索は行わない
+					}
+				}
+			} else {
+				// 住所がマッチングしなくても、リダイレクト設定があればそれに従う
+				if (isset($D_ADDR_NO_MATCH_REDIRECT) && $D_ADDR_NO_MATCH_REDIRECT) {
+					$pg_url = $pg_redirect.'?';
+				}
+				$nkyoten_chk_flg = false;	// 最寄拠点検索は行わない
+			}
+		} else {
+			// 住所が無くても、リダイレクト設定があればそれに従う
+			if (isset($D_ADDR_EMPTY_REDIRECT) && $D_ADDR_EMPTY_REDIRECT) {
+				$pg_url = $pg_redirect.'?';
+			}
+			$nkyoten_chk_flg = false;	// 最寄拠点検索は行わない
+		}
+		
+	}
+	
+	// 最寄拠点検索を行い、指定された範囲・条件内に拠点があるかをチェック
+	if ( $nkyoten_chk_flg && $lat && $lon ) {
+		// リダイレクト先
+		$pg_nearmap = 'nmap.htm';				// 最寄り拠点一覧地図画面
+		$pg_near = 'n.htm';						// 最寄り拠点一覧画面
+
+		$cgi = $D_SSAPI['nkyoten'];
+		$pos = 1;
+		$cnt = 1;
+		$knsu = 1;
+		$jkn = '';
+		// 条件生成
+		if(isset($filter) && $filter != ''){
+			$wherefilter = '';
+			$exandfilter = array();
+			$where_all = explode('@', $filter);
+			foreach($where_all as $where_val){
+				$where = explode('=', $where_val);
+				if (in_array($where[0], $D_FILTER_EX_AND_COND)) {
+					$exandfilter[] = $where[0].":'".$where[1]."'";
+				} else {
+					if ($wherefilter) $wherefilter .= ' '.$D_FILTER_U_COND.' ';
+					$wherefilter .= $where[0].":'".$where[1]."'";
+				}
+			}
+			if (count($exandfilter)) $wherefilter = implode(' AND ', $exandfilter).($wherefilter?' AND ('.$wherefilter.')':'');
+			if ($wherefilter) $jkn = urlencode('('.$wherefilter.')');
+		} else {
+			$filter = "";
+		}
+		if ($cond_jkn != '') {
+			if ($jkn != '') {
+				$jkn .= urlencode(' AND ('.$cond_jkn.')');
+			} else {
+				$jkn = urlencode('('.$cond_jkn.')');
+			}
+		}
+		// 最寄り拠点データ取得
+		$prm = sprintf('&lat=%s&lon=%s&pos=%d&cnt=%d&rad=%s&knsu=%d&jkn=%s', $lat, $lon, $pos, $cnt, $D_SHOP_RAD, $knsu, $jkn);
+		//$url = sprintf('%s?cid=%s&key=%s&opt=%s%s', $cgi, $D_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);		mod 2012/01/19 N.Wada
+		$url = sprintf('%s?cid=%s&key=%s&opt=%s%s', $cgi, $D_DATA_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+		// add 2012/10/15 H.Osamoto [
+		if (isset($D_ABS_DIST) && $D_ABS_DIST) {
+			$url .= "&absdist=".$D_ABS_DIST;
+		}
+		// add 2012/10/15 H.Osamoto ]
+		$dat = ZdcHttpRead($url, false, 5);
+		list($rtncd, $getcnt, $hitcnt) = explode("\t", $dat[0]);
+		// 取得件数でリダイレクト先を変える
+		if( $getcnt > 0 ) {
+			// 周辺に拠点がある場合は、地図を表示
+			$pg_url = sprintf("%s?pltype=%s&plname=%s&lat=%s&lon=%s",
+							$pg_nearmap,
+							D_PL_TYPE_ADDRL,
+							$plname_utf8_enc,
+							$lat,
+							$lon
+							);
+			if ($D_JPOST_CUSTOM_ENCODE) {
+				$pg_url = sprintf("%s?pltype=%s&plname=%s&lat=%s&lon=%s",
+							$pg_nearmap,
+							D_PL_TYPE_ADDRL,
+							$plname_jpost_enc,
+							$lat,
+							$lon
+							);
+			}
+		} else {
+			// 周辺に拠点がない場合は、結果０件の一欄を表示
+			$pg_url = sprintf("%s?enc=UTF8&pltype=%s&plname=%s&lat=%s&lon=%s",
+							$pg_near,
+							D_PL_TYPE_ADDRL,
+							$plname_utf8_enc,
+							$lat,
+							$lon
+							);
+			if ($D_JPOST_CUSTOM_ENCODE) {
+				$pg_url = sprintf("%s?enc=%s&pltype=%s&plname=%s&lat=%s&lon=%s",
+							$pg_near,
+							$tpl['jp_param_enc'],
+							D_PL_TYPE_ADDRL,
+							$plname_jpost_enc,
+							$lat,
+							$lon
+							);
+			}
+		}
+	}
+	
+	// リダイレクト先があればリダイレクト
+	if ( isset($pg_url) && $pg_url ) {
+		$pg_url .= ($pl_prm_enc_all?'&'.$pl_prm_enc_all:'').($freeparms_enc?'&'.$freeparms_enc:'');
+		header("Location: ".$pg_url);
+		exit;
+	}
+
+	// エラー
+	$err = $D_MSG_EMAPVIEW_NOPRM;
+}
+
+//-------------------
+// エラー画面出力
+//-------------------
+$tpl['err'] = $err;
+ZdcLogPut(1);
+htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+?>

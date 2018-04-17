@@ -1,0 +1,6 @@
+log4php.rootLogger=debug, EMAP_MOBILE
+log4php.appender.EMAP_MOBILE=LoggerAppenderDailyFile
+log4php.appender.EMAP_MOBILE.DatePattern=YmdH
+log4php.appender.EMAP_MOBILE.file=/home/emap/logs/log_mobile_%s.log
+log4php.appender.EMAP_MOBILE.layout=LoggerPatternLayout
+log4php.appender.EMAP_MOBILE.layout.ConversionPattern=%d %t %p %c %L %x %m%n

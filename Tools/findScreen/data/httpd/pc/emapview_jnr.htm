@@ -1,0 +1,42 @@
+<?PHP
+// ------------------------------------------------------------
+// 地図制御php 施設ジャンル絞込みモジュール
+// 
+// 開発履歴
+// 2007/03/01 bando@D&I
+//     新規開発
+// 2010/07/20 Y.Matsukawa	SSL対応
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");  // 基本設定
+
+//-------------------
+// 画面設定
+//-------------------
+$tpl["_jsSearch"] = "ZdcEmapSearchNpoi()";
+$tpl["_jsNpoi"]   = "ZdcEmapPoiClick(0)";
+//$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select"],$D_CID);		mod 2010/07/20 Y.Matsukawa
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select_g"],$D_CID);
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["sys_icon_select"],$D_CID);
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+// mod 2011/07/05 Y.Nakajima [
+@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_jnr.tpl",$tpl);
+/*
+$HtmlTemplate = new HtmlTemplate();
+if (file_exists($D_SYSDIR_COMPANY."emapview_jnr.tpl")) {
+	$HtmlTemplate->t_include($D_SYSDIR_COMPANY."emapview_jnr.tpl",$tpl);
+}
+*/
+// mod 2011/07/05 Y.Nakajima ]
+?>

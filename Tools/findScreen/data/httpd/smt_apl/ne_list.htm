@@ -1,0 +1,169 @@
+<?PHP
+// ------------------------------------------------------------
+// 最寄り店舗検索
+//
+// 2011/07/13 Y.Matsukawa	新規作成
+// 2011/09/02 Y.Matsukawa	Maplinkルート探索対応
+// 2011/12/13 K.Masuda 		パラメータ処理追加
+// 2012/01/11 Y.Matsukawa	任意パラメータ
+// 2012/09/10 Y.Matsukawa	【不具合修正】任意パラメータに「&」を含めると正しく引き継がれない、任意パラメータに半角スペース指定すると消える
+// 2013/01/31 H.Osamoto		1000mを超える場合、距離表示をkmで表示
+// 2015/03/18 Y.Matsukawa	総件数表示
+// 2015/03/20 Y.Matsukawa	件数表示
+// 2016/03/30 F.Yokoi		英語版対応
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+//require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理	add 2011/12/13 K.Masuda
+//-------------------
+//require_once('/home/emap/src/smt/inc/proc_get_freeparam.inc');		del 2012/01/11 Y.Matsukawa
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');		// add 2012/01/11 Y.Matsukawa
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	// add 2011/09/02 Y.Matsukawa [
+	if ($svtype == 'N') {
+		require_once('/home/emap/src/smt/inc/act_get_maplink_parm.inc');
+	} else {
+	// add 2011/09/02 Y.Matsukawa ]
+		require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	}
+	//-------------------
+	// データ取得
+	//-------------------
+	$pos = ((($pg-1) * $D_NEKI_ROWS)+1);
+	if ($D_LANG) { // mod 2016/03/30 F.Yokoi [
+		$cgi = $D_SSAPI['npoi'];
+		$prm = sprintf('&lat=%s&lon=%s&pos=%d&cnt=%d&rad=%s&knsu=%d&enc=%s&jnrmn=00110&jnr=00260', $lat, $lon, $pos, $D_NEKI_ROWS, $D_NEKI_RAD, $D_NEKI_MAX, 'EUC');
+		$D_CID = 'ZDC';
+		$lang = $D_LANG=='ja'?'jp':$D_LANG;
+		$url = sprintf('%s?cid=%s&sid=%s&key=%s&opt=%s%s&lang=%s', $cgi, $D_CID, $D_SRARCH_SRVSID, $D_SSAPI_KEY, $D_LOG_CID, $prm, 'mlang_' . $lang);
+	} else {
+		$cgi = $D_SSAPI['neki'];
+		$prm = sprintf('&lat=%s&lon=%s&pos=%d&cnt=%d&rad=%s&knsu=%d&enc=%s', $lat, $lon, $pos, $D_NEKI_ROWS, $D_NEKI_RAD, $D_NEKI_MAX, 'EUC');
+		$url = sprintf('%s?cid=%s&key=%s&opt=%s%s', $cgi, $D_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+	} // mod 2016/03/30 F.Yokoi ]
+	$dat = ZdcHttpRead($url, false, 5);
+	$status = explode("\t", $dat[0]);
+	$cnt = count($dat) - 1;
+	//-------------------
+	// データなし
+	//-------------------
+	if($cnt == 0){
+		$tpl['errmsg'] = $D_MSG_NEKI_NOLIST;
+		$err = true;
+	//-------------------
+	// データあり
+	//-------------------
+	} else {
+		$hit_count = intval(trim($status[2]));
+		$tpl['page'] = $pg;
+		if ($pg == 1) {
+			$tpl['hit_count'] = $hit_count;
+			$tpl['head'] = 1;
+			$tpl['search_count_msg'] = $hit_count.$D_MSG_NEKI_COUNT;
+		}
+		$tpl['max'] = $hit_count;		// add 2015/03/18 Y.Matsukawa
+		$tpl['end'] = $pos + $cnt - 1;		// add 2015/03/20 Y.Matsukawa
+		if ($pos + $cnt - 1 < $hit_count) {
+			$tpl['next'] = 1;
+			$tpl['next_pos'] = $pos + $cnt;
+			// add 2011/09/02 Y.Matsukawa [
+			if ($svtype == 'N') {
+				//$tpl['next_url'] = sprintf('javascript:ZdcEmapSearchNearEkiMaplink(\'%s\',%d);',		mod 2012/01/11 Y.Matsukawa
+				$tpl['next_url'] = sprintf('javascript:ZdcEmapSearchNearEkiMaplink(\'%s\',%d,\'%s\');',
+									//ZdcEsc4JsLiteral($maplink_prm_all),		mod 2012/09/10 Y.Matsukawa
+									ZdcEsc4JsLiteral($maplink_prm_enc_enc_all),
+									$pg + 1,
+									//ZdcEsc4JsLiteral($freeparms)		// add 2012/01/11 Y.Matsukawa	mod 2012/09/10 Y.Matsukawa
+									ZdcEsc4JsLiteral($freeparms_enc_enc)
+									);
+			} else {
+			// add 2011/09/02 Y.Matsukawa ]
+				//$tpl['next_url'] = sprintf('javascript:ZdcEmapSearchNearEki(\'%s\',\'%s\',\'%s\',\'%s\',%d);',		mod 2012/01/11 Y.Matsukawa
+				$tpl['next_url'] = sprintf('javascript:ZdcEmapSearchNearEki(\'%s\',\'%s\',\'%s\',\'%s\',%d,\'%s\');',
+									ZdcEsc4JsLiteral($lat),
+									ZdcEsc4JsLiteral($lon),
+									ZdcEsc4JsLiteral($datum),
+									ZdcEsc4JsLiteral($kid),
+									$pg + 1,
+									//ZdcEsc4JsLiteral($freeparms)		// add 2012/01/11 Y.Matsukawa		mod 2012/09/10 Y.Matsukawa
+									ZdcEsc4JsLiteral($freeparms_enc_enc)
+									);
+			}
+		}
+		for($i = 0; $i < $cnt; $i++) {
+			$rec = explode("\t", $dat[$i + 1]);
+dbl($rec[1]);
+dbl($rec[2]);
+dbl($rec[3]);
+dbl($rec[4]);
+dbl($rec[5]);
+dbl($rec[6]);
+dbl($rec[7]);
+dbl($rec[8]);
+dbl($rec[9]);
+			$tpl['list'][$i]['no'] = $i+1;
+			// add 2011/09/02 Y.Matsukawa [
+			if ($svtype == 'N') {
+				$tpl['list'][$i]['url'] = $D_DIR_BASE_G.'link/'.$maplink_point_prm_all.'/?mode=ne';
+				//$tpl['list'][$i]['url'] .= '&'.$maplink_ex_prm_all;		mod 2012/09/10 Y.Matsukawa
+				$tpl['list'][$i]['url'] .= '&'.$maplink_prm_enc_all;
+				$tpl['list'][$i]['url'] .= '&elat='.$rec[1].'&elon='.$rec[2];
+				$tpl['list'][$i]['url'] .= '&enm='.urlencode(mb_convert_encoding($rec[3], 'UTF8', 'EUC-JP'));
+				$tpl['list'][$i]['url'] .= ($freeparms_enc?'&'.$freeparms_enc:'');		// add 2012/01/11 Y.Matsukawa
+			} else {
+			// add 2011/09/02 Y.Matsukawa ]
+				$tpl['list'][$i]['url'] = $D_DIR_BASE_G.'map/'.$kid.'/?mode=ne';
+				$tpl['list'][$i]['url'] .= '&lat='.$rec[1].'&lon='.$rec[2];
+				$tpl['list'][$i]['url'] .= '&enm='.urlencode(mb_convert_encoding($rec[3], 'UTF8', 'EUC-JP'));
+				$tpl['list'][$i]['url'] .= ($freeparms_enc?'&'.$freeparms_enc:'');		// add 2012/01/11 Y.Matsukawa
+			}
+			$tpl['list'][$i]['lat'] = $rec[1];
+			$tpl['list'][$i]['lon'] = $rec[2];
+			$tpl['list'][$i]['name'] = $rec[3];
+			// 2013/01/31 H.osamoto mod [
+			//	$tpl['list'][$i]['dist'] = round($rec[9]);
+			if (isset($D_DIST_DISP_VARIABLE) && $D_DIST_DISP_VARIABLE) {
+				if ($D_LANG) { // mod 2016/03/30 F.Yokoi [
+					$tpl['list'][$i]['dist'] = cnv_dist($rec[7]);
+				} else {
+					$tpl['list'][$i]['dist'] = cnv_dist($rec[9]);
+				} // mod 2016/03/30 F.Yokoi ]
+			} else {
+				if ($D_LANG) { // mod 2016/03/30 F.Yokoi [
+					$tpl['list'][$i]['dist'] = round($rec[7]);
+				} else {
+					$tpl['list'][$i]['dist'] = round($rec[9]);
+				} // mod 2016/03/30 F.Yokoi 
+			}
+			// 2013/01/31 H.osamoto mod ]
+		}
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	htmloutput($D_SYSDIR_COMPANY.'ne_list.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'error.tpl', $tpl);
+}
+?>

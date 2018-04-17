@@ -1,0 +1,164 @@
+<?php
+// ------------------------------------------------------------
+// 出発地を指定してルート探索
+// 
+// 2010/06/16 Y.Matsukawa	新規作成
+// 2010/07/20 Y.Matsukawa	SSL対応
+// 2010/09/07 Y.Matsukawa	出発地を指定してルート探索（Light、Maplink）
+// 2011/02/09 Y.Matsukawa	内部アクセスをドメインから内部IPに変更
+// 2011/02/16 Y.Matsukawa	検索結果住所一覧で選択した住所を、出発地指定ルートの入力初期値にする
+// 2011/07/07 H.Osamoto		マツキヨ用API2.0対応版
+// 2011/10/03 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// ------------------------------------------------------------
+include('htmltemplate.inc');
+include('./inc/define.inc');
+
+//-------------------
+// 画面設定
+//-------------------
+$tpl['_jsFreeRouteDraw'] = "ZdcEmapFreeRouteDraw('$lat','$lon');";
+$tpl['_jsFreeRouteSearch'] = "ZdcEmapFreeRouteSearch('$lat','$lon',0);";
+
+//-------------------
+// 検索
+//-------------------
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($type) || (isset($type) && !$type)) $type = 'ZipW';
+if (!isset($page) || (isset($page) && !$page)) $page = 0;
+if (!isset($self)) $self = "";
+if (!isset($keyword)) $keyword = "";
+if (isset($mode) && $mode == 'srch') {
+// mod 2011/07/05 Y.Nakajima ]
+	$frewd = urlencode(zdc_htmlspecialchars_decode(ZdcConvertEncoding($keyword)));
+	$start = ($page * $D_SEARCH_FROUTE_LIST_PAGE + 1);
+	// 郵便番号
+	if ($type == 'ZipW') {
+		$cgi = $D_SSAPI["searchzip"];
+		$prm = sprintf("&pos=%d&cnt=%d&enc=%s&zip=%s", $start, $D_SEARCH_FROUTE_LIST_PAGE, "EUC", $frewd);
+		$col_name = 2;
+		$col_lat = 0;
+		$col_lon = 1;
+		$url = sprintf("%s?key=%s&opt=%s&%s", $cgi, $D_SSAPI_KEY, $cid, $prm);
+		$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+		$status = explode("\t", $dat[0]);
+		if(!intval($status[2])) {
+			$type = 'AddrW';
+		}
+	}
+	// 住所フリーワード
+	if ($type == 'AddrW') {
+		$cnt = $D_SEARCH_FROUTE_LIST_PAGE * ($D_SEARCH_MAXPAGE[$type] + 1) + 1;
+		$cgi = $D_SSAPI["searchaddr"];
+		$prm = sprintf("pos=1&cnt=%d&lmt=%d&enc=%s&tod=%s&frewd=%s", $cnt, $cnt, "EUC", $adcd, $frewd);
+		$col_name = 0;
+		$col_lat = 1;
+		$col_lon = 2;
+		$url = sprintf("%s?key=%s&opt=%s&%s", $cgi, $D_SSAPI_KEY, $cid, $prm);
+		$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+		$status = explode("\t", $dat[0]);
+		if(!intval($status[2])) {
+			$ERR = $D_MSG_SEARCH_NODATA[$type];
+		}
+	}
+	if($cgi && !$ERR) {
+		//$self = $D_DIR_BASE."emapview_froute.htm?cid=$cid&$P_FREEPARAMS&";		mod 2011/02/09 Y.Matsukawa
+		$self = $D_DIR_BASE_L."emapview_froute.htm?cid=$cid&$P_FREEPARAMS&";
+		if ($https_req) $self .= "https_req=1&";		// add 2010/07/20 Y.Matsukawa
+		switch($cgi) {
+			default://郵便番号
+				$cnt = count($dat) - 1;
+				for($i = 0;$i < $cnt;$i ++) {
+					$rec = explode("\t",$dat[$i + 1]);
+					$tpl["list"][$i]["no"] = $page * $D_SEARCH_FROUTE_LIST_PAGE + $i + 1;
+					$tpl["list"][$i]["name"] = $rec[$col_name];
+					//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapMapScroll('%s','%s');", $rec[$col_lat], $rec[$col_lon]);	mod 2011/07/07 H.osamoto
+					$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapMapScroll('%s','%s');", cnv_dms2hour($rec[$col_lat]), cnv_dms2hour($rec[$col_lon]));
+				}
+				$tpl["max"] = intval($status[2]);
+				$tpl["start"] = $start;
+				$tpl["end"]   = $start + $cnt - 1;
+				$tpl["page"] = $page + 1;
+				$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_FROUTE_LIST_PAGE);
+				$tpl["status"] = $status[0];
+				$tpl["selname"] = $D_SEL_NAME[$type];
+				break;
+			case $D_SSAPI["searchaddr"]://住所フリーワード
+				$template = "search_list";
+				//マッチングレベルで並び替え
+				$cnt = count($dat) - 1;
+				for($i = 0;$i < $cnt;$i ++) {
+					$rec = explode("\t",$dat[$i + 1]);
+					$list[$i]["name"] = $rec[$col_name];
+					$list[$i]["lat"] = $rec[$col_lat];
+					$list[$i]["lon"] = $rec[$col_lon];
+					$list[$i]["adid"] = $rec[3];
+					$list[$i]["full"] = $rec[4];
+				}
+				usort( $list, "GEOAccess_cmp_sflg" );
+				//
+				if($start + $D_SEARCH_FROUTE_LIST_PAGE <= count($list)) {
+					//次ページあり
+					$cnt = $D_SEARCH_FROUTE_LIST_PAGE;
+					$status[0] = substr($status[0],0,-1)."1";//無理やり
+				} else {
+					//次ページ無し
+					$cnt = count($list) - $start + 1;
+					$status[0] = substr($status[0],0,-1)."0";
+				}
+				for($i = 0;$i < $cnt;$i ++) {
+					$rec = $list[$start + $i - 1];
+					$tpl["list"][$i]["no"] = $page * $D_SEARCH_FROUTE_LIST_PAGE + $i + 1;
+					$tpl["list"][$i]["name"] = $rec["name"];
+					//$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapMapScroll('%s','%s');", $rec["lat"], $rec["lon"]);		mod 2011/07/07 H.osamoto
+					$tpl["list"][$i]["_jsNameLink"] = sprintf("ZdcEmapMapScroll('%s','%s');", cnv_dms2hour($rec["lat"]), cnv_dms2hour($rec["lon"]));
+				}
+				$tpl["max"] = intval($status[2]);
+				$tpl["start"] = $start;
+				$tpl["end"] = $start + $cnt - 1;
+				$tpl["page"] = $page + 1;
+				$tpl["last"] = ceil(intval($status[2]) / $D_SEARCH_FROUTE_LIST_PAGE);
+				$tpl["status"] = $status[0];
+				$tpl["selname"] = $D_SEL_NAME[$type];
+				break;
+		}
+		//最大ページ数チェック
+		if($D_SEARCH_MAXPAGE[$type] && $tpl["last"] > $D_SEARCH_MAXPAGE[$type]) $ERR = $D_MSG_SEARCH_MAXPAGE[$type];
+	}
+}
+
+//-------------------
+// 画面設定
+//-------------------
+// mod 2011/07/05 Y.Nakajima
+if(isset($ERR) && $ERR) {
+	$type = "Err";
+	$tpl["list"] = null;
+}
+//ページ制御等
+switch($type) {
+	case "AddrW"://住所フリーワード
+	case "ZipW"://郵便番号
+		$pg = sprintf("%stype=%s&keyword=%s&page=", $self, $type, $keyword);
+		break;
+	case "Err"://エラー画面
+		// add 2011/07/05 Y.Nakajima
+		if (!isset($ERR)) $ERR = "";
+		$tpl["msg"] .= $ERR;
+		break;
+}
+// add 2011/02/16 Y.Matsukawa [
+// 検索結果住所一覧で選択した住所を、出発地指定ルートの入力初期値にする
+if ($mode == 'init' && isset($frouteinit) && $frouteinit) {
+	$keyword = $frouteinit;
+}
+// add 2011/02/16 Y.Matsukawa ]
+if(isset($page) && $page) $tpl["_jsPrev"] = sprintf("ZdcEmapFreeRoutePage('%s','%s','%s','%s','%s');", $lat, $lon, ($page - 1), $type, $keyword);
+if(isset($tpl["status"]) && substr($tpl["status"], -1, 1) == '1') $tpl["_jsNext"] = sprintf("ZdcEmapFreeRoutePage('%s','%s','%s','%s','%s');", $lat, $lon, ($page + 1), $type, $keyword);
+$tpl["keyword"] = $keyword;
+$tpl['_jsFreeRouteClose'] = 'ZdcEmapFreeRouteClose();';		// add 2010/09/07 Y.Matsukawa
+//-------------------
+// 画面出力
+//-------------------
+ZdcLogPut(0);
+@HtmlTemplate::t_include($D_SYSDIR_COMPANY.'emapview_froute.tpl',$tpl);
+?>

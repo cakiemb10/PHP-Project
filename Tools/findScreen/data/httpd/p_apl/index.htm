@@ -1,0 +1,182 @@
+<?PHP
+// ------------------------------------------------------------
+// 検索TOP
+// 
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2012/01/11 N.Wada		検索TOPとそれ以外のページで表示を切り替えるためのフラグ追加
+// 2012/02/29 Y.Matsukawa	郵便番号検索へリダイレクト
+// 2012/03/01 Y.Matsukawa	【不具合修正】フリーワード「表」文字化け対応
+// 2012/03/12 Y.Matsukawa	スマホリダイレクト（各種接続I/F対応）
+// 2012/11/13 Y.Matsukawa	JCN満空情報取得
+// 2014/05/16 Y.Matsukawa	商品マスタ対応
+// 2014/08/29 Q.Dai 		BrowsingHistoryDisplay
+// 2015/03/17 Y.Matsukawa	絞り込み：任意カラムの部分一致
+// 2015/09/25 H.Yasunaga	日本郵便向けカスタマイズ 絞込条件を通販業者毎に変えるため
+// 2015/10/20 N.Wada		common.jsの読み込み追加
+// 2016/02/05 N.Wada		現在地検索対応
+// 2016/02/05 N.Wada		スマホ現在地取得画面へのQRコード表示
+// 2016/05/06 N.Wada		スマホ現在地取得画面URLをHTTP,HTTPS両対応版に修正
+// 2016/06/30 Y.Uesugi		SEO対策 静的URL生成用の関数の呼び出し追加
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	// add 2012/03/12 Y.Matsukawa
+	//-------------------
+	// UA判定でリダイレクト
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_redirect_ua.inc');
+
+	// add 2012/02/28 Y.Matsukawa
+	//-------------------
+	// Cookieから店舗ID取得して詳細へリダイレクト
+	//-------------------
+	if ($D_COOKIE_KID_REDIRECT) {
+		$cknm = $D_CID.'_'.$D_COOKIE_KID_KEY.'_kid';
+		if (isset($_COOKIE[$cknm]) && $_COOKIE[$cknm] != '') {
+			$url = $D_DIR_BASE_G.'dtl/'.$_COOKIE[$cknm].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($his?'&his='.$his:'');
+			header('Location: '.$url);
+			exit;
+		}
+	}
+	
+	// add 2012/02/29 Y.Matsukawa
+	//-------------------
+	// 郵便番号検索へリダイレクト
+	//-------------------
+	if ($D_REDIRECT_TO_ZIPW && $REDIRECT_ZIPW_KW) {
+		$url = $D_DIR_BASE_G.'search.htm?type=ZipW&keyword='.urlencode($REDIRECT_ZIPW_KW).($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($his?'&his='.$his:'');
+		header('Location: '.$url);
+		exit;
+	}
+
+	// add 2012/11/13 Y.Matsukawa
+	//-------------------
+	// JCNカスタマイズ処理（運休情報表示）
+	//-------------------
+	if ($D_JCN_UNKYU_TOP) {
+		$cgi = $D_SSAPI["kyotenlist"];
+		$prm = sprintf("&cid=%s&pos=%d&cnt=%d&jkn=%s", $D_DATA_CID, 1, 999, urlencode($D_JCN_UNKYU_JKN));
+		$url = sprintf("%s?key=%s&opt=%s%s", $cgi, $D_SSAPI_KEY, $cid, $prm);
+		$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+		$status = explode("\t", $dat[0]);
+		if(intval($status[2])) {
+			$cnt = count($dat) - 1;
+			for($i = 0; $i < $cnt; $i++) {
+				$rec = explode("\t", $dat[$i + 1]);
+				$tpl["unkyulist"][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');
+				for($j = 0; $j < 202; $j++) {
+					if (isset($D_KYO_COL_NAME[0][$j])) {
+						$tmp = $D_KYO_COL_NAME[0][$j];
+						if ($tmp != '') {
+							$d = $rec[5+$j];
+							$tpl["unkyulist"][$i][$tmp] = zdcHtmlspecialchars($d, $tmp);
+							if($d) $tpl["unkyulist"][$i][$tmp."l".$d] = "1";
+							if(intval($d) == 1) $tpl["unkyulist"][$i][$tmp."b"] = "1";
+						}
+					}
+				}
+			}
+		}
+	}
+	// 日本郵便向けカスタマイズ add 2015/09/25 H.Yasunaga [
+	// 店舗絞込を通販業者毎に変えるため
+	if (isset($D_JPOST_CUSTOM) && D_JPOST_CUSTOM) {
+		$tpl['JPOST_COND_TOP'] = $JPOST_SEARCH_COND[$p_s2];
+	}
+	// 日本郵便向けカスタマイズ add 2015/09/25 H.Yasunaga ]
+
+	//List of cookie add 2014/08/29 Q.Dai [
+	$tpl['cookielist'][0]['_urlDetail'] = '';
+	$tpl['cookielist'][0]['name'] = '';
+	$tpl['cookielist'] = getShopDtlFromCookie( $P_FREEPARAMS_ENC);
+	//List of cookie add 2014/08/29 Q.Dai ]
+	//-------------------
+	// 画面設定
+	//-------------------
+	$tpl["shopa_name"] = $D_HISTORY_NAME["ShopA"];
+	for($acnt=2;$acnt<=D_AREA_MAX;$acnt++){
+		$tpl["shopa_name_".$acnt] = $D_HISTORY_NAME["ShopA_".$acnt];
+	}
+	// リンク
+	$tpl['_urlArea'] = 'search_area.htm';
+	$tpl['_urlRosen'] = 'search_rail.htm';
+	$tpl['_urlSearch'] = 'search.htm';
+	$tpl['_jsArea'] = 'ZdcEmapSubmitArea';
+	$tpl['_jsAreaSEO'] = 'ZdcEmapSubmitAreaSEO';	// add 2016/06/30 Y.Uesugi
+	$tpl['_jsRail'] = 'ZdcEmapSubmitRail';
+	$tpl['_jsSetCond'] = 'ZdcEmapSetCond';
+	$tpl['_jsSetFreeParams'] = 'ZdcEmapSetFreeParams';
+	$tpl['_jsEscapeKeyword'] = 'ZdcEmapEscapeKeyword';		// add 2012/03/01 Y.Matsukawa
+	// add 2016/02/05 N.Wada [
+	// 分布地図へ遷移する現在地取得
+	$tmp = 'nmap.htm?pltype='.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'');
+	$tpl['_jsLocCallback'] = $carrier->MakeLocationCallbackFunc($tmp);
+	$tpl['_jsLoc'] = $carrier->MakeLocationSearchScript();
+	// add 2016/02/05 N.Wada ]
+	// add 2016/02/05 N.Wada [
+	// スマホ現在地取得画面QRコード
+	//$tpl["smtlocurl"] = $D_SMT_URL . "loc.htm?";	mod 2016/05/06 N.Wada
+	$tpl["smtlocurl"] = $D_SMT_URL_PRCL . "loc.htm?";
+	if ($D_FREEPARAMS_TO_MBURL && $P_FREEPARAMS) $tpl["smtlocurl"] .= "&".$P_FREEPARAMS;
+	if (isset($D_MBURL_EX) && $D_MBURL_EX != '') {
+		$tpl["smtlocurl"] .= $D_MBURL_EX;
+	}
+	$tpl["smtlocurl_encode"] = urlencode($tpl["smtlocurl"]);
+	$tpl["qrimgsmtlocurl"]  = sprintf("%s?cid=%s&d=%s", $D_QRIMG_URL, $D_CID, urlencode(urlencode($tpl["smtlocurl"])));
+	// add 2016/02/05 N.Wada ]
+	// js
+	$D_JS[] = $D_DIR_BASE_G.'common.js';	// add 2015/10/20 N.Wada
+	//$D_JS[] = $D_DIR_BASE_G.'search.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2015/03/17 Y.Matsukawa
+	$D_JS[] = $D_DIR_BASE_G.'search.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+	// add 2014/05/16 Y.Matsukawa [
+	$D_JS[] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	// 商品マスタ
+	if ($D_PRD) {
+		$D_JS[] = $D_DIR_BASE_G.'prd_select.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');
+	}
+	// add 2014/05/16 Y.Matsukawa ]
+	$j = 0;
+	foreach ($D_JS as $value) {
+		$tpl['js'][$j]['src'] = $value;
+		$tpl['js'][$j]['charset']  = $D_JSAPI_charset;
+		$j++;
+	}
+}
+
+$tpl['search_top'] = 1;	// add 2012/01/11 N.Wada
+
+//-------------------
+// 画面出力
+//-------------------
+//header('X-UA-Compatible: IE=emulateIE7');
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'search_top.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+
+?>

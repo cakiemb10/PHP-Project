@@ -1,0 +1,115 @@
+<?PHP
+// ------------------------------------------------------------
+// 最寄り施設一覧
+// 
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2011/12/05 Y.Matsukawa	別CID参照
+// 2012/03/28 Y.Matsukawa	【不具合修正】最寄り駅／最寄り施設一覧の名称マウスオーバー時に、点滅フレームアイコンが表示不正
+// 2012/05/21 H.osamoto		【不具合修正】最寄り駅／最寄り施設一覧が文字化けする
+// 2015/11/26 F.Yokoi		ページジャンプリンクの追加
+// 2016/07/27 Y.Uesugi		SSL許可時のアイコンCGI SSL対応
+// 2016/08/23 Y.Uesugi		周辺施設一覧にルート表示リンクを追加
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+//-------------------
+// パラメーターの処理
+//-------------------
+$pos = $page * $D_POI_PAGE + 1;
+if (!isset($jnrmn)) $jnrmn = $D_POI_JNRMN;
+//if (!isset($jnr)) $jnr = $D_POI_JNR;
+//if (!isset($keyword)) $keyword = "";
+
+//-------------------
+// データアクセス
+//-------------------
+$cgi = $D_SSAPI["npoi"];
+// mod 2012/05/21 H.osamoto [
+//	$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&jnrmn=%s&jnr=%s&lat=%s&lon=%s&knsu=%s&rad=%s&frewd=%s&pflg=%d&datum=%s&lang=%s",
+//					$cgi, $D_SEARCH_CORPID, $cid, $D_SRARCH_SRVSID, $D_SSAPI_KEY, $pos, $D_POI_PAGE, $jnrmn, '',
+//					//$lat, $lon, $D_POI_MAX, $radius, $keyword, $D_PFLG, $D_DATUM, $D_POI_LANG);		mod 2012/03/28 Y.Matsukawa
+//					$lat, $lon, $D_POI_MAX, $radius, $keyword, 1, $D_DATUM, $D_POI_LANG);
+$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&enc=%s&jnrmn=%s&jnr=%s&lat=%s&lon=%s&knsu=%s&rad=%s&frewd=%s&pflg=%d&datum=%s&lang=%s",
+				$cgi, $D_SEARCH_CORPID, $cid, $D_SRARCH_SRVSID, $D_SSAPI_KEY, $pos, $D_POI_PAGE, "EUC", $jnrmn, '',
+				$lat, $lon, $D_POI_MAX, $radius, $keyword, 1, $D_DATUM, $D_POI_LANG);
+// mod 2012/05/21 H.osamoto ]
+dbl($url);
+$dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+if (isset($dat[0])) {
+	$status = explode("\t",$dat[0]);
+	$cnt = count($dat);
+} else {
+	$status = "";
+	$cnt = 0;
+}
+
+//-------------------
+// 画面設定
+//-------------------
+//$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+//$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_CID);		mod 2011/12/05 Y.Matsukawa
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+$tpl["_cgiSysIconimgSSL"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select_ssl"], $D_DATA_CID);	//add 2016/07/27 Y.Uesugi
+//ページ制御
+if(isset($page) && $page > 0) {
+	$tpl["_jsPrev"] = sprintf("ZdcEmapPoiListClick(%d)",($page - 1));
+}
+if(isset($status[0]) && substr($status[0],-1,1) == '1') {
+	$tpl["_jsNext"] = sprintf("ZdcEmapPoiListClick(%d)",($page + 1));
+}
+$tpl["max"] = intval($status[2]);
+$tpl["start"] = $pos;
+$tpl["end"]   = $pos + $cnt - 2;
+
+// add 2015/11/26 F.Yokoi [
+$tpl['page'] = $page+1;
+//ページジャンプリンク（1 2 3 ...）
+$tpl["last"] = ceil($tpl["max"] / $D_POI_PAGE);
+if ($tpl["last"] > 1) {
+	for ($j=0; $j<$tpl["last"]; $j++) {
+		$tpl["pgjump"][$j]["pg"] = $j+1;
+		if ($j != $page) $tpl["pgjump"][$j]["_jsLink"] = sprintf("ZdcEmapPoiListClick(%d);",$j);
+	}
+}
+// add 2015/11/26 F.Yokoi ]
+
+//施設一覧
+for($i = 0;$i < $cnt - 1;$i ++) {
+	$tpl["list"][$i]["id"] = $i;
+	$tpl["list"][$i]["no"] = ($i+1);
+	$rec = ZdcConvertEncoding($dat[$i+1]);
+	$rec = explode("\t",$rec);
+	$tpl["list"][$i]["cid"] = $rec[0];
+	$tpl["list"][$i]["lat"] = $rec[1];
+	$tpl["list"][$i]["lon"] = $rec[2];
+	$tpl["list"][$i]["name"] = $rec[3];
+	$tpl["list"][$i]["addr"] = $rec[4];
+	$tpl["list"][$i]["zip"]  = $rec[5];
+	$tpl["list"][$i]["tel"]  = $rec[6];
+	$tpl["list"][$i]["dist"] = $rec[7];
+	if($rec[7] > 1000){
+		$tpl["list"][$i]["dist_m"] = round($rec[7]/1000,2)."km";
+	} else {
+		$tpl["list"][$i]["dist_m"] = round($rec[7],0)."m";
+	}
+	$tpl["list"][$i]["jnrmn"] = $rec[8];
+	$tpl["list"][$i]["jnr"]   = $rec[9];
+	$tpl["list"][$i]["jnrnm"] = $rec[10];
+	$tpl["list"][$i]["jnrimg"]= sprintf("%s%s.gif",$D_ICON_POI_IMAGE_DIR,$rec[8]);
+	$tpl["list"][$i]["_jsMsg"]    = sprintf("ZdcEmapTipsClick('%s')",($i+$pos-1));
+	$tpl["list"][$i]["_jsRoute"]     = sprintf("ZdcEmapRouteSearchApi2(%d)", ($i+$pos-1));	// add 2016/08/23 Y.Uesugi
+	$tpl["list"][$i]["_jsCurSet"]    = sprintf("ZdcEmapMapCursorSet('%s','%s');ZdcEmapMapFrontPoi(%s)",$rec[1],$rec[2],($i+$pos-1));
+	$tpl["list"][$i]["_jsCurRemove"] = sprintf("ZdcEmapMapCursorRemove()");
+}
+if($cnt < 2) $tpl["msg"] = $D_MSG_NPOI_NOLIST;
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+htmloutput($D_SYSDIR_COMPANY.'npoi.tpl', $tpl);
+?>

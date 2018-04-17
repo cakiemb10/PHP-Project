@@ -1,0 +1,173 @@
+<?PHP
+// ------------------------------------------------------------
+// 店舗フキダシ
+// 
+// 2011/03/10 Y.Matsukawa	新規作成
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/12/13 K.Masuda 		パラメータ処理追加
+// 2012/01/11 Y.Matsukawa	任意パラメータ
+// 2012/02/02 N.Wada		吹き出しの内容の切り替え
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// 2012/11/15 Y.Matsukawa	JCN満空情報取得
+// 2014/08/18 AnPham		SiteIconOverlapping
+// 2015/08/27 N.Wada		店舗地図画面へのリンク追加
+// 2015/09/25 H.Yasunaga	日本郵便向けカスタマイズ 通販業者毎の戻り先URLと店舗詳細URLの埋め込み
+// 2015/11/19 H.yasunaga	日本郵便向けカスタマイズ メッセージの表示の改行制御追加
+// 2015/12/21 F.Yokoi		HTMLエンティティ文字の表示対応（別変数に追加）  
+// 2015/08/15 H.Yasunaga	日本郵便向けカスタマイズ
+//							戻り先URLをgetパラメータでうけるパターン追加
+//							name13[拠点ID]を特定の企業のみ返却しない改修 
+//							name4[店舗指定画面へのURL]に閲覧専用フラグを付加
+// 2017/05/11 H.Yasunaga	ヤマトロッカーセキュリティコード対応
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理	add 2011/12/13 K.Masuda
+//-------------------
+//require_once('/home/emap/src/smt/inc/proc_get_freeparam.inc');		del 2012/01/11 Y.Matsukawa
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');		// add 2012/01/11 Y.Matsukawa
+
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err)) {
+	//-------------------
+	// アイコン情報取得
+	//-------------------
+	require_once('/home/emap/src/smt/inc/define_get_icon.inc');		// add 2012/11/15 Y.Matsukawa
+	//-------------------
+	// 店舗データ取得
+	//-------------------
+	// add 2014/08/18 AnPham [
+	if( isset( $kid0)) {
+		for( $i=0; isset(${'kid'.$i}); $i++ ){
+			$tpl["fukilist"][$i] = zdcHtmlspecialchars_arr(ZdcSearchCgiKyotenid(${'kid'.$i},3));
+			$tpl["fukilist_raw"][$i] = zdcHtmlspecialchars_arr_raw(ZdcSearchCgiKyotenid(${'kid'.$i},3)); // add 2015/12/21 F.Yokoi
+
+			if ($link) $tpl["fukilist"][$i]['link'] = $link;
+			if ($maptype) $tpl["fukilist"][$i][$maptype] = 1;
+			$tpl["fukilist"][$i]["_urlShopInf"] = $D_DIR_BASE_G."inf/${'kid'.$i}/";
+			$tpl["fukilist"][$i]["_urlShopMap"] = $D_DIR_BASE_G."map/${'kid'.$i}/";	// add 2015/08/27 N.Wada
+			if($freeparms_enc) {
+				$tpl["fukilist"][$i]["_urlShopInf"] .= '?';
+				if($freeparms_enc) $tpl["fukilist"][$i]["_urlShopInf"] .= $freeparms_enc;
+				// add 2015/08/27 N.Wada [
+				$tpl["fukilist"][$i]["_urlShopMap"] .= '?';
+				if($freeparms_enc) $tpl["fukilist"][$i]["_urlShopMap"] .= $freeparms_enc;
+				// add 2015/08/27 N.Wada ]
+			}
+
+			// add 2015/12/21 F.Yokoi [
+			if ($link) $tpl["fukilist_raw"][$i]['link'] = $link;
+			if ($maptype) $tpl["fukilist_raw"][$i][$maptype] = 1;
+			$tpl["fukilist_raw"][$i]["_urlShopInf"] = $D_DIR_BASE_G."inf/${'kid'.$i}/";
+			$tpl["fukilist_raw"][$i]["_urlShopMap"] = $D_DIR_BASE_G."map/${'kid'.$i}/";
+			if($freeparms_enc) {
+				$tpl["fukilist_raw"][$i]["_urlShopInf"] .= '?';
+				if($freeparms_enc) $tpl["fukilist_raw"][$i]["_urlShopInf"] .= $freeparms_enc;
+				$tpl["fukilist_raw"][$i]["_urlShopMap"] .= '?';
+				if($freeparms_enc) $tpl["fukilist_raw"][$i]["_urlShopMap"] .= $freeparms_enc;
+			}
+			// add 2015/12/21 F.Yokoi ]
+		}
+	} else {
+	// add 2014/08/18 AnPham ]
+		//	$tpl = array_merge($tpl,ZdcSearchCgiKyotenid($kid, 3, false));		// 2012/08/03 H.Osamoto mod
+		$tpl = array_merge($tpl,zdcHtmlspecialchars_arr_raw(ZdcSearchCgiKyotenid($kid, 3, false))); // add 2015/12/21 F.Yokoi
+		$tpl = array_merge($tpl,zdcHtmlspecialchars_arr(ZdcSearchCgiKyotenid($kid, 3, false)));
+		if ($link) $tpl['link'] = $link;
+		if ($maptype) $tpl[$maptype] = 1;	// add 2012/02/02 N.Wada
+		$tpl["_urlShopInf"] = $D_DIR_BASE_G."inf/$kid/";
+		$tpl["_urlShopMap"] = $D_DIR_BASE_G."map/$kid/";	// add 2015/08/27 N.Wada
+		// add 2012/01/11 Y.Matsukawa [
+		if($freeparms_enc) {
+			$tpl["_urlShopInf"] .= '?';
+			if($freeparms_enc) $tpl["_urlShopInf"] .= $freeparms_enc;
+			// add 2015/08/27 N.Wada [
+			$tpl["_urlShopMap"] .= '?';
+			if($freeparms_enc) $tpl["_urlShopMap"] .= $freeparms_enc;
+			// add 2015/08/27 N.Wada ]
+		}
+		// add 2012/01/11 Y.Matsukawa ]
+	}// add 2014/08/18 AnPham
+}
+
+// add 2015/09/25 H.Yasunaga [
+// 日本郵便戻り先URLの設定
+if (isset($D_JPOST_CUSTOM) && $D_JPOST_CUSTOM) {
+	// mod start 2016/08/15 H.Yasunaga 戻り先ＵＲＬをgetパラメータで受ける [
+	//$tpl['D_JPOST_RETURN_URL'] = $JPOST_RETURN_URL[$p_s2];
+	if (array_key_exists($p_s2, $JPOST_RETURN_URL) == true) {
+		// 定義済みを使用
+		$tpl['D_JPOST_RETURN_URL'] = $JPOST_RETURN_URL[$p_s2];
+	} else {
+		// getパラメータを使用
+		$tpl['D_JPOST_RETURN_URL'] = $p_s3;
+	}
+	// mod end
+	// mod start 2016/08/15 H.Yasunaga name4[店舗指定画面へのURL]に閲覧専用フラグを付加する [
+	//$tpl['smturl'] = sprintf("%sinf/%s/?corpid=%s",$D_SMT_URL, $kid, $p_s2);
+	$tpl['smturl'] = sprintf("%sinf/%s/?corpid=%s&p_f99=1",$D_SMT_URL, $kid, $p_s2);
+	// mod end ]
+	$tpl['smturl_encode'] = urlencode($tpl['smturl']);
+	// add 2015/11/19 H.Yasunaga [
+	// 吹き出し上の店舗名が長い場合に吹き出しから"この店舗にする"が見切れる
+	if (mb_strlen($tpl['name'], "EUC-JP") <= $D_JPOST_MSG_LINEBREAK_LIMIT) {
+		$tpl['JPOST_MSG_LINE_BREAK'] = true;
+	}
+	// add 2015/11/19 H.Yasunaga ]
+	// add start 2016/08/15 H.Yasunaga name13[拠点ID]を特定の企業のみ返却しない改修 [
+	if (isset($JPOST_RETURN_NAME13[$p_s2]) == true && $JPOST_RETURN_NAME13[$p_s2] == true) {
+		$tpl["name13_flag"] = true;
+	}
+	// add end ]
+}
+// add 2015/09/25 H.Yasunaga ]
+
+// add 2017/05/11 H.Yasunaga ヤマトロッカーセキュリティコード対応 [
+if ($D_YTC_SECURITY_CODE) {
+	// n_list.htm と同じ形でRDデータの取得
+	$rd_grp= implode(",",$D_RD_GRP[6]);
+	if($rd_grp){
+		$rd_info = ZdcSearchCgiRd($kid,$rd_grp,1);
+		if($rd_info){
+			$tpl = $tpl + $rd_info[0];
+		}
+	}
+
+	// ロッカーの店舗 COL_01が"2" COL_39が"563"
+	if ($tpl["col_01"] == "2" && $tpl["col_39"] == "563") {
+		// ロッカーと区別するためのフラグ
+		$tpl["isLocker"] = true;
+		if (isset($tpl[$D_YTC_SECURITY_RD_ITEM_TEXT]) && strlen($tpl[$D_YTC_SECURITY_RD_ITEM_TEXT]) > 0) {
+			// セキュリティコードが設定されているロッカーを区別するためのフラグ
+			if ($p_f5 != "1") {
+				$tpl["isSecCodeLocker"] = true;
+			}
+		}
+	}
+}
+// add 2017/05/11 H.Yasunaga ]
+
+//-------------------
+// 画面出力
+//-------------------
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($err)) {
+	$err = "";
+}
+// mod 2011/07/05 Y.Nakajima ]
+$tpl['err'] = $err;
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	htmloutput($D_SYSDIR_COMPANY.'msg.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'error.tpl', $tpl);
+}
+?>

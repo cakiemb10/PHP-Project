@@ -1,0 +1,79 @@
+<?PHP
+// ------------------------------------------------------------
+// 地図制御php 噴出しの中身モジュール
+// 
+// 開発履歴
+//   2007/03/01 bando@D&I
+//     新規開発
+// 2011/05/27 H.Osamoto		テスト環境フラグを追加
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/08/07 K.Masuda 		複数拠点に対応
+// 2011/12/12 H.Osamoto		環境判別方法を修正
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");  // 基本設定
+
+
+//-------------------
+// 画面設定
+//-------------------
+//拠点情報
+// mod 2011/07/05 Y.Nakajima [
+///tplに取り込む前に取得した内容の判定を行うので、ここで取得する
+$kyotenid_arr = ZdcSearchCgiKyotenid($kid,3);//拠点情報の取得
+$kyotenid_arr = zdcHtmlspecialchars_arr($kyotenid_arr);		// 2012/08/03 H.osamoto add
+//取得内容が配列で、かつ、すでに$tplが存在すれば、mergeを実施する
+if (isset($tpl) && $tpl != "" && is_array($tpl) && isset($kyotenid_arr) && is_array($kyotenid_arr)) {
+	$tpl = array_merge($tpl,$kyotenid_arr);//拠点情報の取得
+} else {
+	$tpl = $kyotenid_arr;//拠点情報の取得
+}
+// mod 2011/07/05 Y.Nakajima ]
+
+// add 2011/08/07 K.Masuda [
+for( $i=0; isset(${'kid'.$i}); $i++ ){
+	//	$tpl["fukilist"][$i] = ZdcSearchCgiKyotenid(${'kid'.$i},3);	//拠点情報の取得	2012/08/03 H.samoto mod
+	$tpl["fukilist"][$i] = zdcHtmlspecialchars_arr(ZdcSearchCgiKyotenid(${'kid'.$i},3));	//拠点情報の取得
+}
+// add 2011/08/07 K.Masuda ]
+
+// add 2011/05/27 H.Osamoto [
+// mod 2011/07/05 Y.Nakajima [
+if (isset($D_MYAREA_USE)) {
+	// テスト環境フラグ
+	//if (ereg('test', $D_CID)) {
+	//	if (strpos($D_CID, 'test')) {	mod 2011/12/12 H.osamoto
+	if ($D_EMAP_ENV == "test") {
+// mod 2011/07/05 Y.Nakajima ]
+		$tpl["test_flg"] = "1";
+	} else {
+		$tpl["test_flg"] = "";
+	}
+}
+// add 2011/05/27 H.Osamoto ]
+
+// mod 2011/07/05 Y.Nakajima
+//dat開放
+unset($dat);
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+// mod 2011/07/05 Y.Nakajima [
+//@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_msg.tpl",$tpl);
+$HtmlTemplate = new HtmlTemplate();
+if (file_exists($D_SYSDIR_COMPANY."emapview_msg.tpl")) {
+	$HtmlTemplate->t_include($D_SYSDIR_COMPANY."emapview_msg.tpl",$tpl);
+}
+//HtmlTemplate開放
+unset($HtmlTemplate);
+// mod 2011/07/05 Y.Nakajima ]
+?>

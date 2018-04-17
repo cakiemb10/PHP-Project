@@ -1,0 +1,235 @@
+RewriteEngine On
+RewriteBase /
+
+# ==================================================================
+# 日本郵政（スマホ）
+# ==================================================================
+RewriteCond %{http_host} ^sp.map.japanpost.jp
+RewriteRule shop/detail/(.*)/ https://map.japanpost.jp/smt/search/inf/$1/ [QSA,L]
+RewriteCond %{http_host} ^sp.map.japanpost.jp
+RewriteRule ^(.*)$ https://map.japanpost.jp/smt/search/ [QSA,L]
+
+
+# ==================================================================
+# URL書き換え（企業ID：ewmap01にて対応）
+# ==================================================================
+
+#都道府県対応(住所リストに遷移)
+
+#RewriteCond %{REQUEST_URI} !(^/$)
+#RewriteCond %{REQUEST_URI} /p/*.*/hokkaidowest
+#RewriteRule p/(.*)/hokkaidowest/(.*)$ p/$1/search_area.htm?area=01a&$2 [QSA,NC,L]
+
+#RewriteCond %{REQUEST_URI} !(^/$)
+#RewriteCond %{REQUEST_URI} /p/*.*/hokkaidoeast
+#RewriteRule p/(.*)/hokkaidoeast/(.*)$ p/$1/search_area.htm?area=01b&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/hokkaido
+RewriteRule p/(.*)/hokkaido/(.*)$ p/$1/search.htm?type=AddrL&adcd=01&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/aomori
+RewriteRule p/(.*)/aomori/(.*)$ p/$1/search.htm?type=AddrL&adcd=02&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/iwate
+RewriteRule p/(.*)/iwate/(.*)$ p/$1/search.htm?type=AddrL&adcd=03&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/miyagi
+RewriteRule p/(.*)/miyagi/(.*)$ p/$1/search.htm?type=AddrL&adcd=04&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/akita
+RewriteRule p/(.*)/akita/(.*)$ p/$1/search.htm?type=AddrL&adcd=05&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/yamagata
+RewriteRule p/(.*)/yamagata/(.*)$ p/$1/search.htm?type=AddrL&adcd=06&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/fukushima
+RewriteRule p/(.*)/fukushima/(.*)$ p/$1/search.htm?type=AddrL&adcd=07&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/tokyo
+RewriteRule p/(.*)/tokyo/(.*)$ p/$1/search.htm?type=AddrL&adcd=13&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/kanagawa
+RewriteRule p/(.*)/kanagawa/(.*)$ p/$1/search.htm?type=AddrL&adcd=14&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/saitama
+RewriteRule p/(.*)/saitama/(.*)$ p/$1/search.htm?type=AddrL&adcd=11&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/chiba
+RewriteRule p/(.*)/chiba/(.*)$ p/$1/search.htm?type=AddrL&adcd=12&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/ibaraki
+RewriteRule p/(.*)/ibaraki/(.*)$ p/$1/search.htm?type=AddrL&adcd=08&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/tochigi
+RewriteRule p/(.*)/tochigi/(.*)$ p/$1/search.htm?type=AddrL&adcd=09&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/gunma
+RewriteRule p/(.*)/gunma/(.*)$ p/$1/search.htm?type=AddrL&adcd=10&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/toyama
+RewriteRule p/(.*)/toyama/(.*)$ p/$1/search.htm?type=AddrL&adcd=16&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/ishikawa
+RewriteRule p/(.*)/ishikawa/(.*)$ p/$1/search.htm?type=AddrL&adcd=17&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/fukui
+RewriteRule p/(.*)/fukui/(.*)$ p/$1/search.htm?type=AddrL&adcd=18&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/niigata
+RewriteRule p/(.*)/niigata/(.*)$ p/$1/search.htm?type=AddrL&adcd=15&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/nagano
+RewriteRule p/(.*)/nagano/(.*)$ p/$1/search.htm?type=AddrL&adcd=20&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/yamanashi
+RewriteRule p/(.*)/yamanashi/(.*)$ p/$1/search.htm?type=AddrL&adcd=19&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/gifu
+RewriteRule p/(.*)/gifu/(.*)$ p/$1/search.htm?type=AddrL&adcd=21&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/shizuoka
+RewriteRule p/(.*)/shizuoka/(.*)$ p/$1/search.htm?type=AddrL&adcd=22&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/aichi
+RewriteRule p/(.*)/aichi/(.*)$ p/$1/search.htm?type=AddrL&adcd=23&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/mie
+RewriteRule p/(.*)/mie/(.*)$ p/$1/search.htm?type=AddrL&adcd=24&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/osaka
+RewriteRule p/(.*)/osaka/(.*)$ p/$1/search.htm?type=AddrL&adcd=27&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/hyogo
+RewriteRule p/(.*)/hyogo/(.*)$ p/$1/search.htm?type=AddrL&adcd=28&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/nara
+RewriteRule p/(.*)/nara/(.*)$ p/$1/search.htm?type=AddrL&adcd=29&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/kyoto
+RewriteRule p/(.*)/kyoto/(.*)$ p/$1/search.htm?type=AddrL&adcd=26&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/shiga
+RewriteRule p/(.*)/shiga/(.*)$ p/$1/search.htm?type=AddrL&adcd=25&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/wakayama
+RewriteRule p/(.*)/wakayama/(.*)$ p/$1/search.htm?type=AddrL&adcd=30&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/tottori
+RewriteRule p/(.*)/tottori/(.*)$ p/$1/search.htm?type=AddrL&adcd=31&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/shimane
+RewriteRule p/(.*)/shimane/(.*)$ p/$1/search.htm?type=AddrL&adcd=32&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/okayama
+RewriteRule p/(.*)/okayama/(.*)$ p/$1/search.htm?type=AddrL&adcd=33&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/yamaguchi
+RewriteRule p/(.*)/yamaguchi/(.*)$ p/$1/search.htm?type=AddrL&adcd=35&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/hiroshima
+RewriteRule p/(.*)/hiroshima/(.*)$ p/$1/search.htm?type=AddrL&adcd=34&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/tokushima
+RewriteRule p/(.*)/tokushima/(.*)$ p/$1/search.htm?type=AddrL&adcd=36&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/kagawa
+RewriteRule p/(.*)/kagawa/(.*)$ p/$1/search.htm?type=AddrL&adcd=37&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/ehime
+RewriteRule p/(.*)/ehime/(.*)$ p/$1/search.htm?type=AddrL&adcd=38&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/kochi
+RewriteRule p/(.*)/kochi/(.*)$ p/$1/search.htm?type=AddrL&adcd=39&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/fukuoka
+RewriteRule p/(.*)/fukuoka/(.*)$ p/$1/search.htm?type=AddrL&adcd=40&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/saga
+RewriteRule p/(.*)/saga/(.*)$ p/$1/search.htm?type=AddrL&adcd=41&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/nagasaki
+RewriteRule p/(.*)/nagasaki/(.*)$ p/$1/search.htm?type=AddrL&adcd=42&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/kumamoto
+RewriteRule p/(.*)/kumamoto/(.*)$ p/$1/search.htm?type=AddrL&adcd=43&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/oita
+RewriteRule p/(.*)/oita/(.*)$ p/$1/search.htm?type=AddrL&adcd=44&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/miyazaki
+RewriteRule p/(.*)/miyazaki/(.*)$ p/$1/search.htm?type=AddrL&adcd=45&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/kagoshima
+RewriteRule p/(.*)/kagoshima/(.*)$ p/$1/search.htm?type=AddrL&adcd=46&$2 [QSA,NC,L]
+
+RewriteCond %{REQUEST_URI} !(^/$)
+RewriteCond %{REQUEST_URI} /p/*.*/okinawa
+RewriteRule p/(.*)/okinawa/(.*)$ p/$1/search.htm?type=AddrL&adcd=47&$2 [QSA,NC,L]
+
+
+# ==================================================================
+# 既存部分 
+# ==================================================================
+
+RewriteRule smt/(.*)/inf/(.*)/$ smt/$1/shop_inf.htm?kid=$2 [QSA,L]
+RewriteRule smt/(.*)/map/(.*)/$ smt/$1/shop_map.htm?kid=$2 [QSA,L]
+RewriteRule smt/(.*)/link/(.*)/$ smt/$1/maplink.htm?args=$2 [QSA,L]
+RewriteRule smtdev/(.*)/inf/(.*)/$ smtdev/$1/shop_inf.htm?kid=$2 [QSA,L]
+RewriteRule smtdev/(.*)/map/(.*)/$ smtdev/$1/shop_map.htm?kid=$2 [QSA,L]
+RewriteRule smtdev/(.*)/link/(.*)/$ smtdev/$1/maplink.htm?args=$2 [QSA,L]
+RewriteRule p/(.*)/dtl/(.*)/$ p/$1/shop_dtl.htm?kid=$2 [QSA,L]
+RewriteRule p/(.*)/prt/(.*)/$ p/$1/shop_print.htm?kid=$2 [QSA,L]
+RewriteRule p/(.*)/link/(.*)/$ p/$1/maplink.htm?args=$2 [QSA,L]
+RewriteRule pdev/(.*)/dtl/(.*)/$ pdev/$1/shop_dtl.htm?kid=$2 [QSA,L]
+RewriteRule pdev/(.*)/prt/(.*)/$ pdev/$1/shop_print.htm?kid=$2 [QSA,L]
+RewriteRule pdev/(.*)/link/(.*)/$ pdev/$1/maplink.htm?args=$2 [QSA,L]
+
+RewriteEngine On
+RewriteCond   %{HTTP:Authorization} ^(.*)
+RewriteRule   ^(.*) - [E=HTTP_AUTHORIZATION:%1,L]

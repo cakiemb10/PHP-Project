@@ -1,0 +1,43 @@
+@charset "Windows-31J";
+
+* {
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	overflow: hidden;
+	-ms-touch-action: manipulation;
+	touch-action: manipulation;
+}
+
+body {
+	line-height: normal;
+	font-family: "‚l‚r ‚oƒSƒVƒbƒN";
+}
+
+img {
+	border-style: none;
+}
+
+a,map {
+	outline: none;
+	line-height: normal;
+}
+
+div,form {
+	margin: 0px;
+	padding: 0px;
+	line-height: normal;
+}
+
+th {
+	font-weight: normal;
+	line-height: normal;
+}
+td {
+	line-height: normal;
+}
+button {
+	line-height: normal;
+}

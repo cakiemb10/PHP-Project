@@ -1,0 +1,76 @@
+<?php
+/*========================================================*/
+// セブンミール業務支援向け 単一店舗住所再検索
+//
+// 更新履歴
+// 2011/12/22 H.Osamoto	新規作成
+// 2012/08/01 Y.Matsukawa	error_reporting記述削除
+/*========================================================*/
+
+	//error_reporting(0);		del 2012/08/01 Y.Matsukawa
+	//if(DEBUG) error_reporting(E_ALL ^ E_NOTICE);		del 2012/08/01 Y.Matsukawa
+
+	require_once('/home/emap/src/p/inc/define.inc');
+	
+	//-------------------
+	// Basic認証
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+	//-------------------
+	// 動作許可チェック
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_accept.inc');
+	
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+
+	$corp_id = $D_CID;	// 企業ID
+	$tpl["cid"] = $corp_id;
+
+	// p_s1(shopno)
+	if ($p_s1) {
+		// shopnoの指定がある場合は半角数字のチェック
+		if (!preg_match("/^[0-9]+$/", $p_s1)){
+			// エラー
+			$msg = "店舗Noは半角数字で入力してください。";
+		}
+	}
+
+	//-----------------------------------------------
+	// 出力処理
+	//-----------------------------------------------
+	if (!$commit_flg || $msg) {
+		// ログ出力
+		ZdcLogPut(0);
+		
+		// 酒絞り込みフラグ
+		$tpl["cond1"] = $cond1;
+		
+		// エラーの場合はメッセージを出力
+		$tpl["msg"] = $msg;
+		
+		//-------------------
+		// 画面出力
+		//-------------------
+		for($i = 0;$i <= 4;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		htmloutput($D_SYSDIR_COMPANY.'tsearch_list.tpl', $tpl);
+		for($i = 6;$i <= 9;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		
+	} else {
+		//-------------------
+		// 地図表示
+		//-------------------
+		$nmap_url = "search.htm?".($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC.'&':'').($condprm?'&'.$condprm.'&':'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm.'&':'');
+		$url = sprintf("%scid=%s&type=%s&adcd=%s", $nmap_url, $cid, $type, $adcd);
+		header('Location: '.$url);
+		exit;
+	}
+
+
+?>

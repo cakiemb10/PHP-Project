@@ -1,0 +1,415 @@
+<?PHP
+// ------------------------------------------------------------
+// 最寄り店舗分布地図
+// 
+// 2011/03/10 Y.Matsukawa	新規作成
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/08/08 Y.Matsukawa	機能追加（絞り込み拡張、拠点エリア検索、駅リスト検索）
+// 2011/08/10 H.Osamoto		最寄り店舗地図に絞り込み条件リストボックスを追加
+// 2011/09/01 Y.Matsukawa	地図タイプ指定
+// 2011/12/13 K.Masuda 		パラメータ処理追加
+// 2012/01/11 Y.Matsukawa	任意パラメータ
+// 2012/02/21 Y.Matsukawa	店舗一覧にチェックボックス設置
+// 2012/03/17 N.Wada		リバースプロキシ参照に対応
+// 2012/08/16 K.Masuda		地図縮尺変更+-ボタン対応
+// 2014/03/12 Y.Matsukawa	任意地点から任意範囲外の拠点を除外
+// 2014/10/13 Le Dang Son	Load API2.0
+// 2015/04/03 H.Osamoto		最寄地図表示時のディレイ設定を追加
+// 2015/05/28 Y.Matsukawa	最寄り地図画面に検索TOPリンク表示
+// 2015/06/05 H.Osamoto		nkyoten.jsに任意パラメータを引き渡す
+// 2015/08/25 N.Wada		地図の中心点の場所表示に対応
+// 2015/10/21 F.Yokoi		リバースプロキシ設定時のAPI2.0読み込み機能追加
+// 2015/08/25 N.Wada		最寄り店舗地図へのリンクを追加
+// 2015/10/30 N.Wada		Google Maps版対応
+// 							拠点IDから緯度・経度情報を取得する機能の追加
+// 2015/11/18 Xuan Chien	GPSログ出力対応
+// 2015/11/26 N.Wada		拠点IDが渡された場合、ズームレベルを店舗地図に設定
+// 2015/12/18 F.Yokoi		HTMLエンティティ文字の表示対応（別変数に追加）
+// 2015/12/25 H.Yasunaga	ニッセン向けカスタマイズ
+// 2016/02/22 Y.Matsukawa	最寄地図に最寄一覧表示
+// 2016/03/18 Y.Matsukawa	長尺URL対応（condをパラメータで引き継がずp_sで代用する）
+// 2016/03/24 N.Wada		Google Maps版拠点案内用の独自UI利用時は現在地へ移動js追加
+// 2016/04/12 Y.Matsukawa	パラメータで半径と件数を指定
+// 2016/05/23 Y.Matsukawa	common.jsにパラメータ引き渡し
+// 2016/07/11 H.Yasunaga	711OMNI2(店舗タブ)用カスタマイズ
+// 2016/11/10 Y.Uesugi		Google Maps APIキー設定
+// 2017/01/17 N.Wada		常に現在地へ移動js追加
+// 2017/05/11 H.Yasunaga	ヤマトロッカーセキュリティコード対応
+// 2017/05/29 H.Yasunaga	ヤマトロッカーセキュリティコード対応 セキュリティコード確認用のCGIのURL生成に使う変数の修正
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+// add 2014/03/12 Y.Matsukawa [
+//-------------------
+// 【ヤマト運輸向け】配達担当店から任意範囲外の拠点を除外
+//-------------------
+if (isset($D_EX_AREA_KID) && $D_EX_AREA_KID != '') {
+	if (!isset($$D_EX_AREA_P) || !$$D_EX_AREA_P) {
+		$arr_exark = ZdcSearchCgiKyotenid($D_EX_AREA_KID, 1, false);
+		if (is_array($arr_exark)) {
+			$$D_EX_AREA_P = $arr_exark['lat'].','.$arr_exark['lon'].','.$D_EX_AREA_RAD;
+		}
+	}
+}
+// add 2014/03/12 Y.Matsukawa ]
+
+//-------------------
+// パラメータ処理	add 2011/12/13 K.Masuda
+//-------------------
+//require_once('/home/emap/src/smt/inc/proc_get_freeparam.inc');		del 2012/01/11 Y.Matsukawa
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');		// add 2012/01/11 Y.Matsukawa
+
+//dbl("QUERY_STRING=".$_SERVER['QUERY_STRING']);
+
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	//-------------------
+	// 画面設定
+	//-------------------
+	// add 2015/10/30 N.Wada [
+	if ((!isset($lat) && !isset($lon)) && isset($kid)) {
+		if ($kid != "") {
+			//拠点接続
+			$arr = ZdcSearchCgiKyotenid($kid,5,true);
+			$arr_raw = zdcHtmlspecialchars_arr_raw($arr); // add 2015/12/18 F.Yokoi 
+			$arr = zdcHtmlspecialchars_arr($arr);
+			if (!isset($arr) || (isset($arr) && $arr == false)) {
+				$err = $D_MSG_EMAPVIEW_NOKID;
+			} else {
+				$init_lv = $D_INIT_LVL_DETAIL;	// add 2015/11/26 N.Wada
+				$lat = $arr["lat"];
+				$lon = $arr["lon"];
+				// 拠点情報の取得
+				$tpl["kid"] = $kid;
+				foreach ($arr as $key => $value) {
+					$tpl["kyoten:".$key] = $value;
+				}
+
+ 				// add 2015/12/18 F.Yokoi [
+				// 拠点情報の取得
+				foreach ($arr_raw as $key => $value) {
+					$tpl["kyoten:".$key."_raw"] = $value;
+				}
+				// add 2015/12/18 F.Yokoi ]
+			}
+		} else {
+			$err = $D_MSG_EMAPVIEW_NOPRM;
+		}
+	}
+	// add 2015/10/30 N.Wada ]
+	// add 2015/08/25 N.Wada [
+	if ($pltype == 1) {
+		$tpl['html_pltxt'] = '現在地';
+		// 2015/11/18 Xuan Chien add [
+		if ((isset($D_TOPGPS_NMAP) && $D_TOPGPS_NMAP) && (isset($D_SGPS_LOG) && $D_SGPS_LOG)){
+			if($lat != '' && $lon != ''){
+				require_once("GPSLogFunc.inc");
+				$file_name = 'log_loc_smt_'.date('YmdH').'.log';
+				$GpsLogFunc = new GpsLogFunc();
+				$mesh = $GpsLogFunc->getMeshAddress(5,$lat,$lon);
+				$array_latlon = $GpsLogFunc->getMeshToLatLon($mesh);
+				$mess =	date("Y,m,d,H").","
+						.$D_CID.",1,"
+						.$mesh.","
+						.$array_latlon['right_high_lat'].","
+						.$array_latlon['right_high_lon'].","
+						.$array_latlon['left_low_lat'].","
+						.$array_latlon['left_low_lon']."\r\n";
+				output_gpslog($mess,$file_name);
+			}
+		}
+		// 2015/11/18 Xuan Chien add ]
+	} else {
+		$tpl['html_pltxt'] = $tpl['html_plname'];
+	}
+	$tpl['D_MSG_NKYOTEN_MSG'] = $D_MSG_NKYOTEN_MSG;
+	// add 2015/08/25 N.Wada ]
+	// add 2011/08/10 H.osamoto [
+	if (count($D_FILTER_VAL_LIST)) {
+		foreach ($D_FILTER_VAL_LIST as $i => $val) {
+			$nm = $D_FILTER_NAME_LIST[$i];
+			$tpl['filter_list'][$i]['val'] = htmlspecialchars($val);
+			$tpl['filter_list'][$i]['name'] = htmlspecialchars($nm);
+			if ($val == $plfilter) {
+				$tpl['filter_list'][$i]['pl_selected'] = 1;
+			}
+		}
+	}
+	// add 2011/08/10 H.osamoto ]
+	$filter = ($filter != '' ? $filter : $plfilter );
+	// add 2011/08/08 Y.Matsukawa [
+	if($cond_jkn != '') {
+		if ($filter != '') $filter .= ' AND ';
+		$filter .= '('.$cond_jkn.')';
+	}
+
+	// 日本測地系（10進）	add 2016/03/24 N.Wada
+	$tpl['lat_dec'] = cnv_dms2hour($lat);
+	$tpl['lon_dec'] = cnv_dms2hour($lon);
+
+	// add 2011/08/08 Y.Matsukawa ]
+	$tpl['js_filter'] = ZdcEsc4JsLiteral($filter);
+	// function
+	// ロード時処理
+	$tpl["_jsInit"] = sprintf("ZdcEmapInit('%s','%s','%s','%s');",
+						ZdcEsc4JsLiteral($lat),
+						ZdcEsc4JsLiteral($lon),
+						$init_lv
+						,1
+						);
+	$tpl["_jsInit"] .= sprintf("ZdcEmapSearchShopStart('%s');",
+						ZdcEsc4JsLiteral($filter)
+						);
+	// 地図表示ディレイ		add 2015/04/03 H.Osamoto
+	if ($D_NMAPINIT_DELAY_MS) {
+		$tpl["_jsInit"] = "var timerId = setInterval(function(){clearInterval(timerId);"
+						. $tpl["_jsInit"]
+						. "}, $D_NMAPINIT_DELAY_MS);"
+		;
+	}
+	$tpl["_jsLvlSelectChanged"] = "ZdcEmapLvlSelectChanged();";
+	$tpl["_jsResetMapLocation"] = "ZdcEmapResetMapLocation();";
+	// add 2012/02/21 Y.Matsukawa [
+	$tpl["_jsCondChangeSubmit"] .= sprintf("var cond_jkn=ZdcEmapGetCondJkn();ZdcEmapResearchShopStart('%s', cond_jkn);",
+						ZdcEsc4JsLiteral($filter)
+						);
+	// add 2012/02/21 Y.Matsukawa ]
+
+	// add 2012/08/16 K.Masuda [
+	$tpl["_jsLvlScaleChangedPls"] = "ZdcEmapLvlScaleChanged('p');";
+	$tpl["_jsLvlScaleChangedMin"] = "ZdcEmapLvlScaleChanged('m');";
+	// add 2012/08/16 K.Masuda ]
+
+	$tpl['_urlNearShop'] = 'n.htm';
+
+	// 「店舗一覧」でリファラーへ戻る		add 2016/03/08 Y.Matsukawa
+	if (isset($retref) && $retref) {
+		$tpl['RETURN_TO_REFERER'] = 1;
+	}
+
+	// js
+	$j = 0;
+	// add 2012/01/11 Y.Matsukawa [
+	$js_parm = '';
+	if ($freeparms_enc) {
+		$js_parm = '?';
+		if ($freeparms_enc) $js_parm .= $freeparms_enc;
+	}
+	// add 2012/01/11 Y.Matsukawa ]
+	
+	// 半径がパラメータで指定されたらjsへ引き渡す		add 2016/04/12 Y.Matsukawa
+	if (isset($rad) && $rad) {
+		$js_parm .= ($js_parm == '' ? '?' : '&');
+		$js_parm .= "rad=$rad";
+	}
+	// 件数がパラメータで指定されたらjsへ引き渡す		add 2016/04/12 Y.Matsukawa
+	if (isset($limit) && $limit) {
+		$js_parm .= ($js_parm == '' ? '?' : '&');
+		$js_parm .= "limit=$limit";
+	}
+
+	// Google Maps版拠点案内用の独自UI利用	add 2016/03/24 N.Wada
+	//if (isset($D_GOOGLEMAPS_EMAP_ORIGINAL_UI) && $D_GOOGLEMAPS_EMAP_ORIGINAL_UI) {	del 2017/01/17 N.Wada
+		// 現在地へ移動
+		$tpl['_jsLocCallbackMoveMyLoc'] = $carrier->MakeLocationCallbackFuncCallGeneric("ZdcEampHiddenWait();ZdcEmapSetMyLocation(lat,lon);ZdcEmapMapMoveMyLoc();",
+																						"ZdcEampHiddenWait();ZdcEmapMyLocation = null;",
+																						"MoveMyLoc");
+		$tpl['_jsLocMoveMyLoc'] = "ZdcEampVisibleWait();".$carrier->MakeLocationSearchScript("MoveMyLoc");
+	//}	del 2017/01/17 N.Wada
+
+	// add 2015/10/30 N.Wada [
+	//if( $D_GOOGLEMAPS ) {
+	if( $D_GOOGLEMAPS && !$D_GOOGLEMAPS_API_KEY) {		// mod 2016/11/10 Y.Uesugi
+		$tpl["js"][$j]["src"] = $D_GOOGLEMAPS_JS;
+		$j++;
+	}
+	// add 2015/10/30 N.Wada ]
+	// add 2016/11/10 Y.Uesugi [
+	if( $D_GOOGLEMAPS_API_KEY ) {
+		$tpl['js'][$j]['src'] = $D_GOOGLEMAPS_API_KEY_JS;
+		$j++;
+	}
+	// add 2016/11/10 Y.Uesugi ]
+	// add 2012/03/17 N.Wada [
+	// リバースプロキシ経由でJSAPIを利用するかで分岐
+	if( isset($D_USE_REVERSE_PROXY) &&  $D_USE_REVERSE_PROXY ) {
+		// テンプレート変数にリバースプロキシのフラグをセット
+		$tpl['revproxy'] = 1;
+		// JS用のパッチをあてる必要があるため、zdccommon.jsは取り除いておく
+		$workAry = explode( "&", $D_JSAPI_SMT["map"] );
+		for( $i = 0; $i < count($workAry); $i++ ) {
+			$tmp = substr($workAry[$i],0,4);
+			if( $tmp == "api=" ) {
+				$workAry[$i] = "api=zdccommon.js";
+				break;
+			}
+		}
+		$tpl["zdccmnjs"]["src"] = implode( "&", $workAry )."&opt=".$cid;
+		$tpl["zdccmnjs"]["charset"] = $D_JSAPI_SMT_charset;
+		$tpl["patchjs"]["src"] = $D_DIR_BASE_G."proxy_patch.js";
+		// mod 2015/10/21 F.Yokoi [
+		if (isset($D_SMT_API_V2) && $D_SMT_API_V2 == 1) {
+			$tpl["js"][$j]["src"] = $D_JSAPI_SMT_V2["map"]."&opt=".$cid;
+			$tpl["js"][$j]["charset"] = $D_JSAPI_SMT_V2_charset;
+		} else {
+			$tpl["js"][$j]["src"] = str_replace("zdccommon.js,","",$D_JSAPI_SMT["map"])."&opt=".$cid;
+			$tpl["js"][$j]["charset"] = $D_JSAPI_SMT_charset;
+		}
+		// mod 2015/10/21 F.Yokoi ]
+		$j++;
+	} else {
+		// mod 2014/10/13 Le Dang Son [
+		//	$tpl["js"][$j]["src"] = $D_JSAPI_SMT["map"]."&opt=".$cid;
+		//	$tpl["js"][$j]["charset"] = $D_JSAPI_SMT_charset;
+		if (isset($D_SMT_API_V2) && $D_SMT_API_V2 == 1 ) {
+			$tpl["js"][$j]["src"] = $D_JSAPI_SMT_V2["map"]."&opt=".$cid;
+			$tpl["js"][$j]["charset"] = $D_JSAPI_SMT_V2_charset;
+		}else{
+			$tpl["js"][$j]["src"] = $D_JSAPI_SMT["map"]."&opt=".$cid;
+			$tpl["js"][$j]["charset"] = $D_JSAPI_SMT_charset;
+		}
+		// mod 2014/10/13 Le Dang Son ]
+		$j++;
+	}
+	// add 2012/03/17 N.Wada ]
+	// del 2012/03/17 N.Wada [
+	//$tpl["js"][$j]["src"] = $D_JSAPI_SMT["map"]."&opt=".$cid;
+	//$tpl["js"][$j]["charset"] = $D_JSAPI_SMT_charset;
+	//$j++;
+	// del 2012/03/17 N.Wada ]
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	//	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'nkyoten.js';		// mod 2015/06/05 H.Osamoto
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'nkyoten.js'.$js_parm;
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	//$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'common.js';		mod 2016/05/23 Y.Matsukawa
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'common.js'.$js_parm;
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	// add 2016/02/22 Y.Matsukawa [
+	if ($D_NMAP_AND_NLIST) {	// 最寄一覧表示
+		$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'search.js';
+		$tpl['js'][$j]['charset'] = 'EUC-JP';
+		$j++;
+	}
+	// add 2016/02/22 Y.Matsukawa ]
+	//$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'view.js';		mod 2012/01/11 Y.Matsukawa
+	// mod 2014/10/08 Le Dang Son [
+	//$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'view.js'.$js_parm;
+	// mod 2015/10/30 N.Wada [
+	//if (isset($D_SMT_API_V2) && $D_SMT_API_V2 == 1 ) {
+	if( $D_GOOGLEMAPS ) {
+		$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'view_g.js'.$js_parm;
+	} elseif (isset($D_SMT_API_V2) && $D_SMT_API_V2 == 1 ) {
+	// mod 2015/10/30 N.Wada ]
+		$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'view_v2.js'.$js_parm;
+	} else {
+		$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'view.js'.$js_parm;
+	}
+	// mod 2014/10/08 Le Dang Son ]
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	// add 2011/09/01 Y.Matsukawa [
+	//	if ($D_MAP_TYPE != 9) {		mod 2014/10/08 Le Dang Son
+	if ($D_MAP_TYPE != 9 && (!isset($D_SMT_API_V2) || $D_SMT_API_V2 == 0 )) {
+		$j++;
+		$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'s10lv15.js';// S1.0パッチ（タイプ9以外の地図タイプを15段階縮尺で扱う）
+		$tpl['js'][$j]['charset'] = 'Shift_JIS';
+	}
+	// add 2011/09/01 Y.Matsukawa ]
+}
+
+// add 2016/03/18 Y.Matsukawa [
+if ($D_NO_COND_PRM) {
+	if($freeparms_enc) $tpl['D_URL_SEARCH_TOP'] .= '?'.$freeparms_enc;
+} else {
+// add 2016/03/18 Y.Matsukawa ]
+	// add 2015/05/28 Y.Matsukawa [
+	$tpl['D_URL_SEARCH_TOP'] .= '?'.$cond_prm_enc;
+	if($freeparms_enc) $tpl['D_URL_SEARCH_TOP'] .= '&'.$freeparms_enc;
+	// add 2015/05/28 Y.Matsukawa ]
+}
+
+// add 2015/12/25 H.Yasunaga 711MAPニッセン向けカスタマイズ [
+if (isset($D_CUST_711MAP_NISSEN) && $D_CUST_711MAP_NISSEN == 1) {
+	if (isset($nissen_from_n) && $nissen_from_n) {
+		$tpl['nissen_from_n'] = 1;
+	}
+}
+// add 2015/12/25 H.Yasunaga ]
+
+// add start 2015/07/11 H.Yasunaga 711OMNI2向けカスタマイズ [
+if (isset($D_711OMNI2) && D_711OMNI2 == true) {
+	$tpl["_jsInit"] = sprintf("ZdcEmapInit('%s','%s','%s','%s');",
+						$D_INIT_LAT,
+						$D_INIT_LON,
+						$init_lv
+						,1
+						);
+	$tpl["_jsInit"] .= "CustomMapInit();";
+	if (isset($_GET["msg"]) == true) {
+		$message = urldecode($_GET["msg"]);
+		$tpl["_jsInit"] .= "setMessage('" . $message . "');";
+	} else {
+		$err = $D_MSG_EMAPVIEW_NOPRM;
+	}
+	// 現在地取得のコールバックの生成
+	$tpl["_jsLocCallbackNowLoc"] = $carrier->MakeLocationCallbackFuncCallGeneric("nowLocSuccessCallback(lat, lon);", "nowLocErrorCallback(err);", "NowLoc");
+	// 現在地取得のスクリプト生成
+	$tpl["_jsLocNowLoc"] = $carrier->MakeLocationSearchScript("NowLoc");
+	// kyotenlist.cgiをjavascriptから呼ぶためのURL生成
+	// kidパラメータをjavascript側で追加して使用する
+	$tpl["kyotenlisturl"] = sprintf("%s?key=%s&opt=%s&cid=%s&pos=%s&cnt=%s&kid=", $D_SSAPI["kyotenlist"], $D_SSAPI_KEY, $cid, $D_DATA_CID, 1, 999);
+	$tpl["OMNI2nmap"] = true;
+}
+// add end 2016/07/11 H.Yasunaga]
+
+// add start 2017/05/11 H.Yasunaga ヤマトロッカーセキュリティコード対応 [
+if ($D_YTC_SECURITY_CODE) {
+	$tpl["security_rd_group"] = $D_YTC_SECURITY_RD_GROUP;
+	$tpl["security_rd_item"] = $D_YTC_SECURITY_RD_ITEM;
+	// mod 2017/05/29 H.Yasunaga URLを設定する際にドメインの変数が間違っていた [
+	//$tpl["codecheckurl"] = "$protocol://$EMAP_SSAPI_SRV/cgi/ytc_securtycode_check.cgi";
+	$tpl["codecheckurl"] = "$protocol://$EMAP_SSAPI_SRV_G/cgi/ytc_securtycode_check.cgi";
+	// mod 2017/05/29 H.Yasunaga ]
+	$tpl["D_DATA_CID"] = $D_DATA_CID;
+}
+// add end 2017/05/11 H.Yasunaga ]
+
+//-------------------
+// 画面出力
+//-------------------
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($err)) {
+	$err = "";
+}
+// mod 2011/07/05 Y.Nakajima ]
+$tpl['err'] = $err;
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'mapview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'nmap.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'mapview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

@@ -1,0 +1,259 @@
+<?PHP
+// ------------------------------------------------------------
+// Myエリア編集画面用php
+// 
+// 開発履歴
+// 2011/04/13 H.Osamoto		Myエリア編集画面用に新規追加
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");  // 基本設定
+
+//-------------------
+// 変数の処理
+//-------------------
+//入力値チェック
+switch($type) {
+	case "MyAreaSel"://Myエリアデータ取得
+	case "MyAreaOrderUpdt"://Myエリア表示順序変更
+	case "MyAreaDel"://Myエリアデータ削除
+	case "MyAreaAddDisp"://Myエリアデータ追加画面表示
+		break;
+	case "MyAreaAdd"://Myエリアデータ追加
+	case "MyAreaNameUpdt"://Myエリア名変更
+		$myarea_name = urlencode(zdc_htmlspecialchars_decode(ZdcConvertEncoding($myarea_name)));
+		break;
+	default:
+		break;
+}
+
+
+//-------------------
+// 動作モード切替
+//-------------------
+$tpl["cid"] = $D_CID;
+//
+
+$p_s2_dec = str_replace(" ", "+", $p_s2);
+$p_s2 = urlencode(str_replace(" ", "+", $p_s2));
+$lm_dec = $lm;
+$lm = urlencode(str_replace(" ", "+", $lm));
+
+switch($type) {
+	case "MyAreaSel":		//Myエリアデータ取得
+		$template = "myarea_edit";
+		$cgi_sel = $D_SSAPI["myarea_select"];
+		$prm_sel = sprintf("corp_id=%s&user_id=%s",$cid, $p_s2);
+		break;
+	case "MyAreaAddDisp":	//Myエリアデータ追加画面表示
+		$template = "myarea_add";
+		$cgi = "";
+		$prm = "";
+		$cgi_sel = $D_SSAPI["myarea_select"];
+		$prm_sel = sprintf("corp_id=%s&user_id=%s",$cid, $p_s2);
+		// Myエリア登録用パラメータ
+		//$tpl["_jsMyAreaAdd"] = sprintf("ZdcEmapMyAreaAdd('%s','%s','%s','%s','%s');",$p_s2, "testname", $myar, $lm, "5");	//登録数が必要な為下で設定
+		$tpl["prm"]["corp_id"] = $cid;
+		break;
+	case "MyAreaAdd":		//Myエリアデータ追加
+		$template = "myarea_addresult";
+		$cgi = $D_SSAPI["myarea_add"];
+		$prm = sprintf("corp_id=%s&user_id=%s&myarea_name=%s&lat=%s&lon=%s",$cid, $p_s2, $myarea_name, $lat, $lon);
+		$cgi_sel = "";
+		$prm_sel = "";
+		break;
+	case "MyAreaNameUpdt":	//Myエリア名変更
+		$template = "myarea_edit";
+		
+		$myarea_name = urldecode($myarea_name);
+		$myarea_name = urldecode($myarea_name);
+		$myarea_name_tmp = str_replace("&amp;","&", $myarea_name);
+		$myarea_name_tmp = str_replace("&lt;","<", $myarea_name_tmp);
+		$myarea_name_tmp = str_replace("&gt;",">", $myarea_name_tmp);
+		$myarea_name_tmp = str_replace("&quot;",'"', $myarea_name_tmp);
+		$myarea_name_tmp = str_replace("&#039;","'", $myarea_name_tmp);
+		
+		$cgi = $D_SSAPI["myarea_name_updt"];
+		$prm = sprintf("myarea_id=%s&corp_id=%s&myarea_name=%s",$myarea_id, $cid, urlencode($myarea_name_tmp));
+		$cgi_sel = $D_SSAPI["myarea_select"];
+		$prm_sel = sprintf("corp_id=%s&user_id=%s",$cid, $p_s2);
+		break;
+	case "MyAreaOrderUpdt":	//Myエリア表示順序変更
+		$template = "myarea_edit";
+		$cgi = $D_SSAPI["myarea_order_updt"];
+		$prm = sprintf("myarea_id=%s&corp_id=%s&user_id=%s&disp_order=%s",$myarea_id, $cid, $p_s2, $disp_order);
+		$cgi_sel = $D_SSAPI["myarea_select"];
+		$prm_sel = sprintf("corp_id=%s&user_id=%s",$cid, $p_s2);
+		break;
+	case "MyAreaDel":		//Myエリアデータ削除
+		$template = "myarea_edit";
+		$cgi = $D_SSAPI["myarea_del"];
+		$prm = sprintf("myarea_id=%s&corp_id=%s&user_id=%s",$myarea_id, $cid, $p_s2);
+		$cgi_sel = $D_SSAPI["myarea_select"];
+		$prm_sel = sprintf("corp_id=%s&user_id=%s",$cid, $p_s2);
+		break;
+	default:
+		break;
+}
+
+//-------------------
+// 必須パラメータセット
+//-------------------
+$tpl["prm"]["myar"] = $myar;
+$tpl["prm"]["p_s2"] = $p_s2;
+$tpl["prm"]["p_s2_dec"] = $p_s2_dec;
+$tpl["prm"]["lm"]   = $lm;
+$tpl["prm"]["lm_dec"]   = $lm_dec;
+
+// テスト環境フラグ
+// mod 2011/07/05 Y.Nakajima
+//if (ereg('test', $D_CID)) {
+if (strpos($D_CID, 'test')) {
+	$tpl["test_flg"] = "1";
+} else {
+	$tpl["test_flg"] = "";
+}
+
+
+//-------------------
+// 読み込み
+//-------------------
+//CGI呼び出し
+while(1) {
+	// mod 2011/07/05 Y.Nakajima
+	//if($cgi || $type == "MyAreaSel" || $type == "MyAreaAddDisp") {
+	if(isset($cgi) || $type == "MyAreaSel" || $type == "MyAreaAddDisp") {
+		if($type == "MyAreaAdd") {		//Myエリア追加
+			
+			$url = sprintf("%s?%s",$cgi,$prm);
+
+			$ret = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+
+			if ($ret[0] == "m0100000") {	//正常終了コード
+				$tpl["msg"] = "登録が完了致しました。";
+			} else {						//正常終了コード以外
+				
+				switch ($ret[0]) {
+					case "m0100007":
+						$tpl["msg"] = "ERR,Myエリア名称の文字数が\n50文字を超えている為、登録できません。";
+						break;
+					case "m0100008":
+						$tpl["msg"] = "ERR,Myエリアは5件までしか\n登録できません。";
+						break;
+					case "m0100009":
+						$tpl["msg"] = "ERR,機種依存文字が含まれている為、登録できません。";
+						break;
+					default:
+						$tpl["msg"] = "ERR,登録に失敗しました。";
+				}
+			}
+		} else if($type == "MyAreaNameUpdt") {		//Myエリア名称変更
+			
+			$url = sprintf("%s?%s",$cgi,$prm);
+
+			$ret = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+
+			if ($ret[0] != "m0200000") {	//正常終了コード以外
+				$template = "myarea_addresult";
+				
+				switch ($ret[0]) {
+					case "m0200007":
+						$tpl["msg"] = "ERR,Myエリア名称の文字数が\n50文字を超えている為、登録できません。";
+						break;
+					case "m0200009":
+						$tpl["msg"] = "ERR,機種依存文字が含まれている為、登録できません。";
+						break;
+					default:
+						$tpl["msg"] = "ERR,Myエリア名称変更に失敗しました。";
+				}
+			}
+		} else if($type == "MyAreaOrderUpdt") {		//Myエリア表示順序変更
+			
+			$url = sprintf("%s?%s",$cgi,$prm);
+
+			$ret = ZdcHttpRead($url,0);
+
+			if ($ret[0] != "m0300000") {	//正常終了コード以外
+				$template = "myarea_addresult";
+				$tpl["msg"] = "ERR,変更に失敗しました。";
+			}
+		} else if($type == "MyAreaDel") {		//Myエリア削除
+			
+			$url = sprintf("%s?%s",$cgi,$prm);
+			$ret = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+
+			if ($ret[0] != "m0400000") {	//正常終了コード以外
+				$template = "myarea_addresult";
+				$tpl["msg"] = "ERR,削除に失敗しました。";
+			}
+		}
+		
+		// mod 2011/07/05 Y.Nakajima
+		if (isset($cgi_sel) && $cgi_sel) {
+			$url = sprintf("%s?%s",$cgi_sel,$prm_sel);
+			
+			$dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+			$cnt  = $dat[0];
+			
+			for($i = 0; $i < $cnt; $i++) {
+				$rec = explode("\t",$dat[$i+1]);
+				
+				$tpl["list"][$i]["myarea_id"]   = $rec[0];
+				$tpl["list"][$i]["corp_id"]     = $rec[1];
+				$tpl["list"][$i]["user_id"]     = $rec[2];
+				$tpl["list"][$i]["myarea_name"] = htmlspecialchars($rec[3]);
+				$tpl["list"][$i]["lat"]         = $rec[4];
+				$tpl["list"][$i]["lon"]         = $rec[5];
+				$tpl["list"][$i]["disp_order"]   = $rec[6];
+				if ($rec[6] != 1) {
+					$tpl["list"][$i]["disp_order_prev"]   = $rec[6] - 1;
+				}
+				if ($rec[6] != $cnt) {
+					$tpl["list"][$i]["disp_order_next"]   = $rec[6] + 1;
+				}
+			}
+			
+			if ($type == "MyAreaAddDisp") {
+				$tpl["_jsMyAreaAdd"] = sprintf("ZdcEmapMyAreaAdd('%s','%s','%s','%s','%s');",$p_s2, "testname", $myar, $lm, $cnt+1);
+				$tpl["add_cnt"] = $cnt+1;
+			}
+		}
+		break;
+	} else {
+		break;
+	}
+}
+
+//-------------------
+// 画面設定
+//-------------------
+//css
+$j = 0;
+// mod 2011/07/05 Y.Nakajima [
+if(isset($D_JSCSS) && $D_JSCSS) {
+	foreach ($D_JSCSS as $key => $value) {
+		$tpl["css"][$j]["src"] = $value;
+		$j ++;
+	}
+}
+$tpl["css"][$j++]["src"] = $D_SYSDIR_COMPANY."search.css";
+
+$tpl["_jsBack"]       = "ZdcEmapHistoryBack()";
+$tpl["_jsCancel"]     = "ZdcEmapSearchCancel()";
+$tpl["_jsChangeFunc"] = "ZdcEmapSearchChange";
+$tpl["_jsSearchOpenFromSrchWin"] = "ZdcEmapSearchOpenFromSrchWin";	// add 2008/04/21 Y.Matsukawa
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["sys_icon_select"],$D_CID);
+$tpl["_jsCond2Scond"] = "ZdcEmapCond2SearchTopCond()";		// add 2010/05/11 Y.Matsukawa
+$tpl["_jsScond2Cond"] = "ZdcEmapSearchTopCond2Cond()";		// add 2010/05/11 Y.Matsukawa
+
+
+//-------------------
+// 画面出力
+//-------------------
+ZdcLogPut(0);
+@HtmlTemplate::t_include($D_SYSDIR_COMPANY.$template.".tpl",$tpl);
+?>

@@ -1,0 +1,146 @@
+@charset "utf-8";
+/* ----------------------------------------------
+	This style definition is initiarize.
+------------------------------------------------- */
+
+div , dl , dt , dd , ul , ol , li , pre , form , fieldset , input , textarea , blockquote , th , td { 
+	margin: 0;
+	padding: 0;
+}
+
+p {
+	margin: 0px;
+	padding-top: 0px;
+	padding-right: 0px;
+	padding-bottom: 10px;
+	padding-left: 0px;
+}
+
+
+body {
+	color: #222;
+	font-size: 14px;
+	line-height: 22px;
+	margin: 0;
+	padding: 0;
+	text-align: center;
+	font-family: "ヒラギノ角ゴ Pro W3", "Hiragino Kaku Gothic Pro", "メイリオ", Meiryo, Osaka, "ＭＳ Ｐゴシック", "MS PGothic", sans-serif;
+}
+
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+fieldset , img {
+	border: 0;
+	vertical-align: bottom;
+	margin: 0px;
+	padding: 0px;
+}
+
+address , caption , cite , code , dfn , th , var {
+	font-style: normal;
+	font-weight: normal;
+}
+
+ol , ul {
+	list-style: none;
+}
+
+caption , th {
+	text-align: left;
+}
+
+h1 {
+	font-size: 10px;
+	font-weight: normal;
+	margin: 0px;
+	padding-bottom: 0px;
+	line-height: 14px;
+	padding-top: 0px;
+	padding-right: 0px;
+	padding-left: 0px;
+}
+
+
+h2 , h3 , h4 , h5 , h6 {
+	font-size: 100%;
+	font-weight: normal;
+	margin: 0px;
+	padding-top: 0px;
+	padding-right: 0px;
+	padding-bottom: 10px;
+	padding-left: 0px;
+}
+
+q:before , q:after {
+	content: '';
+}
+
+abbr , acronym {
+	border: 0;
+}
+
+textarea {
+	font-size: 100%;
+	font-family: 'Hiragino Kaku Gothic Pro',Meiryo,'MS PGothic',sans-serif;
+}
+/*
+form {
+	margin: 0px;
+	padding: 0px;
+}
+form table {
+	margin-bottom: 10px;
+}
+form th {
+	padding: 10px;
+	vertical-align: top;
+}
+form td {
+	padding: 10px;
+	vertical-align: top;
+}
+*/
+.form01 {
+	width: 400px;
+}
+.form02 {
+	height: 80px;
+	width: 450px;
+}
+.form03 {
+	width: 100px;
+}
+
+div {  
+    zoom: 1;/*for IE 5.5-7*/  
+}  
+div:after {/*for modern browser*/  
+    content: ".";  
+    clear: both;  
+    display: block;  
+    line-height: 0;  
+    height: 0;  
+    visibility: hidden;  
+}  
+.clear {
+	clear: both;
+}
+.clearfix {
+	zoom: 1;
+	}
+.clearfix:after {
+	content: "";
+	display: block;
+	clear: both;
+}
+a {
+	color: #333;
+	text-decoration: none;
+}
+a:hover {
+	color: #BA1532;
+	text-decoration: none;
+}

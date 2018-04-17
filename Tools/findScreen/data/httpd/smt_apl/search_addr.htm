@@ -1,0 +1,181 @@
+<?PHP
+// ------------------------------------------------------------
+// 住所リスト検索
+// 
+// 2011/03/10 Y.Matsukawa	新規作成
+// 2011/07/13 Y.Matsukawa	機能追加（ルート探索、最寄駅）
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/12/13 K.Masuda 		パラメータ処理追加
+// 2012/01/11 Y.Matsukawa	任意パラメータ
+// 2012/09/10 Y.Matsukawa	【不具合修正】任意パラメータに「&」を含めると正しく引き継がれない、任意パラメータに半角スペース指定すると消える
+// 2014/12/23 Y.Matsukawa	前へ戻るリンク
+// 2015/03/16 H.osamoto		「検索TOPへ」リンクを表示選択できるように変更（デフォルト：非表示）
+// 2015/08/25 N.Wada		どのリストを表示しているかのフラグを追加
+// 2016/03/18 Y.Matsukawa	長尺URL対応（condをパラメータで引き継がずp_sで代用する）
+// 2016/04/05 F.Yokoi		英語版対応
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理	add 2011/12/13 K.Masuda
+//-------------------
+//require_once('/home/emap/src/smt/inc/proc_get_freeparam.inc');		del 2012/01/11 Y.Matsukawa
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');		// add 2012/01/11 Y.Matsukawa
+
+//dbl("QUERY_STRING=".$_SERVER['QUERY_STRING']);
+//dbl("keyword=$keyword");
+
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	//-------------------
+	// 画面設定
+	//-------------------
+	// add 2011/07/13 Y.Matsukawa [
+	$param = '';
+	if ($mode != '') $param .= "&mode=$mode";
+	if ($kid != '')  $param .= "&kid=$kid";
+	// add 2011/07/13 Y.Matsukawa ]
+	// function
+	// ロード時処理
+	// add 2011/07/05 Y.Nakajima [
+	if (!isset($area)) $area = "";
+	if (!isset($adcd)) $adcd = "";
+	if (!isset($pl_prm_all)) $pl_prm_all = "";
+	// add 2016/03/18 Y.Matsukawa [
+	if ($D_NO_COND_PRM) {
+		$pl_prm_all = '';
+		$pl_prm_enc_all = '';
+	}
+	// add 2016/03/18 Y.Matsukawa ]
+	// add 2011/07/05 Y.Nakajima ]
+	// add 2014/12/23 Y.Matsukawa [
+	//-------------------
+	// 前へ戻るURL
+	//-------------------
+	if (!isset($keyhis)) $keyhis = '';
+	$parent_cd = '';
+	$parent_his = '';
+	$child_his = '';
+	if ($keyhis != '') {		// パラメータで渡されたキー履歴（上位ページまでの履歴）
+		$arr_keyhis = explode(',', $keyhis);
+		$parent_cd = array_pop($arr_keyhis);		// 戻り先（上位ページ）に渡すキー（area or adcd）
+		if (count($arr_keyhis)) $parent_his = implode(',', $arr_keyhis);		// 戻り先（上位ページ）に渡すキー履歴
+	}
+	// 地方リスト以外
+	if ($area != '' || $adcd != '') {
+		// 一覧遷移先（下位ページ）に渡す履歴
+		if ($keyhis != '') {		// パラメータで渡されたキー履歴（上位ページまでの履歴）
+			$arr_keyhis = explode(',', $keyhis);
+		} else {
+			$arr_keyhis = array();
+		}
+		$arr_keyhis[] = ($adcd != '' ? $adcd : $area);
+		$child_his = implode(',', $arr_keyhis);
+		// 前へ戻るリンク
+		$tpl["_urlBack"] = $D_DIR_BASE_G."search_addr.htm?";
+		switch (strlen($parent_cd)) {
+			// 前ページが地方リスト
+			case 0:
+				break;
+			// 前ページが都道府県リスト
+			case 1:
+				$tpl["_urlBack"] .= "&area=$parent_cd";
+				break;
+			// 前ページが市区町村以下のリスト
+			default:
+				$tpl["_urlBack"] .= "&adcd=$parent_cd";
+		}
+		if ($parent_his != '') $tpl["_urlBack"] .= "&keyhis=$parent_his";
+		$tpl["_urlBack"] .= $pl_prm_enc_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:'');
+	}
+	// add 2014/12/23 Y.Matsukawa ]
+	$tpl['_jsInit'] = sprintf('javascript:ZdcEmapSearchAddrLInit();ZdcEmapSearchAddrL(\'%s\',\'%s\',\'%s\',1);',
+						ZdcEsc4JsLiteral($area),
+						ZdcEsc4JsLiteral($adcd),
+						//ZdcEsc4JsLiteral($pl_prm_all)		mod 2011/07/13 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm_all.$param)		mod 2012/01/11 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm_all.$param.($freeparms?'&'.$freeparms:''))		mod 2012/09/10 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))		mod 2014/12/23 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($child_his!=''?'&keyhis='.urlencode($child_his):'').($freeparms_enc?'&'.$freeparms_enc:'')) mod 2016/04/05 F.Yokoi
+						ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($child_his!=''?'&keyhis='.urlencode($child_his):'').($freeparms_enc?'&'.$freeparms_enc:'').'&title='.urlencode($title))
+	);
+	// js
+	$j = 0;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'common.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'search.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	//$tpl['js'][$j]['charset'] = 'UTF-8';
+}
+
+$tpl['D_URL_SEARCH_TOP'] .= '?'.$pl_prm_enc_all;
+if($freeparms_enc) $tpl['D_URL_SEARCH_TOP'] .= '&'.$freeparms_enc;		// add 2012/01/11 Y.Matsukawa
+
+// mod 2015/03/16 H.osamoto [
+//	if ($mode == 'rs') $tpl['search_top'] = 1;		// 検索TOPリンクを消す	add 2011/07/13 Y.Matsukawa
+if (!isset($D_NADDR_SEARCH_TOP_LINK) || (isset($D_NADDR_SEARCH_TOP_LINK) && !$D_NADDR_SEARCH_TOP_LINK)) {
+	if ($mode == 'rs') $tpl['search_top'] = 1;		// 検索TOPリンクを消す
+}
+// mod 2015/03/16 H.osamoto ]
+
+// add 2015/08/27 N.Wada [
+// 現在表示中の住所コードレベル
+//（0：エリア、1：都道府県、2：市区町村、3：大字、4：字丁目、5：街区、6：地番（枝番）
+if ( $adcd != '' ) {
+	foreach( $D_ADCD_LEN as $key => $value ) {
+		if ( strlen($adcd) == $value ) {
+			break;
+		}
+	}
+	$tpl['adcd_lvl_'.($key+1)] = 1;
+} elseif ( $area != '' ) {
+	$tpl['adcd_lvl_1'] = 1;
+} else {
+	$tpl['adcd_lvl_0'] = 1;
+}
+// add 2015/08/27 N.Wada ]
+
+//-------------------
+// 画面出力
+//-------------------
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($err)) {
+	$err = "";
+}
+// mod 2011/07/05 Y.Nakajima ]
+$tpl['err'] = $err;
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		// add 2011/07/05 Y.Nakajima
+		if (file_exists($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl')) 
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'search_addr.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		// add 2011/07/05 Y.Nakajima
+		if (file_exists($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl')) 
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

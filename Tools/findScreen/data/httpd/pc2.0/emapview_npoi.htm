@@ -1,0 +1,110 @@
+<?PHP
+// ------------------------------------------------------------
+// 地図制御php 最寄り施設一覧モジュール
+// 
+// 開発履歴
+//   2007/03/01 bando@D&I
+//     新規開発
+//   2008/08/22 Y.Matsukawa 英字対応
+// 2011/10/03 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");
+
+//-------------------
+// パラメーターの処理
+//-------------------
+$pos = $page * $D_POI_PAGE + 1;
+// mod 2011/10/03 Y.Nakajima [
+//if(!$jnrmn) $jnrmn = $D_POI_JNRMN;
+//if(!$jnr) $jnr = $D_POI_JNR;
+if (!isset($jnrmn)) $jnrmn = $D_POI_JNRMN;
+if (!isset($jnr)) $jnr = $D_POI_JNR;
+if (!isset($keyword)) $keyword = "";
+// mod 2011/10/03 Y.Nakajima ]
+$keyword = ZdcConvertEncoding(trim($keyword));
+
+//-------------------
+// データアクセス
+//-------------------
+$cgi = $D_SSAPI["npoi"];
+//$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&jnrmn=%s&jnr=%s&lat=%s&lon=%s&knsu=%s&rad=%s&frewd=%s&pflg=%d&datum=%s",		mod 2008/08/22 Y.Matsukawa
+$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&jnrmn=%s&jnr=%s&lat=%s&lon=%s&knsu=%s&rad=%s&frewd=%s&pflg=%d&datum=%s&lang=%s",
+			   $cgi,$D_SEARCH_CORPID,$cid,$D_SRARCH_SRVSID,$D_SSAPI_KEY,$pos,$D_POI_PAGE,$jnrmn,$jnr,
+			   //$lat,$lon,$D_POI_MAX,$radius,$keyword,$D_PFLG,$D_DATUM);		mod 2008/08/22 Y.Matsukawa
+			   $lat,$lon,$D_POI_MAX,$radius,$keyword,$D_PFLG,$D_DATUM,$D_POI_LANG);
+$dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+
+// mod 2011/10/03 Y.Nakajima [
+if (isset($dat[0])) {
+	$status = explode("\t",$dat[0]);
+	$cnt = count($dat);
+} else {
+	$status = "";
+	$cnt = 0;
+}
+// mod 2011/10/03 Y.Nakajima ]
+
+
+//-------------------
+// 画面設定
+//-------------------
+//$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select"],$D_CID);		mod 2010/07/20 Y.Matsukawa
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select_g"],$D_CID);
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["sys_icon_select"],$D_CID);
+//ページ制御
+// mod 2011/10/03 Y.Nakajima
+if(isset($page) && $page > 0) {
+	$tpl["_jsPre"] = sprintf("ZdcEmapPoiListClick(%d)",($page - 1));
+	$tpl["_jsPrev"]    = sprintf("%s",$tpl["_jsPre"]);
+}
+if(isset($status[0]) && substr($status[0],-1,1) == '1') {
+	$tpl["_jsNext"] = sprintf("ZdcEmapPoiListClick(%d)",($page + 1));
+	$tpl["_jsNext"]    = sprintf("%s",$tpl["_jsNext"]);
+}
+$tpl["max"] = intval($status[2]);
+$tpl["start"] = $pos;
+$tpl["end"]   = $pos + $cnt - 2;
+//施設一覧
+for($i = 0;$i < $cnt - 1;$i ++) {
+	$tpl["list"][$i]["id"] = $i;
+	$tpl["list"][$i]["no"] = ($i+1);
+	$rec = ZdcConvertEncoding($dat[$i+1]);
+	$rec = explode("\t",$rec);
+	$tpl["list"][$i]["cid"] = $rec[0];
+	$tpl["list"][$i]["lat"] = $rec[1];
+	$tpl["list"][$i]["lon"] = $rec[2];
+	$tpl["list"][$i]["name"] = $rec[3];
+	$tpl["list"][$i]["addr"] = $rec[4];
+	$tpl["list"][$i]["zip"]  = $rec[5];
+	$tpl["list"][$i]["tel"]  = $rec[6];
+	$tpl["list"][$i]["dist"] = $rec[7];
+	if($rec[7] > 1000){
+		$tpl["list"][$i]["dist_m"] = round($rec[7]/1000,2)."km";
+	} else {
+		$tpl["list"][$i]["dist_m"] = round($rec[7],0)."m";
+	}
+	$tpl["list"][$i]["jnrmn"] = $rec[8];
+	$tpl["list"][$i]["jnr"]   = $rec[9];
+	$tpl["list"][$i]["jnrnm"] = $rec[10];
+	$tpl["list"][$i]["jnrimg"]= sprintf("%s%s.gif",$D_ICON_POI_IMAGE_DIR,$rec[8]);
+	$tpl["list"][$i]["_jsMsg"]    = sprintf("ZdcEmapTipsClick('%s')",($i+$pos-1));
+	$tpl["list"][$i]["_jsRoute"]     = sprintf("ZdcEmapRouteSearch('%s',%d,%d,'%s',%d,%d)",$D_USER_DEFNAME,$lon,$lat,$rec[3],$rec[2],$rec[1]);
+	$tpl["list"][$i]["_jsCurSet"]    = sprintf("ZdcEmapMapCursorSet('%s','%s');ZdcEmapMapFrontPoi(%s)",$rec[1],$rec[2],($i+$pos-1));
+	$tpl["list"][$i]["_jsCurRemove"] = sprintf("ZdcEmapMapCursorRemove()");
+}
+if($cnt < 2) $tpl["msg"] = $D_MSG_NPOI_NOLIST;
+
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_npoi_list.tpl",$tpl);
+?>

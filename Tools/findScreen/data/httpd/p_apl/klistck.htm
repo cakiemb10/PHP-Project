@@ -1,0 +1,105 @@
+<?PHP
+// ------------------------------------------------------------
+// 閲覧履歴（拠点）一覧
+//
+// 開発履歴
+// 2014/12/11 Y.Matsukawa	新規作成
+// 2015/03/25 H.Osamoto		年月日項目を分割
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// 引き継ぎパラメータ
+//-------------------
+require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+//-------------------
+// 閲覧履歴（Cookie）取得
+//-------------------
+$shop_id = array();
+if (isset($ckkids) && $ckkids != "") {
+	$shop_id = explode(',', $ckkids);
+}
+$tpl["count"] = count($shop_id);
+if ($tpl["count"]) $tpl["exist"] = 1;
+
+//-------------------
+// 一覧表示
+//-------------------
+if ($tpl["count"]) {
+	$shop_dtl_no = array();
+	$shop_dtl = array();
+	foreach ($shop_id as $i => $kid) {
+		$shop_dtl_no[$kid] = $i;
+		$shop_dtl[$i]['kid'] = $kid;
+		$shop_dtl[$i]['no'] = $i+1;
+	}
+	$cgi = $D_SSAPI['kyotenlist'];
+	$prm = sprintf('&cid=%s&pos=%d&cnt=%d', $D_DATA_CID, 1, 999);
+	$prm .= sprintf('&kid=%s', urlencode(implode(',', $shop_id)));
+	$url = sprintf('%s?key=%s&opt=%s%s', $cgi, $D_SSAPI_KEY, $D_CID, $prm);
+	$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+	$status  = explode("\t", $dat[0]);
+	if(!isset($status[2]) || !intval($status[2])) {
+		$err = "kyotenlist[".$status[2]."]";
+	} else {
+		$datacnt = intval($status[1]);
+		for($i = 0; $i < $datacnt; $i++) {
+			$rec = explode("\t", $dat[$i + 1]);
+			$kid = $rec[0];
+			if (isset($shop_dtl_no[$kid])) {
+				$no = $shop_dtl_no[$kid];
+				$shop_dtl[$no]['kid'] = $kid;
+				if (isset($D_KYO_COL_NAME[0])) {
+					foreach ($D_KYO_COL_NAME[0] as $j => $colnm) {
+						if ($colnm != '') {
+							if (isset($rec[5+$j])) {
+								$d = $rec[5+$j];
+							} else {
+								$d = '';
+							}
+							$shop_dtl[$no][$colnm] = $d;
+							// add 2015/03/25 H.Osamoto [
+							if($d) $shop_dtl[$no][$colnm."l".$d] = "1";
+							if(intval($d) == 1) $shop_dtl[$no][$colnm."b"] = "1";
+							// add 2015/03/25 H.Osamoto ]
+							// RCD薬剤師（rdcpas1）カスタマイズ：求人詳細URLから求人IDを抽出
+							if (isset($D_RDCPAS1_KYUJINURL_COLNM) && strtoupper($colnm) == strtoupper($D_RDCPAS1_KYUJINURL_COLNM) && $d != '') {
+								list($wku, $wkp) = explode('?', $d);
+								$arr_p = explode('&', $wkp);
+								foreach ($arr_p as $pkv) {
+									list($pk, $pv) = explode('=', $pkv);
+									if ($pk == 'PAS_JOIN_ORDER_ID_T' && $pv != '') {
+										$shop_dtl[$no]['KYUJINID'] = $pv;
+										break;
+									}
+								}
+							}
+							// add 2015/03/25 H.Osamoto [
+							//---------------------------------------------
+							// 日時を分割
+							//---------------------------------------------
+							if (isset($D_KYOTEN_ITEM_DATETIME[$colnm]) && $D_KYOTEN_ITEM_DATETIME[$colnm]) {
+								splitDateTimeCol($colnm, $d, &$shop_dtl[$no]);
+							}
+							// add 2015/03/25 H.Osamoto ]
+						}
+					}
+				}
+			}
+		}
+		if (count($shop_dtl)) {
+			$tpl["list"] = $shop_dtl;
+		}
+	}
+} else {
+	$tpl["msg"] = $D_MSG_SEARCH_NODATA['KLCK'];
+}
+
+//-------------------
+// 画面出力
+//-------------------
+if (isset($err)) $tpl['err'] = $err;
+ZdcLogPut(0);
+htmloutput($D_SYSDIR_COMPANY."klistck.tpl", $tpl);
+?>

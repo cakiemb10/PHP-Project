@@ -1,0 +1,249 @@
+<?php
+// ------------------------------------------------------------
+// API¥ì¥¹¥Ý¥ó¥¹¤ÎÊäÀµ¹àÌÜÄêµÁ
+// 
+// 2016/12/16 H.Yasunaga	¿·µ¬ºîÀ®
+// 2017/01/25 H.Yasunaga	°ÌÃÖ´ÉÍý¥æ¥Ë¡¼¥¯¥³¡¼¥É(µòÅÀID)¤Î0Íî¤Á¹àÌÜÊäÀµ¤ò³°¤¹
+// ------------------------------------------------------------
+require_once(dirname(__FILE__) . "/ResponseTag.inc");
+
+	// È¾³Ñ²½½èÍýÂÐ¾Ý
+	$VALUE_TO_HALF;
+	// ¿ô»ú¤ª¤è¤Ó¥«¥¿¥«¥Ê¤ÎÁ´³Ñ²½
+	$VALUE_TO_FULL;
+	// ¥Ï¥¤¥Õ¥ó¤Î½üµî(Í¹ÊØÈÖ¹æ)
+	$VALUE_TRIM_HYPHEN;
+	// 0Íî¤Á¹àÌÜÊäÀµ
+	$VALUE_ZERO_CORRECT;
+	// »þ¹ï¹àÌÜÊäÀµ hh:mm:ss ¤Î ss¤¬Ìµ¤¤¾ì¹ç¤Ë¡Ö00¡×¤òÄÉ²Ã¤¹¤ë
+	$VALUE_TIME_CORRECT;
+
+// È¾³Ñ²½	
+	$VALUE_TO_HALF = array();
+	// ¹àÈÖ1:°ÌÃÖ´ÉÍý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$VALUE_TO_HALF[$TAG_ORDER[0]] = true;
+	// ¹àÈÖ2:¶É½ê¥³¡¼¥É
+	$VALUE_TO_HALF[$TAG_ORDER[1]] = true;
+	// ¹àÈÖ3:¼è°·Å¹ÈÖ¹æ
+	$VALUE_TO_HALF[$TAG_ORDER[2]] = true;
+	// ¹àÈÖ9:Í¹ÊØÈÖ¹æ
+	$VALUE_TO_HALF[$TAG_ORDER[8]] = true;
+	// ¹àÈÖ12:JIS»Ô¶èÄ®Â¼¥³¡¼¥É
+	$VALUE_TO_HALF[$TAG_ORDER[11]] = true;
+	// ¹àÈÖ14:Ãó¼Ö¾ì
+	$VALUE_TO_HALF[$TAG_ORDER[13]] = true;
+	// ¹àÈÖ18:Í¹ÊØ¶É²ñ¼Ò¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$VALUE_TO_HALF[$TAG_ORDER[17]] = true;
+	// ¹àÈÖ22:Áë¸ýÅÅÏÃÈÖ¹æ
+	$VALUE_TO_HALF[$TAG_ORDER[21]] = true;
+	// ¹àÈÖ23:ÁíÌ³ÅÅÏÃÈÖ¹æ
+	$VALUE_TO_HALF[$TAG_ORDER[22]] = true;
+	// ¹àÈÖ24:Ìä¤¤¹ç¤ï¤»FAX
+	$VALUE_TO_HALF[$TAG_ORDER[23]] = true;
+	// ¹àÈÖ26:¤æ¤¦¤æ¤¦Áë¸ý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$VALUE_TO_HALF[$TAG_ORDER[25]] = true;
+	// ¹àÈÖ27:¸ÇÍ­Í¹ÊØÈÖ¹æ
+	$VALUE_TO_HALF[$TAG_ORDER[26]] = true;
+	// ¹àÈÖ32:ÂåÉ½ÅÅÏÃÈÖ¹æ
+	$VALUE_TO_HALF[$TAG_ORDER[31]] = true;
+	// ¹àÈÖ33:½¸²ÙÅÅÏÃÈÖ¹æ
+	$VALUE_TO_HALF[$TAG_ORDER[32]] = true;
+	// ¹àÈÖ42:¤«¤ó¤Ý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$VALUE_TO_HALF[$TAG_ORDER[41]] = true;
+	// ¹àÈÖ47:ÅÅÏÃÈÖ¹æ£±
+	$VALUE_TO_HALF[$TAG_ORDER[46]] = true;
+	// ¹àÈÖ48:ÅÅÏÃÈÖ¹æ£²
+	$VALUE_TO_HALF[$TAG_ORDER[47]] = true;
+	// ¹àÈÖ115:Í¹ÊØÊ¿Æü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[114]] = true;
+	// ¹àÈÖ116:Í¹ÊØÊ¿Æü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[115]] = true;
+	// ¹àÈÖ117:Í¹ÊØÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[116]] = true;
+	// ¹àÈÖ118:Í¹ÊØÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[117]] = true;
+	// ¹àÈÖ119:Í¹ÊØÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[118]] = true;
+	// ¹àÈÖ120:Í¹ÊØÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[119]] = true;
+	// ¹àÈÖ121:Í¹ÊØÁë¸ýÄêµÙÆü
+	$VALUE_TO_HALF[$TAG_ORDER[120]] = true;
+	// ¹àÈÖ123:Ãù¶âÊ¿Æü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[122]] = true;
+	// ¹àÈÖ124:Ãù¶âÊ¿Æü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[123]] = true;
+	// ¹àÈÖ125:Ãù¶âÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[124]] = true;
+	// ¹àÈÖ126:Ãù¶âÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[125]] = true;
+	// ¹àÈÖ127:Ãù¶âÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[126]] = true;
+	// ¹àÈÖ128:Ãù¶âÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[127]] = true;
+	// ¹àÈÖ129:¶ä¹ÔÁë¸ýÄêµÙÆü
+	$VALUE_TO_HALF[$TAG_ORDER[128]] = true;
+	// ¹àÈÖ131:ATMÊ¿Æü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[130]] = true;
+	// ¹àÈÖ132:ATMÊ¿Æü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[131]] = true;
+	// ¹àÈÖ133:ATMÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[132]] = true;
+	// ¹àÈÖ134:ATMÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[133]] = true;
+	// ¹àÈÖ135:ATMÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[134]] = true;
+	// ¹àÈÖ136:ATMÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[135]] = true;
+	// ¹àÈÖ137:ATMÄêµÙÆü
+	$VALUE_TO_HALF[$TAG_ORDER[136]] = true;
+	// ¹àÈÖ139:ÊÝ¸±Ê¿Æü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[138]] = true;
+	// ¹àÈÖ140:ÊÝ¸±Ê¿Æü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[139]] = true;
+	// ¹àÈÖ141:ÊÝ¸±ÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[140]] = true;
+	// ¹àÈÖ142:ÊÝ¸±ÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[141]] = true;
+	// ¹àÈÖ143:ÊÝ¸±ÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[142]] = true;
+	// ¹àÈÖ144:ÊÝ¸±ÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[143]] = true;
+	// ¹àÈÖ145:ÊÝ¸±Áë¸ýÄêµÙÆü
+	$VALUE_TO_HALF[$TAG_ORDER[144]] = true;
+	// ¹àÈÖ147:¤æ¤¦¤æ¤¦Ê¿Æü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[146]] = true;
+	// ¹àÈÖ148:¤æ¤¦¤æ¤¦Ê¿Æü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[147]] = true;
+	// ¹àÈÖ149:¤æ¤¦¤æ¤¦ÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[148]] = true;
+	// ¹àÈÖ150:¤æ¤¦¤æ¤¦ÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[149]] = true;
+	// ¹àÈÖ151:¤æ¤¦¤æ¤¦ÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[150]] = true;
+	// ¹àÈÖ152:¤æ¤¦¤æ¤¦ÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[151]] = true;
+	// ¹àÈÖ153:¤æ¤¦¤æ¤¦Áë¸ýÄêµÙÆü
+	$VALUE_TO_HALF[$TAG_ORDER[152]] = true;
+	// ¹àÈÖ155:¤«¤ó¤ÝÊ¿Æü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[154]] = true;
+	// ¹àÈÖ156:¤«¤ó¤ÝÊ¿Æü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[155]] = true;
+	// ¹àÈÖ157:¤«¤ó¤ÝÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[156]] = true;
+	// ¹àÈÖ158:¤«¤ó¤ÝÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[157]] = true;
+	// ¹àÈÖ159:¤«¤ó¤ÝÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[158]] = true;
+	// ¹àÈÖ160:¤«¤ó¤ÝÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TO_HALF[$TAG_ORDER[159]] = true;
+	// ¹àÈÖ161:¤«¤ó¤ÝÁë¸ýÄêµÙÆü
+	$VALUE_TO_HALF[$TAG_ORDER[160]] = true;
+
+// Á´³Ñ²½
+	$VALUE_TO_FULL = array();
+	// ¹àÈÖ10:½»½ê
+	$VALUE_TO_FULL[$TAG_ORDER[9]] = true;
+
+// ¥Ï¥¤¥Õ¥ó½üµî(Í¹ÊØÈÖ¹æ)
+	$VALUE_TRIM_HYPHEN = array();
+	// ¹àÈÖ9:Í¹ÊØÈÖ¹æ
+	$VALUE_TRIM_HYPHEN[$TAG_ORDER[8]] = true;
+	// ¹àÈÖ27:¸ÇÍ­Í¹ÊØÈÖ¹æ
+	$VALUE_TRIM_HYPHEN[$TAG_ORDER[26]] = true;
+
+// 0Íî¤Á¹àÌÜÊäÀµ
+	$VALUE_ZERO_CORRECT = array();
+	// del start 2017/01/25 H.Yasunaga °ÌÃÖ´ÉÍý¥æ¥Ë¡¼¥¯¥³¡¼¥É(µòÅÀID)¤Î0Íî¤Á¹àÌÜÊäÀµ¤ò³°¤¹ [
+	// ¹àÈÖ1:°ÌÃÖ´ÉÍý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	//$VALUE_ZERO_CORRECT[$TAG_ORDER[0]] = 12;
+	// del end 2017/01/25 ]
+	// ¹àÈÖ2:¶É½ê¥³¡¼¥É
+	$VALUE_ZERO_CORRECT[$TAG_ORDER[1]] = 6;
+	// ¹àÈÖ3:¼è°·Å¹ÈÖ¹æ
+	$VALUE_ZERO_CORRECT[$TAG_ORDER[2]] = 6;
+	// ¹àÈÖ5:Ê»ÀßÅ¹¥Õ¥é¥°
+	$VALUE_ZERO_CORRECT[$TAG_ORDER[4]] = 4;
+	// ¹àÈÖ11:JISÅÔÆ»ÉÜ¸©¥³¡¼¥É
+	$VALUE_ZERO_CORRECT[$TAG_ORDER[10]] = 2;
+	// ¹àÈÖ12:JIS»Ô¶èÄ®Â¼¥³¡¼¥É
+	$VALUE_ZERO_CORRECT[$TAG_ORDER[11]] = 5;
+	// ¹àÈÖ21:Í¹ÊØ¶É¶èÊ¬
+	$VALUE_ZERO_CORRECT[$TAG_ORDER[20]] = 2;
+	// ¹àÈÖ30:Í¹ÊØ»ÙÅ¹¶èÊ¬
+	$VALUE_ZERO_CORRECT[$TAG_ORDER[29]] = 2;
+	
+// »þ¹ï¹àÌÜÊäÀµ hh:mm:ss ¤Î ss¤¬Ìµ¤¤¾ì¹ç¤Ë¡Ö00¡×¤òÄÉ²Ã¤¹¤ë
+	$VALUE_TIME_CORRECT = array();
+	// ¹àÈÖ115:Í¹ÊØÊ¿Æü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[114]] = true;
+	// ¹àÈÖ116:Í¹ÊØÊ¿Æü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[115]] = true;
+	// ¹àÈÖ117:Í¹ÊØÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[116]] = true;
+	// ¹àÈÖ118:Í¹ÊØÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[117]] = true;
+	// ¹àÈÖ119:Í¹ÊØÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[118]] = true;
+	// ¹àÈÖ120:Í¹ÊØÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[119]] = true;
+	// ¹àÈÖ123:Ãù¶âÊ¿Æü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[122]] = true;
+	// ¹àÈÖ124:Ãù¶âÊ¿Æü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[123]] = true;
+	// ¹àÈÖ125:Ãù¶âÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[124]] = true;
+	// ¹àÈÖ126:Ãù¶âÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[125]] = true;
+	// ¹àÈÖ127:Ãù¶âÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[126]] = true;
+	// ¹àÈÖ128:Ãù¶âÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[127]] = true;
+	// ¹àÈÖ131:ATMÊ¿Æü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[130]] = true;
+	// ¹àÈÖ132:ATMÊ¿Æü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[131]] = true;
+	// ¹àÈÖ133:ATMÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[132]] = true;
+	// ¹àÈÖ134:ATMÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[133]] = true;
+	// ¹àÈÖ135:ATMÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[134]] = true;
+	// ¹àÈÖ136:ATMÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[135]] = true;
+	// ¹àÈÖ139:ÊÝ¸±Ê¿Æü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[138]] = true;
+	// ¹àÈÖ140:ÊÝ¸±Ê¿Æü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[139]] = true;
+	// ¹àÈÖ141:ÊÝ¸±ÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[140]] = true;
+	// ¹àÈÖ142:ÊÝ¸±ÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[141]] = true;
+	// ¹àÈÖ143:ÊÝ¸±ÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[142]] = true;
+	// ¹àÈÖ144:ÊÝ¸±ÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[143]] = true;
+	// ¹àÈÖ147:¤æ¤¦¤æ¤¦Ê¿Æü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[146]] = true;
+	// ¹àÈÖ148:¤æ¤¦¤æ¤¦Ê¿Æü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[147]] = true;
+	// ¹àÈÖ149:¤æ¤¦¤æ¤¦ÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[148]] = true;
+	// ¹àÈÖ150:¤æ¤¦¤æ¤¦ÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[149]] = true;
+	// ¹àÈÖ151:¤æ¤¦¤æ¤¦ÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[150]] = true;
+	// ¹àÈÖ152:¤æ¤¦¤æ¤¦ÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[151]] = true;
+	// ¹àÈÖ155:¤«¤ó¤ÝÊ¿Æü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[154]] = true;
+	// ¹àÈÖ156:¤«¤ó¤ÝÊ¿Æü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[155]] = true;
+	// ¹àÈÖ157:¤«¤ó¤ÝÅÚÍË³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[156]] = true;
+	// ¹àÈÖ158:¤«¤ó¤ÝÅÚÍË½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[157]] = true;
+	// ¹àÈÖ159:¤«¤ó¤ÝÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[158]] = true;
+	// ¹àÈÖ160:¤«¤ó¤ÝÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$VALUE_TIME_CORRECT[$TAG_ORDER[159]] = true;
+?>

@@ -1,0 +1,100 @@
+<?PHP
+// ------------------------------------------------------------
+// フリーワード検索（路線一覧）
+//
+// 2017/04/19 N.Wada		新規作成
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理
+//-------------------
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');
+
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	if (!isset($pl_prm_enc['cond'])) $pl_prm_enc['cond'] = "";
+	if (!isset($keyword)) $keyword = '';
+	$param = '';
+	if ($kid != '')  $param .= "&kid=$kid";
+	//-------------------
+	// 路線フリーワード
+	//-------------------
+	if ($keyword != '') {
+		//-------------------
+		// データ取得
+		//-------------------
+		$pos = ((($pg-1) * $D_SEARCH_ROSENW_PAGE)+1);
+		$cgi = $D_SSAPI['searchline'];
+		$prm = sprintf('&pos=%d&cnt=%d&frewd=%s', $pos, $D_SEARCH_ROSENW_PAGE, $keyword);
+		$url = sprintf('%s?cid=%s&enc=EUC&key=%s&opt=%s%s', $cgi, $D_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+		$dat = ZdcHttpRead($url, false, 5);
+		$status = explode("\t", $dat[0]);
+		$cnt = count($dat) - 1;
+		$hit_count = intval(trim($status[2]));
+		if($cnt == 0){
+			// データなし
+			//erl('SEARCHLINE NOT FOUND['.$dat[0]."][$url]");
+			$tpl['errmsg'] = $D_MSG_SEARCH_NODATA['RoW'];
+			$err = true;
+		} elseif ($hit_count && $D_SEARCH_ROSENW_MAXCOUNT && $hit_count > $D_SEARCH_ROSENW_MAXCOUNT) {
+			// 最大件数オーバー
+			$tpl['errmsg'] = $D_MSG_SEARCH_MAXPAGE['RoW'];
+			$err = true;
+		} else {
+			// データあり
+			$tpl['page'] = $pg;
+			$tpl['max'] = $hit_count;
+			if ($pos + $cnt - 1 < $hit_count) {
+				$tpl['next'] = 1;
+				$tpl['next_pos'] = $pos + $cnt;
+				$tpl['next_url'] = sprintf('javascript:ZdcEmapSearchFWRosen(\'%s\',\'%s\',%d);',
+									ZdcEsc4JsLiteral($keyword),
+									ZdcEsc4JsLiteral($pl_prm_enc_enc_all.$param.($freeparms_enc_enc?'&'.$freeparms_enc_enc:'')),
+									$pg + 1
+									);
+			}
+			for($i = 0; $i < $cnt; $i++) {
+				$rec = explode("\t", $dat[$i + 1]);
+				$tpl['list'][$i]['no'] = $i+1;
+				$tpl['list'][$i]['line'] = trim($rec[0]);
+				$tpl['list'][$i]['name'] = trim($rec[1]);
+				$tpl['list'][$i]['url'] = sprintf('search_rosen.htm?line=%s&linenm=%s%s&pg=1',
+										trim($rec[0]),
+										urlencode(mb_convert_encoding(trim($rec[1]), 'UTF-8', 'EUC-JP')),
+										ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))
+										);
+			}
+			if ($pg == 1) {
+				$tpl['hit_count'] = $hit_count;
+			}
+		}
+	} else {
+		$tpl['errmsg'] = $D_MSG_SEARCH_NULL["RoW"];
+		$err = true;
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	htmloutput($D_SYSDIR_COMPANY.'search_fw_rosen_list.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'error.tpl', $tpl);
+}
+?>

@@ -1,0 +1,25 @@
+@charset "shift_jis";
+
+div,p,dt,dd,li,th,td{font-size:10px;}
+#FontSizeSwitch li a.FontBtnS{display:block; background:url(../img/fontsize_s.gif) 0px -24px no-repeat; padding-top:24px;}
+
+#BreadCrumb p{font-size:9px;}
+#SideAutoLogin,#SidePassReminder{font-size:9px;}
+#TopAllianceLeft li,#TopAllianceRight li,#TopAllianceTsukau ul li,#TopAllianceKoukan ul li,#TopAllianceTameru ul li{font-size:9px;}
+p.TopTCampaignPeriod{font-size:9px;}
+
+#SideMyName,#SideMyWhatsNew ul li,#SideMyPeriod p,#SideMaintenance p{font-size:9px;}
+
+.CampaignLink,.CouponListLink{font-size:14px;}
+#CouponSendMobile h3,.CampainStory h4,.RiyouKiyakuStory h4,.PrivacyStory h3,.PrivacyStory h4,.AllianceListStory h4{font-size:10px;}
+p.WonderPeriod,.fontS,.WcardEtcTable td{font-size:9px;}
+.CampainStory h3,.Tcardh4Mark,.Tsiteh4Mark,.Wcardh4Mark{font-size:12px;}
+.AllianceStory p strong{font-size:12px;}
+.fontL,.QaStoryQ{font-size:12px;}
+.AllianceH4Blue,#AllianceOtherCamp h3{font-size:10px;}
+
+.Annotation{font-size:9px;}
+#FooterMenu li,.QaFontS{font-size:9px;}
+#Copyright{font-size:9px;}
+
+

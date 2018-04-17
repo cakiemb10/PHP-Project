@@ -1,0 +1,153 @@
+<?PHP
+// ------------------------------------------------------------
+// フリーワード検索（駅）
+// 
+// 2011/11/25 K.Masuda		新規作成
+// 2011/12/13 K.Masuda 		パラメータ処理追加
+// 2012/01/11 Y.Matsukawa	任意パラメータ
+// 2012/02/29 K.Masuda 		任意パラメータ（$adcd）追加
+// 2012/09/10 Y.Matsukawa	【不具合修正】任意パラメータに「&」を含めると正しく引き継がれない、任意パラメータに半角スペース指定すると消える
+// 2015/06/11 H.Osamoto		searchzip.cgi呼び出し時にソートパラメータ指定
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理	add 2011/12/13 K.Masuda
+//-------------------
+//require_once('/home/emap/src/smt/inc/proc_get_freeparam.inc');		del 2012/01/11 Y.Matsukawa
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');		// add 2012/01/11 Y.Matsukawa
+
+//dbl("QUERY_STRING=".$_SERVER['QUERY_STRING']);
+//dbl("keyword=$keyword");
+
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	$param = '';
+	if ($mode != '') $param .= "&mode=$mode";
+	if ($kid != '')  $param .= "&kid=$kid";
+	if ($adcd != '')  $param .= "&adcd=$adcd";	// add 2012/02/29 K.Masuda
+	//-------------------
+	// 件数取得
+	//-------------------
+	$total_count = 0;
+	$target_list = explode('|', $D_SEARCH_AVAILABLE);
+	$init_view = null;
+	foreach ($target_list as $tg) {
+		$url = '';
+		$tpl['count'.$tg] = '0';
+		if ($keyword != '') {
+			$url = '';
+			$url2 = '';
+			switch ($tg) {
+				case '1':
+					$cgi = $D_SSAPI['searcheki'];
+					$pos = ((($pg-1) * $D_SEARCH_EKIW_PAGE)+1);
+					$prm = sprintf("&pos=1&cnt=1&tod=%s&frewd=%s", $adcd, urlencode($keyword));
+					$url = sprintf('%s?enc=EUC&key=%s&opt=%s%s', $cgi, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+					break;
+				case '2':
+					$cgi = $D_SSAPI['searchaddr'];
+					$prm = sprintf("&pos=1&cnt=1&tod=%s&frewd=%s", $adcd, urlencode($keyword));
+					$url = sprintf('%s?enc=EUC&key=%s&opt=%s%s', $cgi, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+					$cgi2 = $D_SSAPI['searchzip'];
+					//	$prm2 = sprintf("&pos=1&cnt=1&zip=%s", urlencode($keyword));	mod 2015/06/11 H.Osamoto
+					$prm2 = sprintf("&pos=1&cnt=1&zip=%s&sort=%s", urlencode($keyword), "adcd");
+					$url2 = sprintf('%s?enc=EUC&key=%s&opt=%s%s', $cgi2, $D_SSAPI_KEY, $D_LOG_CID, $prm2);
+					break;
+				case '3':
+					$cgi = $D_SSAPI['searchpoi'];
+					$prm = sprintf("&pos=1&cnt=1&tod=%s&frewd=%s", $adcd, urlencode($keyword));
+					$url = sprintf('%s?cid=%s&sid=%s&enc=EUC&key=%s&opt=%s%s', $cgi, $D_SEARCH_CORPID, $D_SRARCH_SRVSID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+					break;
+			}
+			if ($url) {
+				$dat = ZdcHttpRead($url, false, 5);
+				$status = explode("\t", $dat[0]);
+				$hit_count = intval(trim($status[2]));
+				if ($hit_count == 0 && $url2 != '') {
+					$dat = ZdcHttpRead($url2, false, 5);
+					$status = explode("\t", $dat[0]);
+					$hit_count = intval(trim($status[2]));
+				}
+				$tpl['count'.$tg] = $hit_count;
+				$total_count += $hit_count;
+				if ($hit_count > 0 && !$init_view) {
+					$init_view = $tg;
+				}
+			}
+		}
+	}
+	if (!$init_view) $init_view = $target_list[0];
+	//-------------------
+	// 画面設定
+	//-------------------
+	$tpl['kobetu'] = 1;
+	$tpl['fw_type_eki'] = 1;
+	//$tpl['init_view'.$init_view] = 1;
+	$tpl['init_view1'] = 1;
+	$tpl['html_keyword'] = htmlspecialchars($keyword);
+	$tpl['js_keyword'] = ZdcEsc4JsLiteral($keyword);
+	// function
+	// ロード時処理
+	$tpl['_jsInit'] = sprintf('javascript:ZdcEmapSearchFWInit(\'%s\');ZdcEmapSearchFW(\'%s\',\'%s\',\'%s\',1);',
+						$D_SEARCH_AVAILABLE,
+						'all',
+						//ZdcEsc4JsLiteral($keyword),		mod 2012/09/10 Y.Matsukawa
+						urlencode(mb_convert_encoding($keyword, 'UTF-8', 'EUC-JP')),
+						//ZdcEsc4JsLiteral($pl_prm_all.$param)		mod 2012/01/11 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm_all.$param.($freeparms?'&'.$freeparms:''))		mod 2012/09/10 Y.Matsukawa
+						ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))
+						);
+	// タブクリック
+	for ($i=1; $i<=3; $i++) {
+		$tpl['_jsTabClick'.$i] = "ZdcEmapSearchFWTabClick($i);";
+	}
+	// js
+	$j = 0;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'common.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'search.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+}
+
+$tpl['D_URL_SEARCH_TOP'] .= '?'.$pl_prm_enc_all;
+if($freeparms_enc) $tpl['D_URL_SEARCH_TOP'] .= '&'.$freeparms_enc;		// add 2012/01/11 Y.Matsukawa
+
+if ($mode == 'rs') $tpl['search_top'] = 1;		// 検索TOPリンクを消す
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'search_fw.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

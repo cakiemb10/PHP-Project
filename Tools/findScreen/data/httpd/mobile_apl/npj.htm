@@ -1,0 +1,398 @@
+<?PHP
+// ------------------------------------------------------------
+// 最寄施設ジャンル一覧
+// 
+// 新規作成 : H.Osamoto
+// 2015/09/07 Y.Matsukawa	【不具合修正】神奈川電通広告：一覧で選んだ施設と違うものが詳細に表示される
+// ------------------------------------------------------------
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("./inc/define_mobile.inc");  // 基本設定
+include("./inc/carrier.inc");  // 基本設定
+include("./inc/function.inc");
+include("./inc/define_msg.inc");
+include("inc/proc_get_freeparam.inc");		// add 2009/06/29 Y.Matsukawa
+//-------------------
+// 変数初期化
+//-------------------
+if(!$pg) $pg = 1;
+
+$ua = $HTTP_USER_AGENT;
+$carrier = new CARRIER($ua);
+$carrier->AddReplaceWord("@WORD@", $D_USR_DEFNAME);
+
+$header = array();
+$body   = array();
+$footer = array();
+$header["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+$body["D_DIR_COMPANY"]   = $D_HTTP_DIR_COMPANY;
+$footer["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+include("inc/proc_carrier2tpl.inc");
+include("inc/proc_template.inc");
+
+//最寄り施設範囲下位互換用（最寄り駅と共通）
+if(!isset($D_ST_RAD)) $D_ST_RAD = $D_SHOP_RAD;
+
+//-------------------
+// 検索処理
+//-------------------
+$list_pos = ((($pg-1) * $D_SEARCH_LIST_PAGE)+1);
+$template = "list.tpl";
+$body["midashi"] = ($D_NEKI_TITLE ? $D_NEKI_TITLE : "施設一覧");
+$body["errmsg"] = ($D_NEKI_MSG ? $D_NEKI_MSG : ZdcConvZ2H("周辺の施設をリストアップします。", $D_Z2H_OPTION));
+
+$enc = explode("_",$pos);
+$ret = ZdcMakeMobileDec($enc[0], &$g, &$l, &$lv, &$lim);
+$c = ZdcMakeUnPackLatLng($enc[1], &$mode, &$icon_num, 
+	&$lng1, &$lat1, &$icon1,
+	&$lng2, &$lat2, &$icon2,
+	&$lng3, &$lat3, &$icon3,
+	&$lng4, &$lat4, &$icon4,
+	&$lng5, &$lat5, &$icon5
+);
+
+
+if(!$ret || $lim < date("Ymd")){
+	$template = "err.tpl";
+	$body["errmsg"] = $D_ERR_LIMITCHK;
+	erl("有効期限が無効かチェックディジットエラー LIMIT[$lim] RET[$ret]");
+	ZdcMobileLogPut($D_SEARCH_CORPID, "", $D_LOG_LIMITERR_CD, 0);
+} else if(!preg_match("/^[0-9]+$/", $p_s1, $matches) || !preg_match("/^[0-9]+$/",$p_s2, $matches)){
+	$template = "err.tpl";
+	$body["errmsg"] = $D_ERR_PARAMETER;
+	$cnt = 0;
+	erl("緯度経度の指定が無効です。[$l, $g]");
+	ZdcMobileLogPut($D_SEARCH_CORPID, "", $D_LOG_PARAMETERERR_CD, 0);
+} else if(isset($poi_name)){
+	// 施設検索CGI
+	$cgi = $D_SSAPI["searchpoi"];
+	$prm = sprintf("&cid=%s&sid=%s&pos=%d&cnt=%d", "ZDC", "API001", 1, 999);
+	$prm .= "&frewd=".$poi_name;
+	
+	$url = sprintf('%s?enc=EUC&key=%s&opt=%s%s', $cgi, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+
+	$dat = ZdcHttpRead($url,false,5,$D_Z2H_OPTION);
+	$status  = explode("\t",$dat[0]);
+	
+	$cnt = $status[1];
+	if($cnt == 0){
+		dbl("NEAR STATION NOT FOUND : [$url]");
+		dbl("NEAR STATION SEARCH STATE : [{$dat[0]}]");
+		$template = "err.tpl";
+		$carrier->AddReplaceWord("@WORD@", "施設");
+		$body["errmsg"] = (isset($D_ERR_NOTFOUND_NE)?$D_ERR_NOTFOUND_NE:$D_ERR_NOTFOUND);
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status[0], $D_LOG_NOTFOUND_CD, 0);
+	}
+
+	if(!preg_match("/^[0-9]+$/",$status[0], $matches)){
+		$template = "err.tpl";
+		$body["errmsg"] = $D_ERR_PARAMETER;
+		$cnt = 0;
+		erl("サーバーＣＧＩの結果が無効です。[$url][$status_list[0]]");
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status_list[0], $D_LOG_SVRERR_CD, 0);
+	}
+} else if(isset($jnr) && isset($jnrmn)){
+	//最寄施設一覧CGI
+	$body["text"]  = "電柱周辺の施設を近い順に表示します｡施設を選択してください｡";
+	
+	$cgi = $D_SSAPI["npoi"];
+	$prm = sprintf("&cid=%s&sid=%s&pos=%d&cnt=%d&rad=%d", "ZDC", "API001", 1, $D_NPOI_KNSU, $D_NPOI_RAD);
+	$prm .= "&lat=".$p_s1."&lon=".$p_s2;
+	$prm .= "&jnrmn=".$jnrmn."&jnr=".$jnr;
+
+	$col_lat = 1;
+	$col_lon = 2;
+	$col_name = 3;
+	
+	$url = sprintf('%s?enc=EUC&key=%s&opt=%s%s', $cgi, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+
+	$dat = ZdcHttpRead($url,false,5,$D_Z2H_OPTION);
+	$status  = explode("\t",$dat[0]);
+	
+	$cnt = $status[1];
+	if($cnt == 0){
+		dbl("NEAR STATION NOT FOUND : [$url]");
+		dbl("NEAR STATION SEARCH STATE : [{$dat[0]}]");
+		$template = "err.tpl";
+		$carrier->AddReplaceWord("@WORD@", "最寄り施設");
+		$body["errmsg"] = (isset($D_ERR_NOTFOUND_NE)?$D_ERR_NOTFOUND_NE:$D_ERR_NOTFOUND);
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status[0], $D_LOG_NOTFOUND_CD, 0);
+	}
+
+	if(!preg_match("/^[0-9]+$/",$status[0], $matches)){
+		$template = "err.tpl";
+		$body["errmsg"] = $D_ERR_PARAMETER;
+		$cnt = 0;
+		erl("サーバーＣＧＩの結果が無効です。[$url][$status_list[0]]");
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status_list[0], $D_LOG_SVRERR_CD, 0);
+	}
+} else {
+	//施設ジャンル一覧CGI
+	$body["text"]  = "電柱周辺の情報を検索します｡ｼﾞｬﾝﾙを選択してください｡";
+	
+	$cgi = $D_SSAPI["searchpoijnr"];
+	$prm = sprintf("&cid=%s&sid=%s&pos=%d&cnt=%d", "ZDC", "API001", 1, 999);
+
+	if (isset($jnrmn)) {
+		$col_jnrmn = 2;
+		$col_jnr = 4;
+		$col_name = 5;
+		$prm .= "&jnrmn=".$jnrmn;
+	} else {
+		$col_jnrmn = 2;
+		$col_name = 3;
+	}
+	
+	$url = sprintf('%s?enc=EUC&key=%s&opt=%s%s', $cgi, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+
+
+	$dat = ZdcHttpRead($url,false,5,$D_Z2H_OPTION);
+	$status  = explode("\t",$dat[0]);
+	
+	$cnt = $status[1];
+	if($cnt == 0){
+		dbl("NEAR STATION NOT FOUND : [$url]");
+		dbl("NEAR STATION SEARCH STATE : [{$dat[0]}]");
+		$template = "err.tpl";
+		$carrier->AddReplaceWord("@WORD@", "施設ジャンル");
+		$body["errmsg"] = (isset($D_ERR_NOTFOUND_NE)?$D_ERR_NOTFOUND_NE:$D_ERR_NOTFOUND);
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status[0], $D_LOG_NOTFOUND_CD, 0);
+	}
+
+	if(!preg_match("/^[0-9]+$/",$status[0], $matches)){
+		$template = "err.tpl";
+		$body["errmsg"] = $D_ERR_PARAMETER;
+		$cnt = 0;
+		erl("サーバーＣＧＩの結果が無効です。[$url][$status_list[0]]");
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status_list[0], $D_LOG_SVRERR_CD, 0);
+	}
+
+}
+
+
+if (isset($poi_name)) {
+	//$rec = explode("\t",$dat[1]);		del 2015/09/07 Y.Matsukawa
+	// add 2015/09/07 Y.Matsukawa [
+	for($i = 0; $i < $cnt; $i++) {
+		$rec = explode("\t", $dat[$i + 1]);
+		if (trim($rec[0]) == $pcd) {
+	// add 2015/09/07 Y.Matsukawa ]
+			$body["poi_name"]  = $rec[3];
+			$body["addr"]  = $rec[4];
+			$body["tel"]  = $rec[6];
+			$body["url"]  = "m.htm?p=np&pos=".$pos."&id=$id".($opt != "" ? "&opt=$opt" : "").($freeparms_enc?"&".$freeparms_enc:"").($nm != "" ? "&nm=".urlencode($nm) : "").($bl != "" ? "&bl=$bl" : "").$maddrparam;
+	// add 2015/09/07 Y.Matsukawa [
+			break;
+		}
+	}
+	// add 2015/09/07 Y.Matsukawa ]
+} else {
+	$mapw = $carrier->G_DISPLAY_W;
+	$maph = $carrier->G_DISPLAY_H;
+
+	$npoi_lng = array();
+	$npoi_lat = array();
+	$npoi_jnr = array();
+
+	for($i = 0;$i < $cnt;$i ++) {
+		$rec = explode("\t",$dat[$i + 1]);
+		
+		$body["listdata"]["data"][$i]["no"] = $i+1;
+		
+		if (isset($jnr) && isset($jnrmn)) {
+			$icon_lng = array();
+			$icon_lat = array();
+			
+			// 施設位置
+			$icon_lng[0] = $rec[$col_lon];
+			$icon_lat[0] = $rec[$col_lat];
+			
+			// 電柱位置
+			$icon_lng[1] = $p_s2;
+			$icon_lat[1] = $p_s1;
+			
+			// 2点が入る地図レベルを算出
+			ZdcGetZoomLevel($mapw, $maph, $icon_lng, $icon_lat, &$cent_lng, &$cent_lat, &$level, 1);
+			
+			// 地図表示位置と縮尺を設定
+			$pos = ZdcMakeMobileEnc($p_s2, $p_s1, $level);
+			$pos .= "_".ZdcMakePackLatLng(1, 1, $rec[$col_lon], $rec[$col_lat], 0);
+			
+			//$body["listdata"]["data"][$i]["url"]  = "npj.htm?pos=".$pos."&id=$id"."&poi_name=".urlencode($rec[3]).($opt != "" ? "&opt=$opt" : "").($freeparms_enc?"&".$freeparms_enc:"").($nm != "" ? "&nm=".urlencode($nm) : "").($bl != "" ? "&bl=$bl" : "").$maddrparam;		mod 2015/09/07 Y.Matsukawa
+			$body["listdata"]["data"][$i]["url"]  = "npj.htm?pos=".$pos."&id=$id"."&pcd=".urlencode(trim($rec[0]))."&poi_name=".urlencode($rec[3]).($opt != "" ? "&opt=$opt" : "").($freeparms_enc?"&".$freeparms_enc:"").($nm != "" ? "&nm=".urlencode($nm) : "").($bl != "" ? "&bl=$bl" : "").$maddrparam;
+			
+			if($rec[7] > 1000){
+				$distance = "(".round($rec[7]/1000,2)."km)";
+			} else {
+				$distance = "(".round($rec[7],0)."m)";
+			}
+		} else {
+			$body["listdata"]["data"][$i]["url"]  = "npj.htm?p=np&pos=".$pos."&id=$id".($opt != "" ? "&opt=$opt" : "").($freeparms_enc?"&".$freeparms_enc:"").($nm != "" ? "&nm=".urlencode($nm) : "").($bl != "" ? "&bl=$bl" : "").$maddrparam;
+			if (isset($col_jnrmn)) $body["listdata"]["data"][$i]["url"] .= "&jnrmn=".$rec[$col_jnrmn];
+			if (isset($col_jnr)) {
+				$body["listdata"]["data"][$i]["url"] .= "&jnr=".$rec[$col_jnr];
+				$w_jnr_arr[$rec[$col_jnr]] = $i;
+			}
+		}
+		
+		$shop = mb_convert_encoding($rec[$col_name],"eucJP-win","ASCII,JIS,UTF-8,eucJP-win,SJIS-win");
+		$body["listdata"]["data"][$i]["name"] = $shop;
+		if (isset($distance) && isset($distance)) $body["listdata"]["data"][$i]["name"] .= $distance;
+
+		// アクセスキー設定の場合の連想配列埋め込み
+		if(isset($SETTING["access_key"])){
+			$body["listdata"]["data"][$i]["icon_no"] = (($i+1) < 10) ? $carrier->getEmoji("#NO".($i+1)."#") : "□";
+			$body["listdata"]["data"][$i]["access_key"] = (($i+1) < 10) ? "accesskey=\"".($i+1)."\"" : "";
+		}
+	}
+	
+	// 表示施設ジャンルリストがある場合リストの施設ジャンルのみ表示
+	if (!isset($jnr) && isset($jnrmn)) {
+		if (isset($D_POIJNR_LIST[$jnrmn]) && $D_POIJNR_LIST[$jnrmn]) {
+			$j = 0;
+			foreach($D_POIJNR_LIST[$jnrmn] as $w_jnr) {
+				// 表示順並び替え
+				$tmp_body["listdata"]["data"][$j]["no"] = $j+1;
+				$tmp_body["listdata"]["data"][$j]["url"] = $body["listdata"]["data"][$w_jnr_arr[$w_jnr]]['url'];
+				$tmp_body["listdata"]["data"][$j]["name"] = $body["listdata"]["data"][$w_jnr_arr[$w_jnr]]['name'];
+				$tmp_body["listdata"]["data"][$j]["icon_no"] = (($j+1) < 10) ? $carrier->getEmoji("#NO".($j+1)."#") : "□";
+				$tmp_body["listdata"]["data"][$j]["access_key"] = (($j+1) < 10) ? "accesskey=\"".($j+1)."\"" : "";
+				$j++;
+			}
+			
+			$body["listdata"]["data"] = array();
+			$body["listdata"]["data"] = $tmp_body["listdata"]["data"];
+		}
+	}
+}
+
+if($hr != "") {
+	$body["AD_HRCOLOR"] = "#".$hr;
+	$header["AD_HRCOLOR"] = "#".$hr;
+	$footer["AD_HRCOLOR"] = "#".$hr;
+} else {
+	$body["AD_HRCOLOR"] = "#".$D_AD_HR;
+	$header["AD_HRCOLOR"] = "#".$D_AD_HR;
+	$footer["AD_HRCOLOR"] = "#".$D_AD_HR;
+}
+
+//-------------------
+// ページング制御
+//-------------------
+if($cnt > 0){
+	$body["now_page"] = $pg;
+	$body["max_page"] = ceil($status_list[2]/$D_SEARCH_LIST_PAGE);
+	if($pg > 1){
+		$body["pre_link"]  = "c.htm?p=$p&$nkey=".mb_convert_encoding($$nkey,"eucJP-win","ASCII,JIS,UTF-8,eucJP-win,SJIS-win")."&pg=".($pg-1).($opt != "" ? "&opt=$opt" : "");
+		$body["pre_link"] .= ($freeparms_enc?"&".$freeparms_enc:"");
+		$body["pre_link"] .= ($optcd != '' ? "&optcd=$optcd" : '');
+		$body["pre_name"]  = $D_PAGE_BEFORE;
+	}
+	if($status_list[2] >= ($list_pos+$cnt)){
+		$pg=$pg+1; 
+		$body["next_link"]  = "c.htm?p=$p&$nkey=".mb_convert_encoding($$nkey,"eucJP-win","ASCII,JIS,UTF-8,eucJP-win,SJIS-win")."&pg=$pg".($opt != "" ? "&opt=$opt" : "");
+		$body["next_link"] .= ($freeparms_enc?"&".$freeparms_enc:"");
+		$body["next_link"] .= ($optcd != '' ? "&optcd=$optcd" : '');
+		$body["next_name"]  = $D_PAGE_AFTER;
+	}
+	if($body["pre_link"] || $body["next_link"]) $body["page"] = "true";
+	if($body["pre_link"] && $body["next_link"]) $body["separator"] = $D_PAGE_SEPARATOR;
+
+	ZdcMobileLogPut($D_SEARCH_CORPID, "", $D_LOG_NORMAL_CD, 0);
+}
+
+// optを画面へ渡す
+if (isset($opt)) {
+	$body["srch_opt"]   = $opt;
+	$header["srch_opt"] = $opt;
+	$footer["srch_opt"] = $opt;
+	$opts = explode('@', $opt);
+	foreach ($opts as $op) {
+		list($opt_col, $opt_val) = explode('=', $op);
+		if (strlen($opt_val)) {
+			$body['opt_'.$opt_col.'l'.$opt_val] = 1;
+			$header['opt_'.$opt_col.'l'.$opt_val] = 1;
+			$footer['opt_'.$opt_col.'l'.$opt_val] = 1;
+		}
+	}
+}
+
+// optcdを画面へ渡す
+if (isset($optcd) && $optcd != '') {
+	$body["optcd"]   = $optcd;
+	$header["optcd"] = $optcd;
+	$footer["optcd"] = $optcd;
+	$opts = explode('@', $optcd);
+	foreach ($opts as $opt_val) {
+		if (strlen($opt_val)) {
+			$body['optcd_l'.$opt_val] = 1;
+			$header['optcd_l'.$opt_val] = 1;
+			$footer['optcd_l'.$opt_val] = 1;
+		}
+	}
+}
+
+if (isset($D_CAPTION["ne.htm"])) {
+	foreach($D_CAPTION["ne.htm"] as $hash_key => $hash_val){
+		$body[$hash_key] = $hash_val;
+			$header[$hash_key] = $hash_val;
+			$footer[$hash_key] = $hash_val;
+	}
+}
+
+// 拠点なしの場合、ヘッダーとフッターを変更する。
+if($SETTING["noncpdata"] == "N" || $SETTING["noncpdata"] == "A" || $SETTING["noncpdata"] == "L"){
+	$footer_template = "footer_light.tpl";
+	$header_template = "header_light.tpl";
+	if(isset($bl) && $bl != ""){
+		$footer["backlink"] = $bl;
+	}
+} else {
+	$footer_template = "footer.tpl";
+	$header_template = "header.tpl";
+}
+$header["TITLE"] = $D_HEADER_TITLE;
+// フッター制御
+if (!isset($D_CORP_NAME)) $D_CORP_NAME = "";
+if (!isset($D_TOP_TXT)) $D_TOP_TXT = "";
+if (!isset($D_COPYRIGHT_TXT)) $D_COPYRIGHT_TXT = "";
+$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.(isset($D_OPT_BACKTO_TOP) && isset($opt) && $opt != "" ? "&opt=$opt" : "");
+if (isset($D_MYAREA_USE) && $D_MYAREA_USE) {
+	$footer["search_top"] .= "&myar=".$myar."&lm=".urlencode(str_replace(" ", "+", $lm));
+	$footer["p_s2"] = urlencode(str_replace(" ", "+", $p_s2));
+	$footer["p_s3"] = urlencode(str_replace(" ", "+", $p_s3));
+	$footer["lm"]   = urlencode(str_replace(" ", "+", $lm));
+	// テスト環境フラグ
+	if ($D_EMAP_ENV == "test") {
+		$footer["test_flg"] = "1";
+	} else {
+		$footer["test_flg"] = "";
+	}
+}
+$footer["search_top"] .= (isset($D_OPTCD_BACKTO_TOP) && $optcd != '' ? "&optcd=$optcd" : '');
+$footer["CORPNAME"] = $D_CORP_NAME;
+$footer["TOPTXT"] = $D_TOP_TXT;
+$footer["COPYTXT"] = $D_COPYRIGHT_TXT;
+
+//-------------------
+// 画面出力
+//-------------------
+if (isset($D_XHTML)) header("Content-type: application/xhtml+xml;charset=Shift_JIS");
+else header("Content-Type: text/html;charset=Shift_JIS");
+
+$HtmlTemplate = new HtmlTemplate();
+$head_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY.$header_template,$header);
+
+echo $carrier->ConvertPictString($head_html, "SJIS", "EUC-JP");
+
+// コンテンツ
+$content_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY.$template,$body);
+echo $carrier->ConvertPictString($content_html, "SJIS", "EUC-JP");
+
+// フッタ
+$foot_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY.$footer_template,$footer);
+echo $carrier->ConvertPictString($foot_html, "SJIS", "EUC-JP");
+
+?>

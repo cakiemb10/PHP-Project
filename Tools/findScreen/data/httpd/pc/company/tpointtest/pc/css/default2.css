@@ -1,0 +1,82 @@
+@charset "shift_jis";
+body {
+	margin:0px;
+	padding:0px;
+	background-color:#ffffff;
+	color:#333333;
+	font-size:100%;
+	line-height:100%;
+	text-align:center;
+}
+
+
+
+h1, h2, h3, h4, h5, h6 {
+	margin:0px;
+	padding:0px;
+	line-height:100%;
+}
+div, p, dl, dt,dd {
+	margin:0px;
+	padding:0px;
+	font-size:100%;
+	line-height:140%;
+}
+ul, ul li {
+	list-style:none;
+	margin:0px;
+	padding:0px;
+	line-height:140%;
+}
+table, tr, th, td {
+	margin:0px;
+	padding:0px;
+	border:0px;
+	border-collapse:collapse;
+	font-size:100%;
+	line-height:140%;
+	vertical-align:top;
+	empty-cells:show;
+}
+th {
+	white-space:nowrap;
+}
+form, input {
+	margin:0px;
+	padding:0px;
+	font-size:12px;
+}
+img {
+	border:0px;
+}
+li img {
+	vertical-align:bottom;
+}
+.none {
+	display:none;
+}
+.clear {
+	clear:both;
+}
+.FloatLeft {
+	float:left;
+}
+.FloatRight {
+	float:right;
+}
+.clearfix:after {
+	content: ".";
+	display: block;
+	clear: both;
+	height: 0;
+	visibility: hidden;
+}
+.clearfix {
+	min-height: 1px;
+}
+* html .clearfix {
+	height: 1px;/*\*//*/
+  height: auto;
+  overflow: hidden;
+  /**/
+}

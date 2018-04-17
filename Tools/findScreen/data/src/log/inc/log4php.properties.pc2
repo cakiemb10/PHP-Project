@@ -1,0 +1,7 @@
+log4php.rootLogger=debug, EMAP_PC2
+log4php.appender.EMAP_PC2=LoggerAppenderDailyFile
+log4php.appender.EMAP_PC2.DatePattern=YmdH
+log4php.appender.EMAP_PC2.file=/home/emap/logs/log_pc2_%s.log
+log4php.appender.EMAP_PC2.layout=LoggerPatternLayout
+log4php.appender.EMAP_PC2.layout.ConversionPattern=%d %t %p %c %L %x %m%n
+

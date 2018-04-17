@@ -1,0 +1,272 @@
+@charset "euc-jp";
+/* CSS Document */
+/* カスタマイズ用のCSS定義をここに記述してください */
+
+
+header {
+	text-align: center;
+}
+
+.z_footer{
+	padding: 20px 12px;
+}
+
+.custHeaderCommon {
+    background: none repeat scroll 0 0 #ffffff;
+    color: #111;
+}
+.custHeaderCommon {
+    border: medium none;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+    min-height: 48px;
+    position: relative;
+    text-shadow: none;
+    z-index: 5;
+}
+.custUiHeader {
+    overflow: hidden;
+}
+.custHeaderCommon .custLogo {
+    margin: 5px 0 6px 10px;
+    text-align: left;
+}
+.custUiHeader .custUiTitle, .custUiFooter .custUiTitle {
+    display: block;
+    font-size: 16px;
+    min-height: 1.1em;
+    outline: 0 none !important;
+    overflow: hidden;
+    padding: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.custHeaderCommon .custLogo a {
+    background: none repeat scroll 0 0 rgba(0, 0, 0, 0);
+}
+.custLinkImage {
+    opacity: 1;
+}
+header img {
+    vertical-align: bottom;
+}
+.custFooterCommon {
+    background: none repeat scroll 0 0 #eeeff3;
+    border: solid 1px #babbbf;
+    color: #212224;
+}
+.custFooterCommon {
+    font-weight: normal;
+    text-shadow: none;
+
+}
+.custUiHeader, .custUiFooter {
+    border-left-width: 0;
+    border-right-width: 0;
+    position: relative;
+}
+.custUiBarA, .custUiBarA input, .custUiBarA select, .custUiBarA textarea, .custUiBarA button {
+    font-family: Helvetica,Arial,sans-serif;
+}
+.custFooterCommon .custCopyright {
+    font-size: 13px;
+    margin-bottom: 0;
+    padding: 7px 5px 9px;
+    text-align: center;
+}
+
+#custHeaderTitle {
+	position: absolute;
+	top: 35px;
+	left: 85px;
+	font-size: 10pt;
+	font-weight: bold;
+}
+
+
+
+.cust_cond_panel {
+	padding: 15px 15px;
+	width: 90%;
+	height: auto;
+	border-bottom: 1px solid #bcbcbc;
+	font-size: 90%;
+}
+.cust_cond_panel li {
+	padding-top: 8px;
+	padding-bottom: 8px;
+	vertical-align: middle;
+}
+.cust_cond_panel li input {
+	margin-top: 0;
+}
+.cust_cond_panel_ttl {
+	padding-top: 0;
+	padding-bottom: 4px;
+	text-align: left;
+	color: #542c1b;
+	font-weight: bold;
+}
+.cust_cond_panel_exp {
+	padding-top: 2px;
+	padding-bottom: 2px;
+}
+.cust_cond_panel input[type=checkbox] {
+	width: 20px;
+	height: 20px;
+}
+.cust_cond_panel li img {
+	vertical-align: middle;
+}
+
+.z_litem a .z_litem_name{
+	padding-left: 4px;
+}
+.z_litem a img{
+	margin-left: 4px;
+	vertical-align: middle;
+}
+
+.yutaiOK {
+	color: #CD0707;
+}
+.yutaiNG {
+	color: #999999;
+}
+
+.custCondTable {
+	width: 100%;
+	border-collapse: collapse;
+}
+.custCondTable th {
+	padding-left: 9px;
+	padding-right: 9px;
+	padding-top: 11px;
+	padding-bottom: 4px;
+	border-bottom: 0px solid #DDE4F8;
+	background-color: #FFFFFF;
+	color: #0E3C91;
+	font-size: 11px;
+	font-weight: normal;
+	text-align: left;
+}
+/* フラグ項目 */
+.custCondTable td.condFlgTd {
+	width: 33%;
+	background-color: #FFFFFF;
+	text-align: left;
+	vertical-align: middle;
+}
+#searchCondTabFrame {
+	width: 100%;
+	margin-top: 4px;
+	margin-bottom: 4px;
+	padding-left: 4px;
+	text-align: left;
+	font-size: 12px;
+}
+.searchCondTabOn {
+	display: inline-block;
+	margin-right: 2px;
+	width: 70px;
+	background-color: #134294;
+	border: solid 1px #134294;
+	text-align: center;
+	font-weight: bold;
+}
+.searchCondTabOn a {
+	display: block;
+	width: 100%;
+	line-height: 1.5;
+	color: #FFFFFF;
+}
+.searchCondTabOff {
+	display: inline-block;
+	margin-right: 2px;
+	width: 70px;
+	background-color: #FFFFFF;
+	border: solid 1px #134294;
+	text-align: center;
+	font-weight: bold;
+}
+.searchCondTabOff a {
+	display: block;
+	width: 100%;
+	line-height: 1.5;
+	color: #134294;
+}
+
+.cust_map_link {
+	display:table-cell;
+	white-space: nowrap;
+	/*width:90px;*/
+	font-size:80%;
+	color: #007EE8;
+	text-align: right;
+	vertical-align: middle;
+	padding-right: 4px;
+}
+.z_litem_comment {
+	padding-right: 4px;
+}
+.z_litem_comment img{
+	margin-right:1px;
+	margin-bottom:2px;
+}
+.z_inf_col_title {
+	width:90px;
+}
+
+#z_map_msg {
+	width: 200px;
+	height: 62px;
+	font-size: 90%;
+}
+
+.freewordBox{
+	color: #000000;
+}
+
+.cust_item_area {
+	border-bottom: 1px solid #D2AD81;
+	display:table;
+	width:100%;
+	padding: 15px 0;
+	vertical-align: middle;
+	word-break:break-all;
+}
+.cust_area_title {
+	width: auto;
+	padding-top: 14px;
+	font-size:120%;
+}
+
+.custDtlIconInnerTable {
+	border-collapse: collapse !important;
+	border: 0 !important;
+}
+.custDtlIconInnerTable th {
+	width:32px !important;
+	text-align:left !important;
+	padding:0 0 2px 0 !important;
+	border: 0 !important;
+	font-size:80% !important;
+}
+.custDtlIconInnerTable td {
+	vertical-align:middle !important;
+	padding:0 0 0 2px !important;
+	border: 0 !important;
+	font-size:80% !important;
+}
+
+.z_sl_upper {
+	padding-top: 0;
+	padding-bottom: 0;
+}
+.z_sl_upper .fl{
+	padding-top:5px;
+	padding-bottom:5px;
+}
+.z_sl_upper li{
+	padding-top:10px;
+	padding-bottom:10px;
+}

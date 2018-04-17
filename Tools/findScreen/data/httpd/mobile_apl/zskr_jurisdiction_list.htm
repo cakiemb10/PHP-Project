@@ -1,0 +1,89 @@
+<?PHP
+// ------------------------------------------------------------
+// 信用組合管轄地域一覧
+// 画面遷移
+// 1.住所の一覧から→信用組合一覧（住所絞り込み）→信用組合管轄地域一覧
+// 2.今いる場所から→信用組合一覧（住所絞り込み）→信用組合管轄地域一覧
+
+//
+// 開発履歴
+// 2016/02/29 H.Yasunaga	新規作成
+// ------------------------------------------------------------
+include("./inc/define_mobile.inc");  // 基本設定
+include("./inc/carrier.inc");  // 基本設定
+include("./inc/function.inc");
+include("./inc/define_msg.inc");
+include("inc/proc_get_freeparam.inc");
+
+//-------------------
+// パラメーターの処理
+//-------------------
+$ua = $HTTP_USER_AGENT;
+$carrier = new CARRIER($ua);
+//-------------------
+// データアクセス
+//-------------------
+//$cgi = $D_SSAPI["neki"];
+
+$cgi = "http://".$EMAP_SSAPI_SRV."/cgi/zskr_jurisdictionlist.cgi";
+$url = sprintf("%s?union_id=%s", $cgi, $req_union_id);
+$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+$status = explode("\t", $dat[0]);
+$cnt = count($dat);
+
+//-------------------
+// 画面設定
+//-------------------
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+//ページ制御
+if($page) $tpl["_jsPrev"]  = sprintf("javascript:ZdcEmapStationListClick(%d);", ($page - 1));
+if(substr($status[0], -1, 1) == '1') $tpl["_jsNext"] = sprintf("javascript:ZdcEmapStationListClick(%d);", ($page + 1));
+$tpl["max"] = intval($status[2]);
+$tpl["start"] = $pos;
+$tpl["end"]   = $pos + $cnt - 2;
+//施設一覧
+for ($i = 0; $i < $cnt - 1; $i++) {
+	$tpl["list"][$i]["id"] = $i;
+	$tpl["list"][$i]["no"] = ($i+1);
+	$rec = $dat[$i+1];
+	$rec = explode("\t", $rec);
+	$tpl["list"][$i]["prefectures_code"] = $rec[0];
+	$tpl["list"][$i]["city_code"] = $rec[1];
+	$tpl["list"][$i]["display_name"] = $rec[2];
+	$tpl["list"][$i]["business_category"] = $rec[3];
+}
+if($cnt < 2) $tpl["msg"] = "選択した信用組合に該当する地域はありませんでした。";
+
+// add 2016/03/20 H.Yasunaga フッターの文言表示 [
+// テンプレートに信用組合管轄リスト表示であることのフラグを付与
+$tpl["zskr_union_list"] = 1;
+$tpl["footer_note"] = $ZSKR_AREA_FOOTER_NOTE;
+// add 2016/03/20 H.Yasunaga ]
+
+$tpl["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+$tpl['freeparms_enc'] = $freeparms_enc;
+$tpl["TITLE"] = $D_HEADER_TITLE;
+$tpl["CORPNAME"] = $D_CORP_NAME;
+$tpl["COPYTXT"] = $D_COPYRIGHT_TXT;
+$tpl["TOPTXT"] = $D_TOP_TXT;
+$tpl["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.(isset($D_OPT_BACKTO_TOP) && $opt != "" ? "&opt=$opt" : "");
+$tpl["search_top"] .= (isset($D_OPTCD_BACKTO_TOP) && $optcd != '' ? "&optcd=$optcd" : '');
+//-------------------
+// 画面出力
+//-------------------
+
+//ZdcLogPut(0);
+//htmloutput($D_SYSDIR_COMPANY.'zskr_unionlist.tpl', $tpl);
+$HtmlTemplate = new HtmlTemplate();
+// ヘッダ
+$head_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."header.tpl",$tpl);
+echo $carrier->ConvertPictString($head_html, "SJIS", "EUC-JP");
+// コンテンツ
+$content_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."zskr_jurisdiction_list.tpl",$tpl);
+echo $carrier->ConvertPictString($content_html, "SJIS", "eucJP-win");
+
+// フッタ
+$foot_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."footer.tpl",$tpl);
+echo $carrier->ConvertPictString($foot_html, "SJIS", "EUC-JP");
+?>

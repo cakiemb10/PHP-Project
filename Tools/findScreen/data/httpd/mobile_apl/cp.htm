@@ -1,0 +1,129 @@
+<?PHP
+// ------------------------------------------------------------
+// 地図利用許諾画面
+// 
+// 新規作成 : Y.Hayashida
+// 2008/07/17 matsukawa		$D_DIR_COMPANYをテンプレートに渡す
+// 2008/12/12 matsukawa		各企業のテンプレートではなく、共通のファイルを参照
+// 2009/07/01 Y.Matsukawa	XHTML対応
+// 2010/02/19 Y.Matsukawa	規約画面に検索TOPへのリンクを表示
+// 2010/03/29 Y.Matsukawa	【不具合修正】cp.htmに任意パラメータが反映されていなかった
+// 2010/08/12 Y.Matsukawa	iPhone対応
+// 2010/08/23 Y.Matsukawa	カスタマイズ絞り込み検索（optcd）
+// 2010/10/20 Y.Matsukawa	Android対応
+// 2011/05/09 H.Osamoto		Myエリア機能追加
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/12/12 H.Osamoto		環境判別方法を修正
+// 2012/03/04 K.Masuda		テンプレート設定共通処理(proc_template.inc)追加
+// 2012/03/15 K.Masuda		地図利用許諾画面(cp.htm)である指標を追加
+// 2015/01/09 Y.Matsukawa	年をテンプレートに渡す
+// 2015/01/09 Y.Matsukawa	年をテンプレートに渡す
+// ------------------------------------------------------------
+include("./inc/function.inc");
+include("./inc/define_mobile.inc");  // 基本設定
+include("./inc/carrier.inc");  // 基本設定
+include("inc/proc_get_freeparam.inc");		// add 2010/02/19 Y.Matsukawa
+
+$ua = $HTTP_USER_AGENT;
+$carrier = new CARRIER($ua);
+
+$carrier->AddReplaceWord("@WORD@", $D_USR_DEFNAME);
+
+ZdcMobileLogPut($D_SEARCH_CORPID, "", $D_LOG_NORMAL_CD, 0);
+
+// 画面のデザイン項目の反映		add 2010/03/29 Y.Matsukawa
+//if ($D_CAPTION["cp.htm"] && is_array($D_CAPTION["cp.htm"])) {
+if (isset($D_CAPTION["cp.htm"]) && $D_CAPTION["cp.htm"] &&  is_array($D_CAPTION["cp.htm"])) {
+	foreach($D_CAPTION["cp.htm"] as $hash_key => $hash_val){
+		$body[$hash_key] = $hash_val;
+		$header[$hash_key] = $hash_val;
+		$footer[$hash_key] = $hash_val;
+	}
+}
+
+// add 2008/07/17 matsukawa ↓
+$header["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+$body["D_DIR_COMPANY"]   = $D_HTTP_DIR_COMPANY;
+$footer["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+// add 2008/07/17 matsukawa ↑
+// del 2010/10/20 Y.Matsukawa [
+//// add 2010/08/12 Y.Matsukawa [
+//if ($carrier->isIPHONE()) {
+//	$header["iPhone"] = 1;
+//	$body["iPhone"]   = 1;
+//	$footer["iPhone"] = 1;
+//}
+//// add 2010/08/12 Y.Matsukawa ]
+// del 2010/10/20 Y.Matsukawa ]
+include("inc/proc_carrier2tpl.inc");		// add 2010/10/20 Y.Matsukawa
+include("inc/proc_template.inc");			// add 2012/03/04 K.Masuda
+
+// add 2010/02/19 Y.Matsukawa [
+if($SETTING["noncpdata"] == "S"){
+	$footer["TOPTXT"] = $D_TOP_TXT;
+	//$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.($D_OPT_BACKTO_TOP && $opt != "" ? "&opt=$opt" : "");		// mod 2011/07/05 Y.Nakajima
+	$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.(isset($D_OPT_BACKTO_TOP) && $opt != "" ? "&opt=$opt" : "");
+	// add 2011/05/09 H.Osamoto [
+// mod 2011/07/05 Y.Nakajima [
+	if (isset($D_MYAREA_USE)) {
+/*
+		$footer["search_top"] .= "&myar=".$_GET["myar"]."&lm=".urlencode(str_replace(" ", "+", $_GET["lm"]));
+		$footer["p_s2"] = urlencode(str_replace(" ", "+", $_GET["p_s2"]));
+		$footer["p_s3"] = urlencode(str_replace(" ", "+", $_GET["p_s3"]));
+		$footer["lm"] = urlencode(str_replace(" ", "+", $_GET["lm"]));
+*/
+		$footer["search_top"] .= "&myar=".$myar."&lm=".urlencode(str_replace(" ", "+", $lm));
+		$footer["p_s2"] = urlencode(str_replace(" ", "+", $p_s2));
+		$footer["p_s3"] = urlencode(str_replace(" ", "+", $p_s3));
+		$footer["lm"] = urlencode(str_replace(" ", "+", $lm));
+		// テスト環境フラグ
+		//if (ereg('test', $D_CID)) {
+		//	if (strpos($D_CID, 'test')) {	mod 2011/12/12 H.osamoto
+		if ($D_EMAP_ENV == "test") {
+// mod 2011/07/05 Y.Nakajima ]
+			$footer["test_flg"] = "1";
+		} else {
+			$footer["test_flg"] = "";
+		}
+	}
+	// add 2011/05/09 H.Osamoto ]
+	//$footer["search_top"] .= ($D_OPTCD_BACKTO_TOP && $optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+	$footer["search_top"] .= (isset($D_OPTCD_BACKTO_TOP) && $optcd != '' ? "&optcd=$optcd" : '');		// mod 2011/07/05 Y.Nakajima
+}
+// add 2010/02/19 Y.Matsukawa ]
+
+$footer["cp_pg"] = "1";	// add 2012/03/15 K.Masuda
+
+// add 2015/01/09 Y.Matsukawa [
+if ($body_cst) {
+	$header = array_merge($header, $body_cst);
+	$body = array_merge($body, $body_cst);
+	$footer = array_merge($footer, $body_cst);
+}
+// add 2015/01/09 Y.Matsukawa ]
+
+//header("Content-Type: text/html;charset=Shift_JIS");		mod 2009/07/01 Y.Matsukawa
+if (isset($D_XHTML)) header("Content-type: application/xhtml+xml;charset=Shift_JIS");
+else header("Content-Type: text/html;charset=Shift_JIS");
+// mod 2011/07/05 Y.Nakajima [
+//$head_html=HtmlTemplate::t_buffer($D_DIR_COMPANY."header.tpl",$header);
+$HtmlTemplate = new HtmlTemplate();
+$head_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."header.tpl",$header);
+// mod 2011/07/05 Y.Nakajima ]
+
+echo $carrier->ConvertPictString($head_html, "SJIS", "EUC-JP");
+
+// コンテンツ
+// mod 2011/07/05 Y.Nakajima 
+//$content_html=HtmlTemplate::t_buffer($D_DIR_COMPANY."copyright.tpl",$body);		mod 2008/12/12 matsukawa
+//$content_html=HtmlTemplate::t_buffer("./template/copyright.tpl",$body);
+$content_html = $HtmlTemplate->t_buffer("./template/copyright.tpl",$body);
+echo $carrier->ConvertPictString($content_html, "SJIS", "EUC-JP");
+
+// フッタ
+// mod 2011/07/05 Y.Nakajima 
+//$foot_html=HtmlTemplate::t_buffer($D_DIR_COMPANY."footer.tpl",$footer);
+$foot_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."footer.tpl",$footer);
+echo $carrier->ConvertPictString($foot_html, "SJIS", "EUC-JP");
+
+?>

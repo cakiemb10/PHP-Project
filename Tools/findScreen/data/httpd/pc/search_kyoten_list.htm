@@ -1,0 +1,146 @@
+<?PHP
+// ------------------------------------------------------------
+// 拠点リストページ用制御php
+// 
+// 開発履歴
+// 2011/08/25 H.Osamoto		search_print.htmをベースにして新規作成
+// 2012/02/09 H.Osamoto		php5にて非推奨となった関数を変更(split⇒explode)
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");  // 基本設定
+
+//-------------------
+// 変数の処理
+//-------------------
+if(!$slogflg ) $slogflg  = "1";
+$start = 1;
+
+//絞り込み条件分割
+//	$arr_col = split(',', $col);	mod 2012/02/09 H.osamoto
+$arr_col = explode(',', $col);
+$col_cnt = count($arr_col);
+
+//ソート分割
+//	$arr_sort = split(',', $sort);	mod 2012/02/09 H.osamoto
+$arr_sort = explode(',', $sort);
+
+// 企業ID設定
+$tpl["cid"] = $D_CID;
+
+//読み込み関連
+$cgi = $D_SSAPI["kyotenlist"];
+$prm = sprintf("&cid=%s&opt=%s&pos=%d",$D_CID,$cid,$start);
+if($cond) $prm .= urlencode(sprintf(" AND (%s)",$cond));//絞込み条件の反映
+
+
+//-------------------
+// 読み込み
+//-------------------
+//CGI呼び出し
+while(1) {
+	if($cgi && !$ERR) {
+		for($k = 0; $k < $col_cnt; $k++) {
+			$url = sprintf("%s?key=%s&opt=%s&%s",$cgi,$D_SSAPI_KEY,$cid,$prm);
+			$url .= sprintf("&jkn=%s",$arr_col[$k]);
+			$url .= sprintf("&sort=%s",$arr_sort[$k]);
+			$dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+			//echo $url;print_r($dat);
+			//エラーチェック
+			$status  = explode("\t",$dat[0]);
+			if(!intval($status[2])) {
+				$ERR = $D_MSG_SEARCH_NODATA[$type];
+				$cgi = $type = "Err";
+			}
+			//
+			$template = "search_kyoten_list";
+			$cnt = count($dat) - 1;
+			for($i = 0;$i < $cnt;$i ++) {
+				$rec = explode("\t",$dat[$i + 1]);
+				// add 2009/09/04 Y.Matsukawa [
+				// 拠点縮尺（PC）
+				$kyoten_lvl = $rec[count($rec)-2];
+				if (ctype_digit($kyoten_lvl) && 1 <= $kyoten_lvl && $kyoten_lvl <= 18) {
+				} else $kyoten_lvl = 0;
+				// add 2009/09/04 Y.Matsukawa ]
+				$tpl["list"][$k][$i]["no"] = $page * $D_SEARCH_SHOPLIST_PAGE + $i + 1;
+				$tpl["list"][$k][$i]["_nameLink"] = "./?cid=$cid&kid=".$rec[0];
+				$tpl["list"][$k][$i]["cid"] = $rec[0];
+				$tpl["list"][$k][$i]["lat"] = $rec[1];
+				$tpl["list"][$k][$i]["lon"] = $rec[2];
+				$tpl["list"][$k][$i]["icon"] = $rec[3];
+				$tpl["list"][$k][$i]["new"]  = $rec[4];
+				for($j = 0;$j < 202;$j ++) {
+					$tmp = $D_KYO_COL_NAME[0][$j];
+					if ($tmp != '') {		// add 2010/03/09 Y.Matsukawa
+						$d = $rec[5+$j];
+						//	$tpl["list"][$k][$i][$tmp] = $d;	2012/08/03 H.Osamoto mod
+						$tpl["list"][$k][$i][$tmp] = zdcHtmlspecialchars($d, $tmp);
+						if($d) $tpl["list"][$k][$i][$tmp."l".$d] = "1";
+						if(intval($d) == 1) $tpl["list"][$k][$i][$tmp."b"] = "1";
+					}
+				}
+			}
+			$tpl[$k]["max"] = intval($status[2]);
+			$tpl[$k]["status"] = $status[0];
+			$tpl[$k]["selname"] = $D_SEL_NAME[$type];
+//echo "<PRE>";print_r($tpl["list"][$k]);echo "<PRE>";
+		}
+		break;
+	} else {
+		break;
+	}
+}
+// 2011/02/17 K.Masuda add [
+if( is_array($D_COND_CHECK) && count($D_COND_CHECK) ){
+	$cnt = count($dat) - 1;
+	foreach($D_COND_CHECK as $g => $grp){
+		$arr_cnd = explode(",", $grp);
+		foreach($arr_cnd as $cnd) {
+			$CND_TMP[$g][] = $cnd;
+		}
+	}
+	foreach( $CND_TMP as $one_k => $one_v ){
+		for($i = 0;$i < $cnt;$i ++) {
+			foreach( $one_v as $value ){
+				if( $tpl["list"][$i][strtolower($value)] == "" || $tpl["list"][$i][strtolower($value)] == "0" ) {
+					$tpl["list"][$i]["condcheck".$one_k] = NULL;
+				} else {
+					$tpl["list"][$i]["condcheck".$one_k] = 1;
+					break;
+				}
+			}
+		}
+	}
+}
+// 2011/02/17 K.Masuda add ]
+
+
+//css
+$j = 0;
+if($D_JSCSS) {
+	foreach ($D_JSCSS as $key => $value) {
+		$tpl["css"][$j]["src"] = $value;
+		$j ++;
+	}
+}
+$tpl["css"][$j++]["src"] = $D_SYSDIR_COMPANY."search.css";
+
+//その他
+$tpl["_jsBack"]       = "ZdcEmapHistoryBack()";
+$tpl["_jsCancel"]     = "ZdcEmapSearchCancel()";
+$tpl["_jsChangeFunc"] = "ZdcEmapSearchChange";
+$tpl["_jsSearchOpenFromSrchWin"] = "ZdcEmapSearchOpenFromSrchWin";	// add 2008/04/21 Y.Matsukawa
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["sys_icon_select"],$D_CID);
+
+//-------------------
+// 画面出力
+//-------------------
+ZdcLogPut(0);
+@HtmlTemplate::t_include($D_SYSDIR_COMPANY.$template.".tpl",$tpl);
+?>

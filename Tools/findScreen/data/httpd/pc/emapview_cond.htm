@@ -1,0 +1,74 @@
+<?PHP
+// ------------------------------------------------------------
+// テンプレートを表示するだけ
+// 
+// 新規作成 : bando
+// 2009/11/07 Y.Matsukawa	拠点項目拡張（50→200）
+// 2010/01/27 Y.Matsukawa	絞り込みテンプレートに都道府県コードを渡す
+// 2010/07/20 Y.Matsukawa	SSL対応
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/11/25 Y.Matsukawa	ピーシーデポ対応（最寄りルート専用モード）
+// 2013/03/10 K.Masuda		テンプレートにcond値をそのまま渡す
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");  // 基本設定
+
+
+//-------------------
+// 画面設定
+//-------------------
+$tpl["_jsSearch"] = "ZdcEmapSearchShopClick()";
+$tpl["_jsSearchShopFixRoute"] = "ZdcEmapFixRouteSearchShopClick()";		// add 2011/11/25 Y.Matsukawa
+//$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select"],$D_CID);		mod 2010/07/20 Y.Matsukawa
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select_g"],$D_CID);
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["sys_icon_select"],$D_CID);
+//検索条件
+//for($i = 0;$i < 50;$i ++) {		mod 2009/11/07 Y.Matsukawa
+for($i = 1;$i <= 200;$i ++) {
+	$cond = "cond".$i;
+	// mod 2011/07/05 Y.Nakajima
+	if(isset($_VARS[$cond])) {
+		//check
+		$tpl[$cond."chk"] = "checked";
+		//select
+		$tpl[$cond."_".$_VARS[$cond]."sel"] = "selected";
+		//radio
+		$tpl[$cond."_".$_VARS[$cond]."chk"] = "checked";
+		//text
+		$tpl[$cond."_text"] = $_VARS[$cond];	// add 2013/03/10 K.Masuda
+	}
+}
+// add 2010/01/27 Y.Matsukawa [
+$p_tod = "";
+// mod 2011/07/05 Y.Nakajima
+if (isset($adcd) && $adcd != "") $p_tod = substr($adcd, 0, 2);
+else if (isset($area) && $area != "" && ctype_digit(substr($area, 0, 2))) $p_tod = substr($area, 0, 2);
+if ($p_tod != "") {
+	$tpl["p_tod"] = $p_tod;
+	$tpl["p_tod_$p_tod"] = 1;
+}
+// add 2010/01/27 Y.Matsukawa ]
+// mod 2011/07/05 Y.Nakajima
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+
+// mod 2011/07/05 Y.Nakajima [
+//@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_cond.tpl",$tpl);
+$HtmlTemplate = new HtmlTemplate();
+if (file_exists($D_SYSDIR_COMPANY."emapview_cond.tpl")) {
+	$HtmlTemplate->t_include($D_SYSDIR_COMPANY."emapview_cond.tpl",$tpl);
+}
+//HtmlTemplate開放
+unset($HtmlTemplate);
+// mod 2011/07/05 Y.Nakajima ]
+
+?>

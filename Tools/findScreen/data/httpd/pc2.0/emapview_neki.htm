@@ -1,0 +1,85 @@
+<?PHP
+// ------------------------------------------------------------
+// 地図制御php 最寄り駅一覧モジュール
+// 
+// 開発履歴
+//   2007/03/01 bando@D&I
+//     新規開発
+//   2008/08/22 Y.Matsukawa 英字対応
+//   2011/07/07 H.Osamoto	マツキヨ用API2.0対応版
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");
+
+//-------------------
+// パラメーターの処理
+//-------------------
+$pos = $page * $D_ST_PAGE + 1;
+
+//-------------------
+// データアクセス
+//-------------------
+$cgi = $D_SSAPI["neki"];
+//$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&lat=%s&lon=%s&knsu=%s&rad=%s&pflg=%d&datum=%s",	mod 2008/08/22 Y.Matsukawa
+$url = sprintf("%s?cid=%s&opt=%s&sid=%s&key=%s&pos=%d&cnt=%d&lat=%s&lon=%s&knsu=%s&rad=%s&pflg=%d&datum=%s&lang=%s",
+			   $cgi,$D_SEARCH_CORPID,$cid,$D_SRARCH_SRVSID,$D_SSAPI_KEY,$pos,$D_ST_PAGE,
+			   //$lat,$lon,$D_ST_MAX,$D_ST_RAD,$D_PFLG,$D_DATUM);		mod 2008/08/22 Y.Matsukawa
+			   $lat,$lon,$D_ST_MAX,$D_ST_RAD,$D_PFLG,$D_DATUM,$D_EKI_LANG);
+$dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+$status  = explode("\t",$dat[0]);
+$cnt = count($dat);
+
+//-------------------
+// 画面設定
+//-------------------
+//$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select"],$D_CID);		mod 2010/07/20 Y.Matsukawa
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select_g"],$D_CID);
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["sys_icon_select"],$D_CID);
+//ページ制御
+if($page) $tpl["_jsPrev"]  = sprintf("javascript:ZdcEmapStationListClick(%d);",($page - 1));
+if(substr($status[0],-1,1) == '1') $tpl["_jsNext"] = sprintf("javascript:ZdcEmapStationListClick(%d);",($page + 1));
+$tpl["max"] = intval($status[2]);
+$tpl["start"] = $pos;
+$tpl["end"]   = $pos + $cnt - 2;
+//施設一覧
+for($i = 0;$i < $cnt - 1;$i ++) {
+	$tpl["list"][$i]["id"] = $i;
+	$tpl["list"][$i]["no"] = ($i+1);
+	$rec = ZdcConvertEncoding($dat[$i+1]);
+	$rec = explode("\t",$rec);
+	$tpl["list"][$i]["id"] = $rec[0];
+	$tpl["list"][$i]["lat"] = $rec[1];
+	$tpl["list"][$i]["lon"] = $rec[2];
+	$tpl["list"][$i]["name"] = $rec[3];
+	$tpl["list"][$i]["kana"] = $rec[4];
+	$tpl["list"][$i]["code"] = $rec[5];
+	$tpl["list"][$i]["addr"] = $rec[6];
+	$tpl["list"][$i]["zip"]  = $rec[7];
+	$tpl["list"][$i]["tel"]  = $rec[8];
+	$tpl["list"][$i]["dist"] = $rec[9];
+	if($rec[9] > 1000){
+		$tpl["list"][$i]["dist_m"] = round($rec[9]/1000,2)."km";
+	} else {
+		$tpl["list"][$i]["dist_m"] = round($rec[9],0)."m";
+	}
+	$tpl["list"][$i]["_jsMsg"]       = sprintf("ZdcEmapTipsClick('%s')",($i+$pos-1));
+	//$tpl["list"][$i]["_jsRoute"]     = sprintf("ZdcEmapRouteSearch('%s',%d,%d,'%s',%d,%d)",$D_USER_DEFNAME,$lon,$lat,$rec[3],$rec[2],$rec[1]);	mod 2011/07/07 H.osamoto
+	$tpl["list"][$i]["_jsRoute"]     = sprintf("ZdcEmapRouteSearchApi2(%d)",($i+$pos-1));
+	$tpl["list"][$i]["_jsCurSet"]    = sprintf("ZdcEmapMapCursorSet('%s','%s');ZdcEmapMapFrontPoi(%s)",$rec[1],$rec[2],($i+$pos-1));
+	$tpl["list"][$i]["_jsCurRemove"] = sprintf("ZdcEmapMapCursorRemove()");
+}
+if($cnt < 2) $tpl["msg"] = $D_MSG_NEKI_NOLIST;
+
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_neki.tpl",$tpl);
+?>

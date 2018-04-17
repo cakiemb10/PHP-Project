@@ -1,0 +1,85 @@
+
+
+.findscreen_content
+{
+	position: absolute;
+	top: 10%;
+	left: 1%;
+	right: 25px;
+	min-height: 80%;
+	color: black;
+	border: 1px solid #5889B3;
+	border-radius: 2px;
+	padding: 10px;
+	padding-bottom: 50px;
+}
+
+.findscreen_content #file_name{
+
+	width: 80%;
+	min-height: 150px;
+	margin-left: 30px;
+
+}
+
+.findscreen_content #company{
+	padding: 3px;
+	min-width: 160px;
+}
+
+.findscreen_content .result .device{
+	float:left;
+	background-color: #F8FBF7;
+	border: 2px solid #49784B;		
+	width: 27%;
+	min-height: 20%;
+	margin: 10px;		
+	border-radius: 6px;
+}
+
+.findscreen_content .result .title{
+	background-color: #49784B;
+	margin: auto;
+	font-size: 16px;
+	text-align: center;
+	font-family: Arial;
+	padding: 5px;
+	color: white;
+	text-shadow: 2px 2px 11px black;
+	margin-bottom: 10px;
+}
+
+.findscreen_content .result .title#pc{
+	background-color: red;
+}
+
+.findscreen_content .result .result_tbl{
+	margin: 10px;	
+
+}
+
+.findscreen_content .mark {
+	background-color: #FF5C39;	
+}
+.findscreen_content .notmark {
+	background-color: white;	
+}
+.findscreen_content .result .result_tbl .mark {
+	background-color: #E7F0AC; 	
+}
+
+.findscreen_content .result .result_tbl table,th,td{
+	text-align: center;
+	border: 1px solid #B3C88E;
+	border-collapse: collapse;
+	padding: 7px;
+	font-size: 14px;
+}	
+
+.findscreen_content .result .result_tbl td{	
+	text-align: left;
+}
+
+.findscreen_content .result .result_tbl th{	
+	font-size: 14px;
+}

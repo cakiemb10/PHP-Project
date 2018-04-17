@@ -1,0 +1,5 @@
+AuthType Basic
+AuthName "nara"
+AuthUserFile /home/emap/httpd/ccn/.htpasswd
+require valid-user
+

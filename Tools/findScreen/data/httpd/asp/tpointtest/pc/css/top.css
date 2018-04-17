@@ -1,0 +1,813 @@
+@charset "shift_jis";
+
+/* 左カラム */
+#top #serviceMenuArea {
+	width: 180px;
+	float: right;
+	margin-left: 15px;
+	_margin-left: 8px;
+}
+#top #serviceMenuArea #service, 
+#top #serviceMenuArea #pulldownmenu {
+	margin-bottom:10px;
+	clear:both;
+	background-color: #F2F2F2;
+	border: 1px solid #CCCCCC;
+	position:relative;
+}
+#top #serviceMenuArea #service h3,
+#top #serviceMenuArea #pulldownmenu h3 {
+	background:url(../image/bg_menu.png) left top repeat-x;
+	padding: 8px 8px;
+	border-bottom: 1px #CCCCCC solid;
+	font-size: 12px;
+	_width:180px;
+}
+#top #content #serviceMenuArea #service .sub_title,
+#top #content #serviceMenuArea #pulldownmenu .sub_title {
+	background-color: #E0E0E0;
+	border-bottom: 1px #CCCCCC solid;
+	padding: 3px 2px;
+	font-size: 10px;
+	font-weight:bold;
+	_width:180px;
+}
+/* 一覧リンク　START */
+.link {
+	position:absolute;
+	left:140px;
+	top: 5px;
+	border:#CCCCCC 1px solid;
+	background-color:#FFFFFF;
+}
+.link a {
+	font-size:10px;
+	background:url(../image/sq.png) 2px center no-repeat;
+	display:block;
+	width:25px;
+	_width:30px;
+	height:15px;
+	padding-left:9px;
+}
+/* 一覧リンク　END */
+
+/* プルダウンメニュー */
+
+/* プルダウンメニュー　ロジック　START */
+
+#service,
+#pulldownmenu {
+	width:180px;
+	behavior: url("pc/else/csshover.htc");
+}
+
+#service ul li,
+#pulldownmenu ul li {
+	position: relative;
+	width:180px;
+	border-bottom:1px solid #CCCCCC;
+	background-color:#F2F2F2;
+	*float:left;
+	color:#3366FF;
+}
+#service ul li.kind {
+	padding:2px 0;
+	position: relative;
+}
+#service ul li.else,
+#pulldownmenu ul li.kind {
+	padding:2px 0;
+	background:url(../image/arrow_list.gif) 165px 4px no-repeat;
+	position: relative;
+}
+#service ul li.else:hover,
+#service ul li.else:active,
+#service ul li.else ul li:hover,
+#service ul li.else ul li:active,
+#pulldownmenu ul li:hover,
+#pulldownmenu ul li:active {
+	background-color:#CCCCCC;
+	text-decoration:underline;
+}
+#service ul li a,
+#pulldownmenu ul li a {
+	display: block;
+}
+/* 下層のメニューを不可視に */
+#service ul li ul,
+#pulldownmenu ul li ul {
+	display: none;
+	border:1px solid #CCCCCC;
+	line-height:0;
+}
+/* 疑似要素 :hover で下層のメニューを可視に */
+#service ul li:hover ul,
+#pulldownmenu ul li:hover ul {
+	display: block;
+	position:absolute;
+	z-index:100;
+	left:181px;
+	top:0px;
+}
+#service ul li ul li,
+#pulldownmenu ul li ul li {
+	float:none;
+	width:130px;
+	margin: 0;
+	padding:0;
+	border-bottom:1px solid #CCCCCC;
+}
+#service ul li ul li a,
+#pulldownmenu ul li ul li a {
+	display: block;
+	float:none;
+	font-size:12px;
+	margin: 0;
+	padding:2px 4px;
+	zoom: 1;
+}
+/* プルダウンメニュー　ロジック　END */
+
+/* リンク矢印*/
+
+
+/* menu icon */
+#top #content #serviceMenuArea #service .sm_end,
+#top #content #serviceMenuArea #pulldownmenu .sm_end {
+	border-bottom:  none;
+}
+#top #serviceMenuArea .sm01 {
+	background:1px 1px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm02 {
+	background:1px -19px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm03 {
+	background:1px -40px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm04 {
+	background:1px -60px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm05 {
+	background:1px -80px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm06 {
+	background:1px -100px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm07 {
+	background:1px -120px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm08 {
+	background:1px -140px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm09 {
+	background:1px -160px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm10 {
+	background:1px -180px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm11 {
+	background:1px -200px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .sm12 {
+	background:1px -219px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+/* 提携先 */
+#top #serviceMenuArea .am01 {
+	background:0 -600px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am02 {
+	background:0 -620px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am03 {
+	background:0 -640px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am04 {
+	background:0 -660px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am05 {
+	background:0 -680px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am06 {
+	background:0 -700px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am07 {
+	background:0 -720px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am08 {
+	background:0 -740px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am09 {
+	background:0 -760px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am10 {
+	background:0 -780px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am11 {
+	background:0 -800px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am12 {
+	background:0 -820px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am13 {
+	background:0 -840px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am14 {
+	background:0 -860px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am15 {
+	background:0 -880px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am16 {
+	background:0 -900px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am17 {
+	background:0 -920px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am18 {
+	background:0 -940px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am19 {
+	background:0 -960px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am20 {
+	background:0 -980px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am21 {
+	background:0 -1000px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am22 {
+	background:0 -1020px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am23 {
+	background:0 -1040px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am24 {
+	background:0 -1060px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am25 {
+	background:0 -1080px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am26 {
+	background:0 -1100px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am27 {
+	background:0 -1120px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am28 {
+	background:0 -1140px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am29 {
+	background:0 -1160px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am30 {
+	background:0 -1180px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am31 {
+	background:0 -1200px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am32 {
+	background:0 -1220px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+#top #serviceMenuArea .am33 {
+	background:0 -1240px url(../image/bg_icon.png) no-repeat;
+	padding-left:25px;
+	display:block;
+	height:20px;
+	line-height:160%;
+	margin-left: 2px;
+}
+/* 中央カラム */
+
+/* メインバナー */
+#top #main {
+	width: 460px;
+	float: right;
+	margin-left: 15px;
+	_margin-left: 8px;
+}
+#top #main #main_banner {
+	border: 1px solid #CCCCCC;
+	width: 460px;
+	margin-bottom: 10px;
+	padding-bottom:5px;
+}
+/*スライドバナー */
+#top #content #main #main_banner #banner {
+	margin: 10px 10px 0px 10px;
+	border: 1px solid #CCCCCC;
+	background-color:#ffffff;
+}
+#top #content #main #main_banner #banner ul {
+	position: relative;
+	overflow: hidden;
+	width: 440px;
+	height: 200px;
+	border: 1px solid #CCCCCC;
+}
+#top #content #main #main_banner #banner ul li {
+	width: 440px;
+	float:left;
+	position: absolute;
+}
+#top #content #main #main_banner #banner ul li a:hover{
+	filter: alpha(opacity=50); /* IE7以下用 */
+ 	-ms-filter: “alpha(opacity=50)”; /* IE8用 */
+  	opacity:0.6; /* Firefox 1.5以上, Opera, Safari用 */ 
+}
+#top #content #main #main_banner #pagenation {
+	position: relative;
+	overflow: hidden;
+	width: 440px;
+	height:40px;
+	background:url(../image/bg_bnr.jpg) repeat-x;
+	top: 0px;
+	left: 10px;
+	border-left: 1px solid #CCCCCC;
+	border-right: 1px solid #CCCCCC;
+	border-bottom: 1px solid #CCCCCC;
+}
+#top #content #main #main_banner #pagenation ul {
+	position:relative;
+	float:left;
+}
+#top #content #main #main_banner #pagenation li {
+	position:relative;
+	float:left;
+	margin:5px 0 5px 8px;
+	_margin:5px 3px 8px 4px;
+	_padding-bottom:3px;
+}
+#top #content #main #main_banner #pagenation li.active01 a {
+	width:100px;
+	height:30px;
+	overflow:hidden;
+	display:block;
+	/*background-image:url(../image/bnr/thum_01.jpg);
+	background-position:0 0;*/
+	background-color:#000000;
+}
+#top #content #main #main_banner #pagenation li.active02 a {
+	width:100px;
+	height:30px;
+	overflow:hidden;
+	display:block;
+	/*background-image:url(../image/bnr/thum_02.jpg);
+	background-position:0 0;*/
+	background-color:#000000;
+}
+#top #content #main #main_banner #pagenation li.active03 a {
+	width:100px;
+	height:30px;
+	overflow:hidden;
+	display:block;
+	/*background-image:url(../image/bnr/thum_03.jpg);
+	background-position:0 0;*/
+	background-color:#000000;
+}
+#top #content #main #main_banner #pagenation li.active04 a {
+	width:100px;
+	height:30px;
+	overflow:hidden;
+	display:block;
+	/*background-image:url(../image/bnr/thum_04.jpg);
+	background-position:0 0;*/
+	background-color:#000000;
+}
+#top #content #main #main_banner div#pagenation li.active a,
+ #top #content #main #main_banner div#pagenation li a:hover {
+	/*background-position:0 30px;*/
+	/*border: 2px solid #CCCCCC;*/
+	filter: alpha(opacity=50); /* IE7以下用 */
+ 	-ms-filter: “alpha(opacity=50)”; /* IE8用 */
+  	opacity:0.6; /* Firefox 1.5以上, Opera, Safari用 */ 
+}
+/*#top #content #main #main_banner div#pagenation li a img {
+	visibility:hidden;
+	display: none;
+}*/
+/*テキストバナー */
+#top #main .text_banner {
+	width: 440px;
+	margin: 5px 0 0 10px;
+}
+#top #main .text_banner .text_l {
+	padding-left: 10px;
+	float: left;
+	width: 204px;
+	margin-right: 6px;
+	background:url(../image/sq.png) left 4px no-repeat;
+}
+/* コンテンツ枠線 */
+#top #main .contents_box {
+	border: 1px solid #CCCCCC;
+	background-color:#FFFFFF;
+	position: relative;
+	clear: both;
+	background:url(../image/bg_content.jpg) left top repeat-x;
+	margin-bottom: 15px;
+	width: 460px;
+}
+/* ティーモール */
+#top #content #main .contents_box .h2_mall {
+	margin: 10px 0 0 0;
+	display: block;
+	width: 400px;
+	background:url(../image/logo_tmall.png) left top no-repeat;
+	padding-top: 24px;
+}
+#top #main h2 {
+	margin-left: 10px;
+	margin-top: 10px;
+	font-size:14px;
+	margin-bottom: 10px;
+}
+.link02 {
+	position:absolute;
+	left:360px;
+	top: 10px;
+	border:#CCCCCC 1px solid;
+	background-color:#FFFFFF;
+}
+.link02 a {
+	font-size:10px;
+	background:url(../image/sq.png) 2px center no-repeat;
+	display:block;
+	width:80px;
+	_width:90px;
+	height:15px;
+	padding-left:9px;
+}
+/* 検索 */
+#top #content #main .contents_box .search {
+	margin: 0px auto;
+	text-align:center;
+	width:434px;
+	_margin-bottom:5px;
+}
+ .addition {
+	width:434px;
+	height:36px;
+	background:url(../image/base_search.png) left top no-repeat;
+	padding: 6px 5px 0 5px;
+	font-size:8px;
+	_margin-left: 10px;
+	text-align: left;
+}
+ .addition #total_search_frm input {
+	vertical-align:middle;
+	margin-right:3px;
+}
+.addition #total_search_frm .s_box {
+	width: 150px;
+}
+/* 今週の～ */
+#top #main .contents_box .t_box {
+	width: 440px;
+	margin: 0 auto 10px auto;
+	_margin-left: 10px;
+	border-bottom: 2px dotted #CCCCCC;
+	text-align: center;
+}
+#top #main .contents_box h4 {
+	font-weight: bold;
+	margin-bottom: 5px;
+	width: 440px;
+	text-align: left;
+	font-size: 14px;
+}
+#top #main .contents_box .t_box dl {
+	width: 440px;
+	*margin-bottom: 5px;
+}
+#top #main .contents_box .t_box dt {
+	width: 154px;
+	float: left;
+	margin-bottom: 5px;
+}
+#top #main .contents_box .t_box .thisweek dd {
+	width: 270px;
+	line-height: 160%;
+	float: right;
+	text-align: left;
+	background:url(../image/sq.png) left 5px no-repeat;
+	padding-left:9px;
+	margin-left:0px;
+}
+#top #main .contents_box .t_box ul {
+	width:440px;
+	background-color:#F2F2F2;
+	text-align: center;
+	margin-bottom:5px;
+}
+#top #main .contents_box .t_box li {
+	font-size:10px;
+	padding: 2px;
+}
+#top #content #main .contents_box .t_box .category {
+	background:url(../image/base_tm_cate.png) left top no-repeat;
+	text-align:center;
+	font-size:10px;
+	width:140px;
+	height:18px;
+	padding-top: 1px;
+	float:left;
+	margin-right:5px;
+}
+#top #content #main .contents_box .t_box .t_text {
+	font-size:10px;
+	text-align: left;
+}
+/* 3つバナー */
+#top #main .contents_box .t_box02 {
+	width: 440px;
+	margin: 5px auto 10px auto;
+	_margin-left: 10px;
+	padding-bottom: 10px;
+	text-align: center;
+}
+#top #content #main .contents_box .t_box02 ul {
+	width: 440px;
+}
+#top #content #main .contents_box .t_box02 li {
+	margin-left: 20px;
+	_margin-left: 15px;
+	float: left;
+	border: 1px #CCCCCC solid;
+}
+.link03 {
+	position:absolute;
+	left:415px;
+	top: 10px;
+	border:#CCCCCC 1px solid;
+	background-color:#FFFFFF;
+}
+.link03 a {
+	font-size:10px;
+	background:url(../image/sq.png) 2px center no-repeat;
+	display:block;
+	width:25px;
+	_width:30px;
+	height:15px;
+	padding-left:9px;
+}
+/* キャンペーン */
+#top #main .contents_box .c_box {
+	width: 440px;
+	margin: 5px auto 0 auto;
+	_margin-left: 10px;
+	padding-bottom: 10px;
+}
+#top #main .contents_box .c_box dl {
+	width: 440px;
+	padding: 8px 0 5px 0;
+	border-bottom: 2px dotted #CCCCCC;
+}
+#top #content #main .contents_box .c_box .cam_img {
+	float: left;
+	width: 65px;
+	margin-right: 10px;
+}
+#top #content #main .contents_box .c_box .cam_period {
+	font-size: 10px;
+}
+#top #content #main .contents_box .c_box .c_end {
+	width: 440px;
+	padding: 8px 0 0 0;
+	border-bottom: none;
+}
+/* キャンペーン　出し分け */
+#top #content #main .contents_box .card_info {
+	background-color: #F2F2F2;
+	width: 460px;
+	text-align:right;
+	font-size:10px;
+	padding: 2px 0;
+}
+#top #content #main .contents_box .card_info a {
+	background:url(../image/sq.png) 2px center no-repeat;
+	padding:0 0 0 9px;
+	margin-right:3px;
+	letter-spacing: 0.1em;
+}
+

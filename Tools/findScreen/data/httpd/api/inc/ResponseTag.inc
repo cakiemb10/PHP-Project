@@ -1,0 +1,677 @@
+<?php
+// ------------------------------------------------------------
+// API¥ì¥¹¥Ý¥ó¥¹¤ÎXML¥¿¥°ÄêµÁ
+// 
+// 2016/06/14 H.Yasunaga	¿·µ¬ºîÀ®
+// 2016/06/24 H.Yasunaga	¸¡º÷·ë²Ì¤Î°ÞÅÙ·ÐÅÙ¤Î½çÈÖ¤Î½¤Àµ
+//							°ÞÅÙ·ÐÅÙ¤Î»ØÄê¥ß¥¹¤Î½¤Àµ
+// ------------------------------------------------------------
+	$TAG_ORDER;
+	$TAG_TO_COL;
+	
+
+	$TAG_ORDER = array();
+	//°ÌÃÖ´ÉÍý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_ORDER[0] = "office_id";
+	//¶É½ê¥³¡¼¥É
+	$TAG_ORDER[1] = "post_code";
+	//¼è°·Å¹ÈÖ¹æ
+	$TAG_ORDER[2] = "dealer_no";
+	//ºÇ½ª¹¹¿·Ç¯·îÆü
+	$TAG_ORDER[3] = "last_update_date";
+	//Ê»ÀßÅ¹¥Õ¥é¥°
+	$TAG_ORDER[4] = "juxtaposition_flag";
+	//ATMÍ­Ìµ
+	$TAG_ORDER[5] = "atm_flag";
+	//°ÞÅÙ
+	$TAG_ORDER[6] = "nl";
+	//·ÐÅÙ
+	$TAG_ORDER[7] = "el";
+	//Í¹ÊØÈÖ¹æ
+	$TAG_ORDER[8] = "zip_code";
+	//½»½ê
+	$TAG_ORDER[9] = "address";
+	//JISÅÔÆ»ÉÜ¸©¥³¡¼¥É
+	$TAG_ORDER[10] = "pref_code";
+	//JIS»Ô¶èÄ®Â¼¥³¡¼¥É
+	$TAG_ORDER[11] = "city_code";
+	//JIS»Ô¶èÄ®Â¼Ì¾
+	$TAG_ORDER[12] = "city_name";
+	//Ãó¼Ö¾ì
+	$TAG_ORDER[13] = "parking";
+	//Ãó¼Ö¾ìÈ÷¹Í
+	$TAG_ORDER[14] = "parking_note";
+	//Å¹ÊÞµ¬ÌÏ
+	$TAG_ORDER[15] = "store_scale";
+	//½êÂ°¥¨¥ê¥¢
+	$TAG_ORDER[16] = "area";
+	//Í¹ÊØ¶É²ñ¼Ò¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_ORDER[17] = "jp_network_code";
+	//Í¹ÊØ¶ÉÌ¾
+	$TAG_ORDER[18] = "jp_network_name";
+	//Í¹ÊØ¶ÉÌ¾(Á´³Ñ¤«¤Ê»ú)
+	$TAG_ORDER[19] = "jp_network_kana";
+	//Í¹ÊØ¶É¶èÊ¬
+	$TAG_ORDER[20] = "jp_network_class";
+	//Áë¸ýÅÅÏÃÈÖ¹æ
+	$TAG_ORDER[21] = "jp_network_tel1";
+	//ÁíÌ³ÅÅÏÃÈÖ¹æ
+	$TAG_ORDER[22] = "jp_network_tel2";
+	//Ìä¹ç¤»FAX
+	$TAG_ORDER[23] = "jp_network_fax";
+	//Ìä¹ç¤»È÷¹Í
+	$TAG_ORDER[24] = "jp_network_note";
+	//¤æ¤¦¤æ¤¦Áë¸ý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_ORDER[25] = "jp_post_code";
+	//¸ÇÍ­Í¹ÊØÈÖ¹æ
+	$TAG_ORDER[26] = "jp_post_zip";
+	//Í¹ÊØ»ÙÅ¹Ì¾
+	$TAG_ORDER[27] = "jp_post_name";
+	//Í¹ÊØ»ÙÅ¹Ì¾(Á´³Ñ¤«¤Ê»ú) 
+	$TAG_ORDER[28] = "jp_post_kana";
+	//Í¹ÊØ»ÙÅ¹¶èÊ¬
+	$TAG_ORDER[29] = "jp_post_class";
+	//Í¹ÊØ»ÙÅ¹¼è°·ÆâÍÆ(È÷¹Í) 
+	$TAG_ORDER[30] = "jp_post_handling_note";
+	//ÂåÉ½ÅÅÏÃÈÖ¹æ
+	$TAG_ORDER[31] = "jp_post_tel1";
+	//½¸²ÙÅÅÏÃÈÖ¹æ
+	$TAG_ORDER[32] = "jp_post_tel2";
+	//Ìä¹ç¤»È÷¹Í
+	$TAG_ORDER[33] = "jp_post_note";
+	//¤æ¤¦¤Á¤çÅ¹¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_ORDER[34] = "jp_bank_code";
+	//¶ä¹ÔÄ¾±ÄÅ¹Ì¾
+	$TAG_ORDER[35] = "jp_bank_name";
+	//¶ä¹ÔÄ¾±ÄÅ¹Ì¾(Á´³Ñ¤«¤Ê»ú) 
+	$TAG_ORDER[36] = "jp_bank_kana";
+	//¶ä¹ÔÄ¾±ÄÅ¹Àµ¼°Ì¾
+	$TAG_ORDER[37] = "jp_bank_official_name";
+	//¶èÊ¬(Ä¾±ÄÅ¹¡¿ATM½ÐÄ¥½ê) 
+	$TAG_ORDER[38] = "jp_bank_class";
+	//ÅÅÏÃÈÖ¹æ
+	$TAG_ORDER[39] = "jp_bank_tel";
+	//Ìä¹ç¤»È÷¹Í
+	$TAG_ORDER[40] = "jp_bank_note";
+	//¤«¤ó¤Ý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_ORDER[41] = "jp_insurance_code";
+	//¤«¤ó¤Ý»ÙÅ¹Ì¾
+	$TAG_ORDER[42] = "jp_insurance_name";
+	//¤«¤ó¤Ý»ÙÅ¹Ì¾(Á´³Ñ¤«¤Ê»ú) 
+	$TAG_ORDER[43] = "jp_insurance_kana";
+	//¤«¤ó¤Ý»ÙÅ¹¶èÊ¬
+	$TAG_ORDER[44] = "jp_insurance_class";
+	//»ÙÅ¹URL 
+	$TAG_ORDER[45] = "jp_insurance_url";
+	//ÅÅÏÃÈÖ¹æ£± 
+	$TAG_ORDER[46] = "jp_insurance_tel1";
+	//ÅÅÏÃÈÖ¹æ£² 
+	$TAG_ORDER[47] = "jp_insurance_tel2";
+	//Ìä¹ç¤»È÷¹Í
+	$TAG_ORDER[48] = "jp_insurance_note";
+	//Í¹ÊØÁë¸ý
+	$TAG_ORDER[49] = "post_window";
+	//°õ»æ¤ÎÇä¤ê¤µ¤Ð¤­
+	$TAG_ORDER[50] = "stamp_sale";
+	//¹ñÆâÊªÎ®»ö¶È¤Ë·¸¤ëÁë¸ý
+	$TAG_ORDER[51] = "home_window";
+	//¥Á¥ë¥É¤æ¤¦¥Ñ¥Ã¥¯
+	$TAG_ORDER[52] = "chilled_yu_pack";
+	//ÆâÍÆ¾ÚÌÀ
+	$TAG_ORDER[53] = "contents_certified";
+	//¼è¼¡¤®¥µ¡¼¥Ó¥¹
+	$TAG_ORDER[54] = "agency_service";
+	//ÄÌ¾ïÃù¶â
+	$TAG_ORDER[55] = "regular_savings";
+	//ÄÌ¾ïÃùÃßÃù¶â
+	$TAG_ORDER[56] = "money_market_account";
+	//Äê³ÛÃù¶â
+	$TAG_ORDER[57] = "fixed_deposit";
+	//¼«Æ°ÀÑÎ©Äê³ÛÃù¶â
+	$TAG_ORDER[58] = "auto_fixed_deposit";
+	//Äê´üÃù¶â
+	$TAG_ORDER[59] = "time_deposit";
+	//¼«Æ°ÀÑÎ©Äê´üÃù¶â
+	$TAG_ORDER[60] = "auto_time_deposit";
+	//Ëþ´ü°ì³ç¼õ¼è·¿Äê´üÃù¶â
+	$TAG_ORDER[61] = "expiration_time_deposit";
+	//¥Ë¥å¡¼Ê¡»ãÄê´üÃù¶â
+	$TAG_ORDER[62] = "welfare_time_deposit";
+	//ºâ·ÁÄê³ÛÃù¶â
+	$TAG_ORDER[63] = "asset_building_savings";
+	//ºâ»º·ÁÀ®½»ÂðÄê´üÃù¶â
+	$TAG_ORDER[64] = "asset_building_savings_housing";
+	//ºâ»º·ÁÀ®Ç¯¶âÄê´üÃù¶â
+	$TAG_ORDER[65] = "asset_building_savings_pension";
+	//ÉáÄÌ°ÙÂØ
+	$TAG_ORDER[66] = "normal_exchange";
+	//Äê³Û¾®°ÙÂØ
+	$TAG_ORDER[67] = "fixed_exchange";
+	//ATM¤Ë¤è¤ëÄÌ¾ïÊ§¹þ¤ß
+	$TAG_ORDER[68] = "atm_payment";
+	//¸ø¶âÊ§¹þ¤ß
+	$TAG_ORDER[69] = "public_payment";
+	//ÄÌ¾ïÊ§¹þ¤ß
+	$TAG_ORDER[70] = "normal_payment";
+	//ÅÅ¿®Ê§¹þ¤ß
+	$TAG_ORDER[71] = "telegraphic_payment";
+	//ÅÅ¿®¿¶ÂØ
+	$TAG_ORDER[72] = "telegraphic_transfer";
+	//Áê¸ßÁ÷¶â
+	$TAG_ORDER[73] = "mutual_transfer";
+	//¼«Æ°Ê§¹þ¤ß
+	$TAG_ORDER[74] = "auto_payment";
+	//¼«Æ°Á÷¶â
+	$TAG_ORDER[75] = "auto_transfer";
+	//Ãù¶â¾®ÀÚ¼ê¤Î¿¶½Ð
+	$TAG_ORDER[76] = "cheque";
+	//¼«Æ°Ê§½ÐÍÂÆþ
+	$TAG_ORDER[77] = "auto_deposit";
+	//´Ê°×Ê§¤¤(ÍøÍÑ¿½¹þ¤ß¡¦Ê§½Ð¤·¤ÎÀÁµá) 
+	$TAG_ORDER[78] = "simple_payment_request";
+	//´Ê°×Ê§¤¤(Ê§¤¤ÅÏ¤·) 
+	$TAG_ORDER[79] = "simple_payment_transfer";
+	//ÄÌ¾ï¸½¶âÊ§
+	$TAG_ORDER[80] = "normal_cash_payment";
+	//ÅÅ¿®¸½¶âÊ§(Áë¸ýÊ§) 
+	$TAG_ORDER[81] = "telegraphic_cash_payment";
+	//µëÍ¿ÍÂÆþ
+	$TAG_ORDER[82] = "salary_deposit";
+	//¹ñºÝÁ÷¶â
+	$TAG_ORDER[83] = "international_transfer";
+	//³°²ßÎ¾ÂØ/¥È¥é¥Ù¥é¡¼¥º¥Á¥§¥Ã¥¯
+	$TAG_ORDER[84] = "foreign_currency";
+	//¹ñÌ±Ç¯¶â
+	$TAG_ORDER[85] = "national_pension";
+	//È¿Â§¶â
+	$TAG_ORDER[86] = "penalty";
+	//¹ñÌ±Ç¯¶â¡¦È¿Â§¶â°Ê³°¤ÎºÐÆþ¶â
+	$TAG_ORDER[87] = "revenue";
+	//ºÐ½Ð¶â
+	$TAG_ORDER[88] = "expenditure";
+	//Ìµµ­Ì¾¹ñºÄ(¹ñºÄ) 
+	$TAG_ORDER[89] = "government_bonds";
+	//Åê»ñ¿®Â÷
+	$TAG_ORDER[90] = "investment_trust";
+	//ÊÑ³ÛÇ¯¶âÊÝ¸±
+	$TAG_ORDER[91] = "variable_pension";
+	//³ÎÄêµò½ÐÇ¯¶â
+	$TAG_ORDER[92] = "defined_contribution";
+	//½»Âð¥í¡¼¥ó¡¦¥Õ¥ê¡¼¥í¡¼¥ó
+	$TAG_ORDER[93] = "suruga_loan";
+	//¤«¤ó¤ÝÀ¸Ì¿ÊÝ¸±Êç½¸
+	$TAG_ORDER[94] = "jp_insurance_recruit";
+	//¾Ò²ðÂåÍýÅ¹
+	$TAG_ORDER[95] = "introduction_agency";
+	//¤«¤ó¤ÝÀ¸Ì¿ÊÝ¸±°Ý»ý´ÉÍý¶ÈÌ³
+	$TAG_ORDER[96] = "jp_insurance_maintenance";
+	//´Ê°×À¸Ì¿ÊÝ¸±´ÉÍý¶ÈÌ³
+	$TAG_ORDER[97] = "kampo_maintenance";
+	//¤«¤ó¤ÝÀ¸Ì¿°Ê³°¤ÎÀ¸Ì¿ÊÝ¸±Êç½¸
+	$TAG_ORDER[98] = "except_jp_insurance_recruit";
+	//¼«Æ°¼ÖÊÝ¸±Êç½¸
+	$TAG_ORDER[99] = "automobile_insurance";
+	//¼«ÇåÀÕÊÝ¸±Êç½¸
+	$TAG_ORDER[100] = "liability_insurance";
+	//¥¬¥óÊÝ¸±Êç½¸
+	$TAG_ORDER[101] = "cancer_insurance";
+	//°ú¼õ¾ò·ï´ËÏÂ·¿°åÎÅÊÝ¸±
+	$TAG_ORDER[102] = "condition_medical_insurance";
+	//ÃÏÊý¸ø¶¦ÃÄÂÎ»öÌ³
+	$TAG_ORDER[103] = "local_public_entity";
+	//¾ÚÌÀ½ñ¸òÉÕ»öÌ³
+	$TAG_ORDER[104] = "certificate_grant";
+	//¾ÚÌÀ½ñ¸òÉÕ»öÌ³¤ÎÆâÌõ
+	$TAG_ORDER[105] = "breakdown_certificate_grant";
+	//¼õÂ÷Áë¸ý»öÌ³(¼õÂ÷ÈÎÇä»öÌ³) 
+	$TAG_ORDER[106] = "trust_sale";
+	//¼õÂ÷Áë¸ý»öÌ³(¼õÂ÷ÈÎÇä»öÌ³)¤ÎÆâÍÆ
+	$TAG_ORDER[107] = "trust_sale_contents";
+	//¼õÂ÷Áë¸ý»öÌ³(¼õÂ÷¸òÉÕ»öÌ³) 
+	$TAG_ORDER[108] = "trust_grant";
+	//¼õÂ÷Áë¸ý»öÌ³(¼õÂ÷¸òÉÕ»öÌ³)¤ÎÆâÍÆ
+	$TAG_ORDER[109] = "trust_grant_contents";
+	//¤½¤ÎÂ¾¤ÎÃÏÊý¸ø¶¦ÃÄÂÎ»öÌ³
+	$TAG_ORDER[110] = "other_local_public";
+	//¤½¤ÎÂ¾¤ÎÃÏÊý¸ø¶¦ÃÄÂÎ»öÌ³¤ÎÆâÍÆ
+	$TAG_ORDER[111] = "other_local_public_contents";
+	//Êõ¤¯¤¸
+	$TAG_ORDER[112] = "lottery";
+	//¥«¥¿¥í¥°ÈÎÇä
+	$TAG_ORDER[113] = "catalog_sale";
+	//Í¹ÊØÊ¿Æü³«»Ï»þ´Ö
+	$TAG_ORDER[114] = "jp_network_start";
+	//Í¹ÊØÊ¿Æü½ªÎ»»þ´Ö
+	$TAG_ORDER[115] = "jp_network_end";
+	//Í¹ÊØÅÚÍË³«»Ï»þ´Ö
+	$TAG_ORDER[116] = "jp_network_sat_start";
+	//Í¹ÊØÅÚÍË½ªÎ»»þ´Ö
+	$TAG_ORDER[117] = "jp_network_sat_end";
+	//Í¹ÊØÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_ORDER[118] = "jp_network_sun_start";
+	//Í¹ÊØÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_ORDER[119] = "jp_network_sun_end";
+	//Í¹ÊØÁë¸ýÄêµÙÆü
+	$TAG_ORDER[120] = "jp_network_win_closed";
+	//Í¹ÊØÁë¸ýÈ÷¹Í
+	$TAG_ORDER[121] = "jp_network_win_note";
+	//Ãù¶âÊ¿Æü³«»Ï»þ´Ö
+	$TAG_ORDER[122] = "jp_bank_start";
+	//Ãù¶âÊ¿Æü½ªÎ»»þ´Ö
+	$TAG_ORDER[123] = "jp_bank_end";
+	//Ãù¶âÅÚÍË³«»Ï»þ´Ö
+	$TAG_ORDER[124] = "jp_bank_sat_start";
+	//Ãù¶âÅÚÍË½ªÎ»»þ´Ö
+	$TAG_ORDER[125] = "jp_bank_sat_end";
+	//Ãù¶âÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_ORDER[126] = "jp_bank_sun_start";
+	//Ãù¶âÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_ORDER[127] = "jp_bank_sun_end";
+	//¶ä¹ÔÁë¸ýÄêµÙÆü
+	$TAG_ORDER[128] = "jp_bank_win_closed";
+	//¶ä¹ÔÁë¸ýÈ÷¹Í
+	$TAG_ORDER[129] = "jp_bank_win_note";
+	//ATMÊ¿Æü³«»Ï»þ´Ö
+	$TAG_ORDER[130] = "atm_start";
+	//ATMÊ¿Æü½ªÎ»»þ´Ö
+	$TAG_ORDER[131] = "atm_end";
+	//ATMÅÚÍË³«»Ï»þ´Ö
+	$TAG_ORDER[132] = "atm_sat_start";
+	//ATMÅÚÍË½ªÎ»»þ´Ö
+	$TAG_ORDER[133] = "atm_sat_end";
+	//ATMÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_ORDER[134] = "atm_sun_start";
+	//ATMÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_ORDER[135] = "atm_sun_end";
+	//ATMÄêµÙÆü
+	$TAG_ORDER[136] = "atm_closed";
+	//ATMÈ÷¹Í
+	$TAG_ORDER[137] = "atm_note";
+	//ÊÝ¸±Ê¿Æü³«»Ï»þ´Ö
+	$TAG_ORDER[138] = "jp_network_insurance_start";
+	//ÊÝ¸±Ê¿Æü½ªÎ»»þ´Ö
+	$TAG_ORDER[139] = "jp_network_insurance_end";
+	//ÊÝ¸±ÅÚÍË³«»Ï»þ´Ö
+	$TAG_ORDER[140] = "jp_network_insurance_sat_start";
+	//ÊÝ¸±ÅÚÍË½ªÎ»»þ´Ö
+	$TAG_ORDER[141] = "jp_network_insurance_sat_end";
+	//ÊÝ¸±ÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_ORDER[142] = "jp_network_insurance_sun_start";
+	//ÊÝ¸±ÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_ORDER[143] = "jp_network_insurance_sun_end";
+	//ÊÝ¸±Áë¸ýÄêµÙÆü
+	$TAG_ORDER[144] = "jp_network_insurance_win_closed";
+	//ÊÝ¸±Áë¸ýÈ÷¹Í
+	$TAG_ORDER[145] = "jp_network_insurance_win_note";
+	//¤æ¤¦¤æ¤¦Ê¿Æü³«»Ï»þ´Ö
+	$TAG_ORDER[146] = "jp_post_start";
+	//¤æ¤¦¤æ¤¦Ê¿Æü½ªÎ»»þ´Ö
+	$TAG_ORDER[147] = "jp_post_end";
+	//¤æ¤¦¤æ¤¦ÅÚÍË³«»Ï»þ´Ö
+	$TAG_ORDER[148] = "jp_post_sat_start";
+	//¤æ¤¦¤æ¤¦ÅÚÍË½ªÎ»»þ´Ö
+	$TAG_ORDER[149] = "jp_post_sat_end";
+	//¤æ¤¦¤æ¤¦ÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_ORDER[150] = "jp_post_sun_start";
+	//¤æ¤¦¤æ¤¦ÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_ORDER[151] = "jp_post_sun_end";
+	//¤æ¤¦¤æ¤¦Áë¸ýÄêµÙÆü
+	$TAG_ORDER[152] = "jp_post_win_closed";
+	//¤æ¤¦¤æ¤¦Áë¸ýÈ÷¹Í
+	$TAG_ORDER[153] = "jp_post_win_note";
+	//¤«¤ó¤ÝÊ¿Æü³«»Ï»þ´Ö
+	$TAG_ORDER[154] = "jp_insurance_start";
+	//¤«¤ó¤ÝÊ¿Æü½ªÎ»»þ´Ö
+	$TAG_ORDER[155] = "jp_insurance_end";
+	//¤«¤ó¤ÝÅÚÍË³«»Ï»þ´Ö
+	$TAG_ORDER[156] = "jp_insurance_sat_start";
+	//¤«¤ó¤ÝÅÚÍË½ªÎ»»þ´Ö
+	$TAG_ORDER[157] = "jp_insurance_sat_end";
+	//¤«¤ó¤ÝÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_ORDER[158] = "jp_insurance_sun_start";
+	//¤«¤ó¤ÝÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_ORDER[159] = "jp_insurance_sun_end";
+	//¤«¤ó¤ÝÁë¸ýÄêµÙÆü
+	$TAG_ORDER[160] = "jp_insurance_win_closed";
+	//¤«¤ó¤ÝÁë¸ýÈ÷¹Í
+	$TAG_ORDER[161] = "jp_insurance_win_note";
+	//¾®ÀÚ¼êÊ§¤¤
+	$TAG_ORDER[162] = "reserve_flag1";
+	//¥«¡¼¥É¥í¡¼¥ó
+	$TAG_ORDER[163] = "reserve_flag2";
+	//È¿±ÇÆü»þ
+	$TAG_ORDER[164] = "reflect_date";
+
+	$TAG_TO_COL = array();
+	//°ÌÃÖ´ÉÍý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_TO_COL['office_id'] = "KYOTEN_ID";
+	//¶É½ê¥³¡¼¥É
+	$TAG_TO_COL['post_code'] = "COL_02";
+	//¼è°·Å¹ÈÖ¹æ
+	$TAG_TO_COL['dealer_no'] = "COL_03";
+	//ºÇ½ª¹¹¿·Ç¯·îÆü
+	$TAG_TO_COL['last_update_date'] = "UPD_DT";
+	//Ê»ÀßÅ¹¥Õ¥é¥°
+	$TAG_TO_COL['juxtaposition_flag'] = array("COL_05", "COL_06", "COL_07", "COL_08");
+	//ATMÍ­Ìµ
+	$TAG_TO_COL['atm_flag'] = "COL_09";
+	//°ÞÅÙ
+	$TAG_TO_COL['el'] = "LON";
+	//·ÐÅÙ
+	$TAG_TO_COL['nl'] = "LAT";
+	//Í¹ÊØÈÖ¹æ
+	$TAG_TO_COL['zip_code'] = "COL_10";
+	//½»½ê
+	$TAG_TO_COL['address'] = "ADDR";
+	//JISÅÔÆ»ÉÜ¸©¥³¡¼¥É
+	$TAG_TO_COL['pref_code'] = "COL_11";
+	//JIS»Ô¶èÄ®Â¼¥³¡¼¥É
+	$TAG_TO_COL['city_code'] = "COL_12";
+	//JIS»Ô¶èÄ®Â¼Ì¾
+	$TAG_TO_COL['city_name'] = "COL_13";
+	//Ãó¼Ö¾ì
+	$TAG_TO_COL['parking'] = "COL_14";
+	//Ãó¼Ö¾ìÈ÷¹Í
+	$TAG_TO_COL['parking_note'] = "COL_15";
+	//Å¹ÊÞµ¬ÌÏ
+	$TAG_TO_COL['store_scale'] = "COL_16";
+	//½êÂ°¥¨¥ê¥¢
+	$TAG_TO_COL['area'] = "COL_18";
+	//Í¹ÊØ¶É²ñ¼Ò¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_TO_COL['jp_network_code'] = "COL_19";
+	//Í¹ÊØ¶ÉÌ¾
+	$TAG_TO_COL['jp_network_name'] = "COL_20";
+	//Í¹ÊØ¶ÉÌ¾(Á´³Ñ¤«¤Ê»ú)
+	$TAG_TO_COL['jp_network_kana'] = "COL_21";
+	//Í¹ÊØ¶É¶èÊ¬
+	$TAG_TO_COL['jp_network_class'] = "COL_22";
+	//Áë¸ýÅÅÏÃÈÖ¹æ
+	$TAG_TO_COL['jp_network_tel1'] = "COL_23";
+	//ÁíÌ³ÅÅÏÃÈÖ¹æ
+	$TAG_TO_COL['jp_network_tel2'] = "COL_24";
+	//Ìä¹ç¤»FAX
+	$TAG_TO_COL['jp_network_fax'] = "COL_25";
+	//Ìä¹ç¤»È÷¹Í
+	$TAG_TO_COL['jp_network_note'] = "COL_26";
+	//¤æ¤¦¤æ¤¦Áë¸ý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_TO_COL['jp_post_code'] = "COL_27";
+	//¸ÇÍ­Í¹ÊØÈÖ¹æ
+	$TAG_TO_COL['jp_post_zip'] = "COL_28";
+	//Í¹ÊØ»ÙÅ¹Ì¾
+	$TAG_TO_COL['jp_post_name'] = "COL_29";
+	//Í¹ÊØ»ÙÅ¹Ì¾(Á´³Ñ¤«¤Ê»ú) 
+	$TAG_TO_COL['jp_post_kana'] = "COL_30";
+	//Í¹ÊØ»ÙÅ¹¶èÊ¬
+	$TAG_TO_COL['jp_post_class'] = "COL_31";
+	//Í¹ÊØ»ÙÅ¹¼è°·ÆâÍÆ(È÷¹Í) 
+	$TAG_TO_COL['jp_post_handling_note'] = "COL_32";
+	//ÂåÉ½ÅÅÏÃÈÖ¹æ
+	$TAG_TO_COL['jp_post_tel1'] = "COL_33";
+	//½¸²ÙÅÅÏÃÈÖ¹æ
+	$TAG_TO_COL['jp_post_tel2'] = "COL_34";
+	//Ìä¹ç¤»È÷¹Í
+	$TAG_TO_COL['jp_post_note'] = "COL_35";
+	//¤æ¤¦¤Á¤çÅ¹¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_TO_COL['jp_bank_code'] = "COL_36";
+	//¶ä¹ÔÄ¾±ÄÅ¹Ì¾
+	$TAG_TO_COL['jp_bank_name'] = "COL_37";
+	//¶ä¹ÔÄ¾±ÄÅ¹Ì¾(Á´³Ñ¤«¤Ê»ú) 
+	$TAG_TO_COL['jp_bank_kana'] = "COL_38";
+	//¶ä¹ÔÄ¾±ÄÅ¹Àµ¼°Ì¾
+	$TAG_TO_COL['jp_bank_official_name'] = "COL_39";
+	//¶èÊ¬(Ä¾±ÄÅ¹¡¿ATM½ÐÄ¥½ê) 
+	$TAG_TO_COL['jp_bank_class'] = "COL_40";
+	//ÅÅÏÃÈÖ¹æ
+	$TAG_TO_COL['jp_bank_tel'] = "COL_41";
+	//Ìä¹ç¤»È÷¹Í
+	$TAG_TO_COL['jp_bank_note'] = "COL_42";
+	//¤«¤ó¤Ý¥æ¥Ë¡¼¥¯¥³¡¼¥É
+	$TAG_TO_COL['jp_insurance_code'] = "COL_43";
+	//¤«¤ó¤Ý»ÙÅ¹Ì¾
+	$TAG_TO_COL['jp_insurance_name'] = "COL_44";
+	//¤«¤ó¤Ý»ÙÅ¹Ì¾(Á´³Ñ¤«¤Ê»ú) 
+	$TAG_TO_COL['jp_insurance_kana'] = "COL_45";
+	//¤«¤ó¤Ý»ÙÅ¹¶èÊ¬
+	$TAG_TO_COL['jp_insurance_class'] = "COL_46";
+	//»ÙÅ¹URL 
+	$TAG_TO_COL['jp_insurance_url'] = "COL_47";
+	//ÅÅÏÃÈÖ¹æ£± 
+	$TAG_TO_COL['jp_insurance_tel1'] = "COL_48";
+	//ÅÅÏÃÈÖ¹æ£² 
+	$TAG_TO_COL['jp_insurance_tel2'] = "COL_49";
+	//Ìä¹ç¤»È÷¹Í
+	$TAG_TO_COL['jp_insurance_note'] = "COL_50";
+	//Í¹ÊØÁë¸ý
+	$TAG_TO_COL['post_window'] = "COL_51";
+	//°õ»æ¤ÎÇä¤ê¤µ¤Ð¤­
+	$TAG_TO_COL['stamp_sale'] = "COL_52";
+	//¹ñÆâÊªÎ®»ö¶È¤Ë·¸¤ëÁë¸ý
+	$TAG_TO_COL['home_window'] = "COL_53";
+	//¥Á¥ë¥É¤æ¤¦¥Ñ¥Ã¥¯
+	$TAG_TO_COL['chilled_yu_pack'] = "COL_54";
+	//ÆâÍÆ¾ÚÌÀ
+	$TAG_TO_COL['contents_certified'] = "COL_55";
+	//¼è¼¡¤®¥µ¡¼¥Ó¥¹
+	$TAG_TO_COL['agency_service'] = "COL_56";
+	//ÄÌ¾ïÃù¶â
+	$TAG_TO_COL['regular_savings'] = "COL_57";
+	//ÄÌ¾ïÃùÃßÃù¶â
+	$TAG_TO_COL['money_market_account'] = "COL_58";
+	//Äê³ÛÃù¶â
+	$TAG_TO_COL['fixed_deposit'] = "COL_59";
+	//¼«Æ°ÀÑÎ©Äê³ÛÃù¶â
+	$TAG_TO_COL['auto_fixed_deposit'] = "COL_60";
+	//Äê´üÃù¶â
+	$TAG_TO_COL['time_deposit'] = "COL_61";
+	//¼«Æ°ÀÑÎ©Äê´üÃù¶â
+	$TAG_TO_COL['auto_time_deposit'] = "COL_62";
+	//Ëþ´ü°ì³ç¼õ¼è·¿Äê´üÃù¶â
+	$TAG_TO_COL['expiration_time_deposit'] = "COL_63";
+	//¥Ë¥å¡¼Ê¡»ãÄê´üÃù¶â
+	$TAG_TO_COL['welfare_time_deposit'] = "COL_64";
+	//ºâ·ÁÄê³ÛÃù¶â
+	$TAG_TO_COL['asset_building_savings'] = "COL_65";
+	//ºâ»º·ÁÀ®½»ÂðÄê´üÃù¶â
+	$TAG_TO_COL['asset_building_savings_housing'] = "COL_66";
+	//ºâ»º·ÁÀ®Ç¯¶âÄê´üÃù¶â
+	$TAG_TO_COL['asset_building_savings_pension'] = "COL_67";
+	//ÉáÄÌ°ÙÂØ
+	$TAG_TO_COL['normal_exchange'] = "COL_68";
+	//Äê³Û¾®°ÙÂØ
+	$TAG_TO_COL['fixed_exchange'] = "COL_69";
+	//ATM¤Ë¤è¤ëÄÌ¾ïÊ§¹þ¤ß
+	$TAG_TO_COL['atm_payment'] = "COL_70";
+	//¸ø¶âÊ§¹þ¤ß
+	$TAG_TO_COL['public_payment'] = "COL_71";
+	//ÄÌ¾ïÊ§¹þ¤ß
+	$TAG_TO_COL['normal_payment'] = "COL_72";
+	//ÅÅ¿®Ê§¹þ¤ß
+	$TAG_TO_COL['telegraphic_payment'] = "COL_73";
+	//ÅÅ¿®¿¶ÂØ
+	$TAG_TO_COL['telegraphic_transfer'] = "COL_74";
+	//Áê¸ßÁ÷¶â
+	$TAG_TO_COL['mutual_transfer'] = "COL_75";
+	//¼«Æ°Ê§¹þ¤ß
+	$TAG_TO_COL['auto_payment'] = "COL_76";
+	//¼«Æ°Á÷¶â
+	$TAG_TO_COL['auto_transfer'] = "COL_77";
+	//Ãù¶â¾®ÀÚ¼ê¤Î¿¶½Ð
+	$TAG_TO_COL['cheque'] = "COL_78";
+	//¼«Æ°Ê§½ÐÍÂÆþ
+	$TAG_TO_COL['auto_deposit'] = "COL_79";
+	//´Ê°×Ê§¤¤(ÍøÍÑ¿½¹þ¤ß¡¦Ê§½Ð¤·¤ÎÀÁµá) 
+	$TAG_TO_COL['simple_payment_request'] = "COL_80";
+	//´Ê°×Ê§¤¤(Ê§¤¤ÅÏ¤·) 
+	$TAG_TO_COL['simple_payment_transfer'] = "COL_81";
+	//ÄÌ¾ï¸½¶âÊ§
+	$TAG_TO_COL['normal_cash_payment'] = "COL_82";
+	//ÅÅ¿®¸½¶âÊ§(Áë¸ýÊ§) 
+	$TAG_TO_COL['telegraphic_cash_payment'] = "COL_83";
+	//µëÍ¿ÍÂÆþ
+	$TAG_TO_COL['salary_deposit'] = "COL_84";
+	//¹ñºÝÁ÷¶â
+	$TAG_TO_COL['international_transfer'] = "COL_85";
+	//³°²ßÎ¾ÂØ/¥È¥é¥Ù¥é¡¼¥º¥Á¥§¥Ã¥¯
+	$TAG_TO_COL['foreign_currency'] = "COL_86";
+	//¹ñÌ±Ç¯¶â
+	$TAG_TO_COL['national_pension'] = "COL_87";
+	//È¿Â§¶â
+	$TAG_TO_COL['penalty'] = "COL_88";
+	//¹ñÌ±Ç¯¶â¡¦È¿Â§¶â°Ê³°¤ÎºÐÆþ¶â
+	$TAG_TO_COL['revenue'] = "COL_89";
+	//ºÐ½Ð¶â
+	$TAG_TO_COL['expenditure'] = "COL_90";
+	//Ìµµ­Ì¾¹ñºÄ(¹ñºÄ) 
+	$TAG_TO_COL['government_bonds'] = "COL_91";
+	//Åê»ñ¿®Â÷
+	$TAG_TO_COL['investment_trust'] = "COL_92";
+	//ÊÑ³ÛÇ¯¶âÊÝ¸±
+	$TAG_TO_COL['variable_pension'] = "COL_93";
+	//³ÎÄêµò½ÐÇ¯¶â
+	$TAG_TO_COL['defined_contribution'] = "COL_94";
+	//½»Âð¥í¡¼¥ó¡¦¥Õ¥ê¡¼¥í¡¼¥ó
+	$TAG_TO_COL['suruga_loan'] = "COL_95";
+	//¤«¤ó¤ÝÀ¸Ì¿ÊÝ¸±Êç½¸
+	$TAG_TO_COL['jp_insurance_recruit'] = "COL_96";
+	//¾Ò²ðÂåÍýÅ¹
+	$TAG_TO_COL['introduction_agency'] = "COL_97";
+	//¤«¤ó¤ÝÀ¸Ì¿ÊÝ¸±°Ý»ý´ÉÍý¶ÈÌ³
+	$TAG_TO_COL['jp_insurance_maintenance'] = "COL_98";
+	//´Ê°×À¸Ì¿ÊÝ¸±´ÉÍý¶ÈÌ³
+	$TAG_TO_COL['kampo_maintenance'] = "COL_99";
+	//¤«¤ó¤ÝÀ¸Ì¿°Ê³°¤ÎÀ¸Ì¿ÊÝ¸±Êç½¸
+	$TAG_TO_COL['except_jp_insurance_recruit'] = "COL_100";
+	//¼«Æ°¼ÖÊÝ¸±Êç½¸
+	$TAG_TO_COL['automobile_insurance'] = "COL_101";
+	//¼«ÇåÀÕÊÝ¸±Êç½¸
+	$TAG_TO_COL['liability_insurance'] = "COL_102";
+	//¥¬¥óÊÝ¸±Êç½¸
+	$TAG_TO_COL['cancer_insurance'] = "COL_103";
+	//°ú¼õ¾ò·ï´ËÏÂ·¿°åÎÅÊÝ¸±
+	$TAG_TO_COL['condition_medical_insurance'] = "COL_104";
+	//ÃÏÊý¸ø¶¦ÃÄÂÎ»öÌ³
+	$TAG_TO_COL['local_public_entity'] = "COL_105";
+	//¾ÚÌÀ½ñ¸òÉÕ»öÌ³
+	$TAG_TO_COL['certificate_grant'] = "COL_106";
+	//¾ÚÌÀ½ñ¸òÉÕ»öÌ³¤ÎÆâÌõ
+	$TAG_TO_COL['breakdown_certificate_grant'] = "COL_107";
+	//¼õÂ÷Áë¸ý»öÌ³(¼õÂ÷ÈÎÇä»öÌ³) 
+	$TAG_TO_COL['trust_sale'] = "COL_108";
+	//¼õÂ÷Áë¸ý»öÌ³(¼õÂ÷ÈÎÇä»öÌ³)¤ÎÆâÍÆ
+	$TAG_TO_COL['trust_sale_contents'] = "COL_109";
+	//¼õÂ÷Áë¸ý»öÌ³(¼õÂ÷¸òÉÕ»öÌ³) 
+	$TAG_TO_COL['trust_grant'] = "COL_110";
+	//¼õÂ÷Áë¸ý»öÌ³(¼õÂ÷¸òÉÕ»öÌ³)¤ÎÆâÍÆ
+	$TAG_TO_COL['trust_grant_contents'] = "COL_111";
+	//¤½¤ÎÂ¾¤ÎÃÏÊý¸ø¶¦ÃÄÂÎ»öÌ³
+	$TAG_TO_COL['other_local_public'] = "COL_112";
+	//¤½¤ÎÂ¾¤ÎÃÏÊý¸ø¶¦ÃÄÂÎ»öÌ³¤ÎÆâÍÆ
+	$TAG_TO_COL['other_local_public_contents'] = "COL_113";
+	//Êõ¤¯¤¸
+	$TAG_TO_COL['lottery'] = "COL_114";
+	//¥«¥¿¥í¥°ÈÎÇä
+	$TAG_TO_COL['catalog_sale'] = "COL_115";
+	//Í¹ÊØÊ¿Æü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_network_start'] = "COL_119";
+	//Í¹ÊØÊ¿Æü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_network_end'] = "COL_120";
+	//Í¹ÊØÅÚÍË³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_network_sat_start'] = "COL_121";
+	//Í¹ÊØÅÚÍË½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_network_sat_end'] = "COL_122";
+	//Í¹ÊØÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_network_sun_start'] = "COL_123";
+	//Í¹ÊØÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_network_sun_end'] = "COL_124";
+	//Í¹ÊØÁë¸ýÄêµÙÆü
+	$TAG_TO_COL['jp_network_win_closed'] = "COL_125";
+	//Í¹ÊØÁë¸ýÈ÷¹Í
+	$TAG_TO_COL['jp_network_win_note'] = "COL_126";
+	//Ãù¶âÊ¿Æü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_bank_start'] = "COL_127";
+	//Ãù¶âÊ¿Æü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_bank_end'] = "COL_128";
+	//Ãù¶âÅÚÍË³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_bank_sat_start'] = "COL_129";
+	//Ãù¶âÅÚÍË½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_bank_sat_end'] = "COL_130";
+	//Ãù¶âÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_bank_sun_start'] = "COL_131";
+	//Ãù¶âÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_bank_sun_end'] = "COL_132";
+	//¶ä¹ÔÁë¸ýÄêµÙÆü
+	$TAG_TO_COL['jp_bank_win_closed'] = "COL_133";
+	//¶ä¹ÔÁë¸ýÈ÷¹Í
+	$TAG_TO_COL['jp_bank_win_note'] = "COL_134";
+	//ATMÊ¿Æü³«»Ï»þ´Ö
+	$TAG_TO_COL['atm_start'] = "COL_135";
+	//ATMÊ¿Æü½ªÎ»»þ´Ö
+	$TAG_TO_COL['atm_end'] = "COL_136";
+	//ATMÅÚÍË³«»Ï»þ´Ö
+	$TAG_TO_COL['atm_sat_start'] = "COL_137";
+	//ATMÅÚÍË½ªÎ»»þ´Ö
+	$TAG_TO_COL['atm_sat_end'] = "COL_138";
+	//ATMÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_TO_COL['atm_sun_start'] = "COL_139";
+	//ATMÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_TO_COL['atm_sun_end'] = "COL_140";
+	//ATMÄêµÙÆü
+	$TAG_TO_COL['atm_closed'] = "COL_141";
+	//ATMÈ÷¹Í
+	$TAG_TO_COL['atm_note'] = "COL_142";
+	//ÊÝ¸±Ê¿Æü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_network_insurance_start'] = "COL_143";
+	//ÊÝ¸±Ê¿Æü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_network_insurance_end'] = "COL_144";
+	//ÊÝ¸±ÅÚÍË³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_network_insurance_sat_start'] = "COL_145";
+	//ÊÝ¸±ÅÚÍË½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_network_insurance_sat_end'] = "COL_146";
+	//ÊÝ¸±ÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_network_insurance_sun_start'] = "COL_147";
+	//ÊÝ¸±ÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_network_insurance_sun_end'] = "COL_148";
+	//ÊÝ¸±Áë¸ýÄêµÙÆü
+	$TAG_TO_COL['jp_network_insurance_win_closed'] = "COL_149";
+	//ÊÝ¸±Áë¸ýÈ÷¹Í
+	$TAG_TO_COL['jp_network_insurance_win_note'] = "COL_150";
+	//¤æ¤¦¤æ¤¦Ê¿Æü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_post_start'] = "COL_151";
+	//¤æ¤¦¤æ¤¦Ê¿Æü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_post_end'] = "COL_152";
+	//¤æ¤¦¤æ¤¦ÅÚÍË³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_post_sat_start'] = "COL_153";
+	//¤æ¤¦¤æ¤¦ÅÚÍË½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_post_sat_end'] = "COL_154";
+	//¤æ¤¦¤æ¤¦ÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_post_sun_start'] = "COL_155";
+	//¤æ¤¦¤æ¤¦ÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_post_sun_end'] = "COL_156";
+	//¤æ¤¦¤æ¤¦Áë¸ýÄêµÙÆü
+	$TAG_TO_COL['jp_post_win_closed'] = "COL_157";
+	//¤æ¤¦¤æ¤¦Áë¸ýÈ÷¹Í
+	$TAG_TO_COL['jp_post_win_note'] = "COL_158";
+	//¤«¤ó¤ÝÊ¿Æü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_insurance_start'] = "COL_159";
+	//¤«¤ó¤ÝÊ¿Æü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_insurance_end'] = "COL_160";
+	//¤«¤ó¤ÝÅÚÍË³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_insurance_sat_start'] = "COL_161";
+	//¤«¤ó¤ÝÅÚÍË½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_insurance_sat_end'] = "COL_162";
+	//¤«¤ó¤ÝÆüÍË¡¦µÙÆü³«»Ï»þ´Ö
+	$TAG_TO_COL['jp_insurance_sun_start'] = "COL_163";
+	//¤«¤ó¤ÝÆüÍË¡¦µÙÆü½ªÎ»»þ´Ö
+	$TAG_TO_COL['jp_insurance_sun_end'] = "COL_164";
+	//¤«¤ó¤ÝÁë¸ýÄêµÙÆü
+	$TAG_TO_COL['jp_insurance_win_closed'] = "COL_165";
+	//¤«¤ó¤ÝÁë¸ýÈ÷¹Í
+	$TAG_TO_COL['jp_insurance_win_note'] = "COL_166";
+	//¾®ÀÚ¼êÊ§¤¤
+	$TAG_TO_COL['reserve_flag1'] = "COL_167";
+	//¥«¡¼¥É¥í¡¼¥ó
+	$TAG_TO_COL['reserve_flag2'] = "COL_168";
+	//È¿±ÇÆü»þ
+	$TAG_TO_COL['reflect_date'] = "PUB_S_DATE";
+	
+?>

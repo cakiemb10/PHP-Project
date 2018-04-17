@@ -1,0 +1,139 @@
+@charset "euc-jp";
+/* CSS Document */
+/* カスタマイズ用のCSS定義をここに記述してください */
+
+/* ヘッダー ロゴ */
+.logo{
+	float: left;
+	width: 205px;
+	height: 40px;
+	text-indent: -9999px;
+	overflow: hidden;
+}
+
+/* リスト行BOX */
+.z_litem a{
+	font-size:100%;
+}
+
+/* 店舗詳細 項目タイトル */
+.z_inf_col_title {
+	width:65px;
+	font-size:80%;
+}
+
+/* 店舗詳細 店舗名 */
+.z_inf_name {
+	font-size: 100%;
+}
+
+/* 縮尺プルダウン */
+.z_map_lvl_select{
+	top:34px;
+}
+
+/* フキダシ */
+#z_map_msg {
+	height: 61px;
+}
+
+/* フキダシ */
+#z_map_msg_name {
+	width: 200px;
+}
+
+/* 絞り込み条件エリア */
+#ZdcEmapCond{
+	position: absolute;
+	bottom: 2px;
+	padding-top: 1px;
+	/*right: 10px;*/
+}
+
+/* 絞り込み条件プルダウン */
+.z_map_cond_select{
+	font-size:90%;
+	z-index:9999;
+}
+
+
+/* 「元の位置へ」ボタン */
+.z_map_btn_reset{
+	bottom:56px;
+}
+
+/* 「店舗情報」ボタン */
+.z_map_btn_inf{
+	bottom:22px;
+}
+
+/* 「店舗一覧」ボタン */
+.z_map_btn_nlist{
+	bottom:100px;
+}
+
+/* 「最寄り駅」ボタン */
+.z_map_btn_neki{
+	bottom:22px;
+}
+
+/* 「検索TOP」ボタン */
+.z_map_btn_top{
+	bottom:56px;
+}
+
+/* フッタ */
+.z_footer{
+	padding: 20px 0px;
+}
+
+#footerLeftTd {
+	text-align: left;
+	padding-left: 20px;
+	padding-bottom: 10px;
+}
+#footerRightTd {
+	text-align: right;
+	padding-right: 20px;
+	padding-bottom: 10px;
+}
+#footerLeftTd a{
+	text-decoration:underline;
+}
+#footerRightTd a{
+	text-decoration:underline;
+}
+
+/* コピーライト */
+#copyright {
+	border-top: #92b2dd 1px solid;
+	padding-top: 8px;
+	padding-bottom: 8px;
+	color: #999;
+	font-size: 13px;
+}
+
+/* 縮尺コントロールボタン */
+.z_map_lvl_scaleP {
+	width:38px;
+	height:48px;
+	position:absolute;
+	top:33px;
+	left:4px;
+	font-size:100%;
+	z-index:9999;
+}
+.z_map_lvl_scaleM {
+	width:38px;
+	height:48px;
+	position:absolute;
+	top:81px;
+	left:4px;
+	font-size:100%;
+	z-index:9999;
+}
+/* add 20151008 */
+.logo {
+	height: 17px;
+	width: 195px;
+}

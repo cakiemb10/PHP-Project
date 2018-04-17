@@ -1,0 +1,61 @@
+<?php
+function com_getuseragent($user_agent) {
+
+	// ie
+	if(strpos($user_agent, 'MSIE 7')) {
+		$agent ='MSIE7';
+	}
+	if(strpos($user_agent ,'MSIE 6')) {
+		$agent ='MSIE6';
+	}
+	if(strpos($user_agent, 'MSIE 5.5')) {
+		$agent ='MSIE55';
+	}
+	else if(mb_strpos($user_agent, 'MSIE 5')) { //‚±‚Ìelse•K{
+		$agent ='MSIE5';
+	}
+	if(strpos($user_agent, 'MSIE 4')) {
+		$agent ='MSIE7';
+	}
+
+	// firefox
+	if(strpos($user_agent ,'Firefox/2.0')) {
+		$agent ='FFOX20';
+	}
+	if(strpos($user_agent ,'Firefox/1.5')) {
+		$agent ='FFOX15';
+	}
+	if(strpos($user_agent ,'Firefox/1.4')) {
+		$agent ='FFOX14';
+	}
+	if(strpos($user_agent ,'Firefox/1.0')) {
+		$agent ='FFOX';
+	}
+	if(strpos($user_agent ,'Firefox/0')) {
+		$agent ='FFOX';
+	}
+
+	// safari
+	if(strpos($user_agent ,'AppleWebKit/4')) {
+		$agent ='SAFA2';
+	}
+	else if(strpos($user_agent ,'AppleWebKit')) { //‚±‚Ìelse•K{
+		$agent ='SAFA';
+	}
+
+	// opera
+	if(strpos($user_agent ,'Opera 7')) {
+		$agent ='OPRA7';
+	}
+	else if(strpos($user_agent ,'Opera/7')) { //‚±‚Ìelse‚Í‹CŽ‚¿‚Ìelse
+		$agent ='OPRA7';
+	}
+	if(strpos($user_agent ,'Opera 6')) {
+		$agent ='OPRA6';
+	}
+	if(strpos($user_agent ,'Opera 3')) {
+		$agent ='OPRA3';
+	}
+	return $agent;
+}
+?>

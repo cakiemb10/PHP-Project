@@ -1,0 +1,27 @@
+<?PHP
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("./inc/define_mobile.inc");  // 基本設定
+include("./inc/carrier.inc");  // 基本設定
+include("./inc/function.inc");
+include("./inc/define_msg.inc");
+include("inc/proc_get_freeparam.inc");		// add 2009/06/29 Y.Matsukawa
+include('inc/define_get_cp_img.inc');		// add 2012/02/13 Y.Matsukawa
+include("./inc/define_get_icon.inc");  // アイコン定義取得		add 2012/11/19 Y.Matsukawa
+
+//-------------------
+// 変数初期化
+//-------------------
+$ua = $HTTP_USER_AGENT;
+$carrier = new CARRIER($ua);
+$carrier->AddReplaceWord("@WORD@", $D_USR_DEFNAME);
+$carrier->AddReplaceWord("@FLGITEM_TITLE@", $D_FLGITEM_TITLE);
+
+
+//setcookie("myshelter","9202331",time()-(10 * 365 * 24 * 60 * 60));
+setcookie("myshelter","",time()-(10 * 365 * 24 * 60 * 60));
+
+print "delete myshelter";

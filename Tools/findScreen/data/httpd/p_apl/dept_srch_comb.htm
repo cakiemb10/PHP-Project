@@ -1,0 +1,267 @@
+<?PHP
+// ------------------------------------------------------------
+// 複合ルート出発地検索画面
+// 
+// 2017/03/06 N.Wada		新規作成
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!isset($err) || !$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	if(!$tod ) $tod  = "00";
+	if(!$shk ) $shk  = "000";
+	if(!$jnrmn) $jnrmn = "00000";
+	if(!$jnr  ) $jnr   = "00000";
+
+	$frewd = urlencode(zdc_htmlspecialchars_decode($keyword));
+	$tmp_zip = $keyword;
+	$tmp_zip = mb_ereg_replace("-", "", $tmp_zip);
+	$tmp_zip = mb_ereg_replace("ー", "", $tmp_zip);
+	$tmp_zip = mb_ereg_replace("−", "", $tmp_zip);
+	$tmp_zip = mb_ereg_replace("―", "", $tmp_zip);
+	$tmp_zip = mb_convert_kana($tmp_zip, "n", "EUC-JP");
+	if ($D_DEPT_FW_ZIP && is_numeric($tmp_zip)) {
+		//郵便番号フリーワード
+		$cgi_Zip = $D_SSAPI["searchzip"];
+		if ($D_JPPOST_SEARCH_ZIP) $cgi_Zip = $D_SSAPI["searchjapanpost"];
+		$start_Zip = 1;
+		$cnt_Zip = $D_DEPT_FW_ZIP_MAX + 1;
+		$prm_Zip = sprintf("&pos=%d&cnt=%d&enc=%s&zip=%s&sort=%s&datum=%s", $start_Zip, $cnt_Zip, "EUC", $frewd, "adcd", $D_DATUM);
+		$col_name_Zip = 2;
+		$col_lat_Zip = 0;
+		$col_lon_Zip = 1;
+	} else if ($D_DEPT_FW_ADDR) {
+		//住所フリーワード
+		$cgi_Ad = $D_SSAPI["searchaddr"];
+		$start_Ad = 1;
+		$cnt_Ad = $D_DEPT_FW_ADDR_MAX + 1;
+		$lmt_Ad = $cnt_Ad;
+		$prm_Ad = sprintf("&pos=%d&cnt=%d&lmt=%d&enc=%s&tod=%s&frewd=%s&datum=%s", $start_Ad, $cnt_Ad, $lmt_Ad, "EUC", $tod, $frewd, $D_DATUM);
+		$col_name_Ad = 0;
+		$col_lat_Ad = 1;
+		$col_lon_Ad = 2;
+	}
+	if ($D_DEPT_FW_ST) {
+		//駅フリーワード
+		$cgi_St = $D_SSAPI["searcheki"];
+		$start_St = 1;
+		$cnt_St = $D_DEPT_FW_ST_MAX + 1;
+		$prm_St = sprintf("&pos=%d&cnt=%d&enc=%s&tod=%s&srchmode=%s&frewd=%s&datum=%s", $start_St, $cnt_St, "EUC", $tod, $D_SEARCH_SRCHMODE_STW, $frewd, $D_DATUM);
+		$col_name_St = 3;
+		$col_lat_St = 1;
+		$col_lon_St = 2;
+	}
+	if ($D_DEPT_FW_POI) {
+		//施設フリーワード
+		$cgi_Poi = $D_SSAPI["searchpoi"];
+		$start_Poi = 1;
+		$cnt_Poi = $D_DEPT_FW_POI_MAX + 1;
+		$prm_Poi = sprintf("&cid=%s&sid=%s&menuid=%s&pos=%d&cnt=%d&enc=%s&tod=%s&shk=%s&jnrmn=%s&jnr=%s&frewd=%s&datum=%s",
+		                  $D_SEARCH_CORPID, $D_SRARCH_SRVSID, "00020", $start_Poi, $cnt_Poi, "EUC", $tod, $shk, $jnrmn, $jnr, $frewd, $D_DATUM);
+		$col_name_Poi = 3;
+		$col_lat_Poi = 1;
+		$col_lon_Poi = 2;
+	}
+	//複合ルート検索パラメータ
+	$rs_when = "departure";			//出発地時間を現在日時として検索
+	$rs_datetime = date('YmdHis');
+	//------------------------------
+	// 郵便番号フリーワード
+	//------------------------------
+	if($cgi_Zip && !$err) {
+		$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_Zip, $D_SSAPI_KEY, $cid, $prm_Zip);
+		$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+		//エラーチェック
+		$status  = explode("\t", $dat[0]);
+		if(!intval($status[2])) {
+			$ERR_Zip = $D_MSG_SEARCH_NODATA["ZipW"];
+			$cgi_Zip = $type_Zip = "Err";
+			$ERR_Ad = $D_MSG_SEARCH_NODATA["AddrW"];
+			$cgi_Ad = $type_Ad = "Err";
+		} else {
+			$cnt = count($dat) - 1;
+			if ($cnt > $D_DEPT_FW_ZIP_MAX) {
+				$ERR_Zip = $D_MSG_SEARCH_MAXPAGE["ZipW"];
+				$cgi_Zip = $type_Zip = "Err";
+				$ERR_Ad = $D_MSG_SEARCH_MAXPAGE["AddrW"];
+				$cgi_Ad = $type_Ad = "Err";
+			} else {
+				for($i = 0;$i < $cnt;$i ++) {
+					$rec = explode("\t", $dat[$i + 1]);
+					$tpl["list"]["addr"][$i]["no"] = $i + 1;
+					$tpl["list"]["addr"][$i]["name"] = $rec[$col_name_Zip];
+					$tpl["list"]["addr"][$i]["_urlRootSearchCombLink"] = sprintf("javascript:ZdcEmapSrchCombRootResult('%s', '%s', '%s', '%s', '%s');"
+																					,cnv_dms2hour($rec[$col_lat_Zip])
+																					,cnv_dms2hour($rec[$col_lon_Zip])
+																					,$rec[$col_name_Zip]
+																					,$rs_when
+																					,$rs_datetime
+																				);
+				}
+				$tpl["addr"]["max"] = intval($status[2]);
+			}
+		}
+	//------------------------------
+	// 住所フリーワード
+	//------------------------------
+	} else if($cgi_Ad && !$err) {
+		$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_Ad, $D_SSAPI_KEY, $cid, $prm_Ad);
+		$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+		//エラーチェック
+		$status  = explode("\t", $dat[0]);
+		if(!intval($status[2])) {
+			$ERR_Ad = $D_MSG_SEARCH_NODATA["AddrW"];
+			$cgi_Ad = $type_Ad = "Err";
+		} else {
+			//マッチングレベルで並び替え
+			$cnt = count($dat) - 1;
+			if ($cnt > $D_DEPT_FW_ADDR_MAX) {
+				$ERR_Ad = $D_MSG_SEARCH_MAXPAGE["AddrW"];
+				$cgi_Ad = $type_Ad = "Err";
+			} else {
+				for($i = 0;$i < $cnt;$i ++) {
+					$rec = explode("\t",$dat[$i + 1]);
+					$list[$i]["name"] = $rec[$col_name_Ad];
+					$list[$i]["lat"] = $rec[$col_lat_Ad];
+					$list[$i]["lon"] = $rec[$col_lon_Ad];
+					$list[$i]["adid"] = $rec[3];
+					$list[$i]["full"] = $rec[4];
+				}
+				usort( $list, "GEOAccess_cmp_sflg" );
+				for($i = 0;$i < $cnt;$i ++) {
+					$rec = $list[$start_Ad + $i - 1];
+					$tpl["list"]["addr"][$i]["no"] = $i + 1;
+					$tpl["list"]["addr"][$i]["name"] = $rec["name"];
+					$tpl["list"]["addr"][$i]["_urlRootSearchCombLink"] = sprintf("javascript:ZdcEmapSrchCombRootResult('%s', '%s', '%s', '%s', '%s');"
+																					,cnv_dms2hour($rec["lat"])
+																					,cnv_dms2hour($rec["lon"])
+																					,$rec["name"]
+																					,$rs_when
+																					,$rs_datetime
+																				);
+				}
+				$tpl["addr"]["max"] = intval($status[2]);
+			}
+		}
+	}
+	//------------------------------
+	// 駅フリーワード
+	//------------------------------
+	if($cgi_St && !$err) {
+		$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_St, $D_SSAPI_KEY, $cid, $prm_St);
+		$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+		//エラーチェック
+		$status  = explode("\t", $dat[0]);
+		if(!intval($status[2])) {
+			$ERR_St = $D_MSG_SEARCH_NODATA["StW"];
+			$cgi_St = $type_St = "Err";
+		} else {
+			$cnt = count($dat) - 1;
+			if ($cnt > $D_DEPT_FW_ST_MAX) {
+				$ERR_St = $D_MSG_SEARCH_MAXPAGE["StW"];
+				$cgi_St = $type_St = "Err";
+			} else {
+				for($i = 0;$i < $cnt;$i ++) {
+					$rec = explode("\t", $dat[$i+1]);
+					$tpl["list"]["st"][$i]["no"] = $i + 1;
+					$tmp = $rec[$col_name_St];
+					if(strpos($tmp, "(") < 1) {
+						//名前だけ
+						$tpl["list"]["st"][$i]["name"] = $tmp;
+					} else {
+						//路線図
+						$tmp = explode("(", $tmp);
+						$tpl["list"]["st"][$i]["name"] = $tmp[0];
+						$tpl["list"]["st"][$i]["name2"] = "(".$tmp[1];
+					}
+					$tpl["list"]["st"][$i]["_urlRootSearchCombLink"] = sprintf("javascript:ZdcEmapSrchCombRootResult('%s', '%s', '%s', '%s', '%s');"
+																					,cnv_dms2hour($rec[$col_lat_St])
+																					,cnv_dms2hour($rec[$col_lon_St])
+																					,$rec[$col_name_St]
+																					,$rs_when
+																					,$rs_datetime
+																				);
+				}
+				$tpl["st"]["max"] = intval($status[2]);
+			}
+		}
+	}
+	//------------------------------
+	// 施設フリーワード
+	//------------------------------
+	if($cgi_Poi && !$err) {
+		$url = sprintf("%s?key=%s&opt=%s&%s", $cgi_Poi, $D_SSAPI_KEY, $cid, $prm_Poi);
+		$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+		//エラーチェック
+		$status  = explode("\t", $dat[0]);
+		if(!intval($status[2])) {
+			$ERR_Poi = $D_MSG_SEARCH_NODATA["PoiW"];
+			$cgi_Poi = $type_Poi = "Err";
+		} else {
+			//施設一覧
+			$cnt = count($dat) - 1;
+			if ($cnt > $D_DEPT_FW_POI_MAX) {
+				$ERR_Poi = $D_MSG_SEARCH_MAXPAGE["PoiW"];
+				$cgi_Poi = $type_Poi = "Err";
+			} else {
+				for($i = 0;$i < $cnt;$i ++) {
+					$rec = explode("\t", $dat[$i+1]);
+					$tpl["list"]["poi"][$i]["name"] = $rec[$col_name_Poi];
+					$tpl["list"]["poi"][$i]["addr"] = $rec[4];	//住所
+					$tpl["list"]["poi"][$i]["adcd"] = $rec[5];	//郵便番号
+					$tpl["list"]["poi"][$i]["tel"] = $rec[6];	//電話番号
+					$tpl["list"]["poi"][$i]["_urlRootSearchCombLink"] = sprintf("javascript:ZdcEmapSrchCombRootResult('%s', '%s', '%s', '%s', '%s');"
+																					,cnv_dms2hour($rec[$col_lat_Poi])
+																					,cnv_dms2hour($rec[$col_lon_Poi])
+																					,$rec[$col_name_Poi]
+																					,$rs_when
+																					,$rs_datetime
+																				);
+				}
+				$tpl["poi"]["max"] = intval($status[2]);
+			}
+		}
+	}
+
+	//-------------------
+	// 画面設定
+	//-------------------
+	if ($type_Zip == "Err") {
+		$tpl["zip"]["max"] = 0;
+		$tpl["zip"]["msg"] = $ERR_Zip;
+	}
+	if ($type_Ad == "Err") {
+		$tpl["addr"]["max"] = 0;
+		$tpl["addr"]["msg"] = $ERR_Ad;
+	}
+	if ($type_St == "Err") {
+		$tpl["st"]["max"] = 0;
+		$tpl["st"]["msg"] = $ERR_St;
+	}
+	if ($type_Poi == "Err") {
+		$tpl["poi"]["max"] = 0;
+		$tpl["poi"]["msg"] = $ERR_Poi;
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+$tpl['msg'] = $err;
+ZdcLogPut(0);
+htmloutput($D_SYSDIR_COMPANY.'dept_srch_comb.tpl', $tpl);
+
+?>

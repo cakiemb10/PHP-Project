@@ -1,0 +1,101 @@
+@charset "euc-jp";
+
+/* 検索結果一覧【拠点リスト】
+-------------------------------------------------- */
+#printShopListExp {
+	width: 600px;
+	margin-top: 20px;
+}
+#printShopListExp td {
+	color: #605969;
+	font-size: 12px;
+	font-weight: normal;
+	text-align: left;
+}
+div#buttonPrintList {
+	width: 100%;
+	margin-left: 0px;
+	margin-right: 0px;
+	margin-top; 0px;
+	margin-bottom: 5px;
+	padding: 0px;
+	border: 0px;
+	text-align: right;
+}
+div#buttonPrintList img {
+	margin: 0px;
+}
+#printShopListTitle {
+	width: 600px;
+	border-bottom: 1px solid #ABBFF8;
+	margin-top: 10px;
+}
+#printShopListTitle td {
+	color: #605969;
+	font-size: 14px;
+	font-weight: bold;
+	text-align: left;
+}
+#printShopListData {
+	width: 600px;
+	margin-top: 5px;
+	border: 1px solid #ABBFF8;
+	border-collapse: collapse;
+}
+#printShopListData td {
+	background-color: #FFFFFF;
+	text-align: left;
+}
+td.printShopListDataNm {
+	width: 270px;
+	padding: 5px 5px 5px 5px;
+	border-bottom: 1px solid #ABBFF8;
+	font-size: 12px;
+	font-weight: normal;
+	vertical-align: middle;
+}
+td.printShopListDataNm a:link {
+	display: block;
+	width: 100%;
+	color: #4F7EB9;
+	text-decoration: none;
+}
+td.printShopListDataNm a:visited {
+	display: block;
+	width: 100%;
+	color: #4F7EB9;
+	text-decoration: none;
+}
+td.printShopListDataNm a:hover {
+	display: block;
+	width: 100%;
+/*	background-color: ;*/
+	color: #45A7E0;
+	text-decoration: underline;
+}
+td.printShopListDataNm a:active {
+	display: block;
+	width: 100%;
+/*	background-color: ;*/
+	color: #45A7E0;
+	text-decoration: underline;
+}
+td.printShopListDataDt {
+	padding: 2px 5px 2px 5px;
+	border-left: 1px solid #ABBFF8;
+	border-bottom: 1px solid #ABBFF8;
+}
+.printShopListDtTable {
+	width: 100%;
+	margin: 0px;
+	border: 0px;
+}
+.printShopListDtTable td {
+	margin: 0px;
+	padding: 2px 0px 2px 0px;
+	border: 0px;
+	background-color: white;
+	color: #605969;
+	font-size: 12px;
+	font-weight: normal;
+}

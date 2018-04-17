@@ -1,0 +1,50 @@
+<?php
+$mapurl1 = "http://test.e-map.ne.jp/pdev/devstamptest/mi.htm?ptn=1";
+$mapurl2 = "http://test.e-map.ne.jp/pdev/devstamptest/mi.htm?ptn=2";
+$mapurl3 = "http://test.e-map.ne.jp/pdev/devstamptest/mi.htm?ptn=3";
+$mapurl4 = "http://test.e-map.ne.jp/pdev/devstamptest/mi.htm?ptn=4";
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html;charset=EUC-JP">
+	<meta http-equiv="Content-Style-Type" content="text/css">
+	<meta http-equiv="Content-Script-Type" content="text/javascript">
+	<title></title>
+
+	<script charset="euc-jp" type="text/javascript" src="http://test.e-map.ne.jp/test/load.js?"></script>
+	<style type="text/css">
+	div {
+		width: 600px;
+		height: 900px;
+	}
+	div.break {
+		page-break-after: always;
+	}
+	img {
+		width: 100%;
+		height 100%;
+	}
+
+	</style>
+</head>
+<body onload="javaScript:loadimg(1);" topmargin="0" bottommargin="0" leftmargin="0" rightmargin="0">
+
+<div class="break">
+	<img id="img1" alt="地図">
+</div>
+
+<div class="break">
+	<img id="img2" alt="地図">
+</div>
+
+<div class="break">
+	<img id="img3" alt="地図">
+</div>
+
+<div>
+	<img id="img4" alt="地図">
+</div>
+
+</body>
+</html>

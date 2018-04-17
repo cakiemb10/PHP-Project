@@ -1,0 +1,286 @@
+<?PHP
+// ------------------------------------------------------------
+// 最寄り店舗一覧
+// 
+// 2011/03/10 Y.Matsukawa	新規作成
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/12/13 K.Masuda 		パラメータ処理追加
+// 2012/01/11 Y.Matsukawa	任意パラメータ
+// 2012/02/21 Y.Matsukawa	店舗一覧にチェックボックス設置
+// 2012/09/10 Y.Matsukawa	【不具合修正】任意パラメータに「&」を含めると正しく引き継がれない、任意パラメータに半角スペース指定すると消える
+// 2012/12/17 H.Osamoto		神奈川電通広告向けカスタマイズ
+// 2014/03/23 Y.Matsukawa	任意地点から任意範囲外の拠点を除外
+// 2015/03/17 Y.Matsukawa	店舗ありの場合にnmapへリダイレクト
+// 2015/08/27 N.Wada		最寄り店舗地図へのリンクを追加
+// 2015/11/18 Xuan Chien	GPSログ出力対応
+// 2015/12/25 H.Yasunaga	ニッセン向けカスタマイズ
+// 2016/01/26 H.Yasunaga	ニッセンカスタマイズ　店舗数検索結果0件の不具合対応
+// 2016/03/10 Y.Matsukawa	円検索フラグ
+// 2016/04/08 Y.Matsukawa	最寄り一覧と地図の最大件数を個別指定
+// 2017/04/14 N.Wada		最寄り拠点一覧：実行jsに独自パラメータ追加
+// 2017/05/11 H.Yasunaga	ヤマトロッカーセキュリティコード対応
+// 2017/05/29 H.Yasunaga	ヤマトロッカーセキュリティコード対応 セキュリティコード確認用のCGIのURL生成に使う変数の修正
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/smt/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+// add 2014/03/23 Y.Matsukawa [
+//-------------------
+// 【ヤマト運輸向け】配達担当店から任意範囲外の拠点を除外
+//-------------------
+if (isset($D_EX_AREA_KID) && $D_EX_AREA_KID != '') {
+	if (!isset($$D_EX_AREA_P) || !$$D_EX_AREA_P) {
+		$arr_exark = ZdcSearchCgiKyotenid($D_EX_AREA_KID, 1, false);
+		if (is_array($arr_exark)) {
+			$$D_EX_AREA_P = $arr_exark['lat'].','.$arr_exark['lon'].','.$D_EX_AREA_RAD;
+		}
+	}
+}
+// add 2014/03/23 Y.Matsukawa ]
+
+//-------------------
+// パラメータ処理	add 2011/12/13 K.Masuda
+//-------------------
+//require_once('/home/emap/src/smt/inc/proc_get_freeparam.inc');		del 2012/01/11 Y.Matsukawa
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');		// add 2012/01/11 Y.Matsukawa
+
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	//-------------------
+	// 画面設定
+	//-------------------
+	// mod 2011/07/05 Y.Nakajima
+	$filter = (isset($filter) && $filter != '' ? $filter : $plfilter );
+	$tpl['js_filter'] = ZdcEsc4JsLiteral($filter);
+	if ($pltype == 1) {
+		$tpl['html_pltxt'] = '現在地';
+		// 2015/11/18 Xuan Chien add [
+		if ($D_TOPGPS_NMAP == '0' && (isset($D_SGPS_LOG) && $D_SGPS_LOG)){
+			if($lat != '' && $lon != ''){
+				require_once("GPSLogFunc.inc");
+				$file_name = 'log_loc_smt_'.date('YmdH').'.log';
+				$GpsLogFunc = new GpsLogFunc();
+				$mesh = $GpsLogFunc->getMeshAddress(5,$lat,$lon);
+				$array_latlon = $GpsLogFunc->getMeshToLatLon($mesh);
+				$mess =	date("Y,m,d,H").","
+						.$D_CID.",1,"
+						.$mesh.","
+						.$array_latlon['right_high_lat'].","
+						.$array_latlon['right_high_lon'].","
+						.$array_latlon['left_low_lat'].","
+						.$array_latlon['left_low_lon']."\r\n";
+				output_gpslog($mess,$file_name);
+			}
+		}
+		// 2015/11/18 Xuan Chien add ]
+	} else {
+		$tpl['html_pltxt'] = $tpl['html_plname'];
+	}
+	$tpl['D_MSG_NKYOTEN_MSG'] = $D_MSG_NKYOTEN_MSG;
+	// add 2012/12/17 H.Osamoto [
+	if (isset($D_KANA_DEN) && $D_KANA_DEN) {
+		switch($txtype) {
+			case 1:
+				$tpl['kanaden_text']  = "電柱周辺の店舗を近い順に表示します｡店舗を選択してください｡";
+				break;
+			 
+			case 2:
+				$tpl['kanaden_text']  = "電柱周辺の情報を近い順に表示します｡情報を選択してください｡";
+				break;
+				
+			case 3:
+				$tpl['kanaden_text']  = "会員店舗を表示します｡店舗を選択してください｡";
+				break;
+			
+			default:
+				$tpl['kanaden_text']  = "電柱周辺の情報を近い順に表示します｡情報を選択してください｡";
+				break;
+		}
+	}
+	// add 2012/12/17 H.Osamoto ]
+	// add 2015/03/17 Y.Matsukawa [
+	//-------------------
+	// 件数取得
+	//-------------------
+	$cgi = $D_SSAPI['nkyoten'];
+	$jkn = '';
+	if(isset($filter) && $filter != ''){
+		$wherefilter = '';
+		$exandfilter = array();
+		$where_all = explode('@', $filter);
+		foreach($where_all as $where_val){
+			$where = explode('=', $where_val);
+			if (in_array($where[0], $D_FILTER_EX_AND_COND)) {
+				$exandfilter[] = $where[0].":'".$where[1]."'";
+			} else {
+				if ($wherefilter) $wherefilter .= ' '.$D_FILTER_U_COND.' ';
+				$wherefilter .= $where[0].":'".$where[1]."'";
+			}
+		}
+		if (count($exandfilter)) $wherefilter = implode(' AND ', $exandfilter).($wherefilter?' AND ('.$wherefilter.')':'');
+		if ($wherefilter) $jkn = urlencode('('.$wherefilter.')');
+	} else {
+		$filter = "";
+	}
+	if ($cond_jkn != '') {
+		if ($jkn != '') {
+			$jkn .= urlencode(' AND ('.$cond_jkn.')');
+		} else {
+			$jkn = urlencode('('.$cond_jkn.')');
+		}
+	}
+	//$prm = sprintf('&lat=%s&lon=%s&pos=%d&cnt=%d&rad=%s&knsu=%d&jkn=%s', $lat, $lon, 1, 1, $D_SHOP_RAD, $D_SHOP_MAX, $jkn);		mod 2016/04/08 Y.Matsukawa
+	$prm = sprintf('&lat=%s&lon=%s&pos=%d&cnt=%d&rad=%s&knsu=%d&jkn=%s', $lat, $lon, 1, 1, $D_SHOP_RAD, $D_SHOP_LIST_MAX, $jkn);
+	$url = sprintf('%s?cid=%s&key=%s&opt=%s%s', $cgi, $D_DATA_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+	if (isset($D_ABS_DIST) && $D_ABS_DIST) {
+		$url .= "&absdist=".$D_ABS_DIST;
+	}
+	if ($D_NKYOTEN_CIRCLE) $url .= "&circle=1";		// 円で検索		add 2016/03/10 Y.Matsukawa
+	$dat = ZdcHttpRead($url, false, 5);
+	$status = explode("\t", $dat[0]);
+	$max = intval(trim($status[2]));
+	// 店舗ありの場合、nmapへリダイレクト
+	if ($max > 0 && $D_N_0_GOTO_NMAP && (!isset($force) || !$force)) {
+		$url = 'nmap.htm?'.$pl_prm_enc_all.($freeparms_enc?'&'.$freeparms_enc:'');
+		header("Location: ".$url);
+		exit;
+	}
+	// add 2015/03/17 Y.Matsukawa ]
+	$tpl['_urlSelf'] = 'n.htm?'.$pl_prm_enc_all.($freeparms_enc?'&'.$freeparms_enc:'');		// add 2014/03/19 Y.Matsukawa
+	// function
+	// add 2012/02/21 Y.Matsukawa [
+	//$tpl['_jsCondChangeSubmit'] = sprintf('ZdcEmapSearchNearShopListClear();var cnd=ZdcEmapGetCondParm();ZdcEmapSearchNearShop(\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',cnd,1);',		mod 2012/09/10 Y.Matsukawa
+	$tpl['_jsCondChangeSubmit'] = sprintf('ZdcEmapSearchNearShopListClear();var cnd=ZdcEmapGetCondParm(true);ZdcEmapSearchNearShop(\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',cnd,1);',
+						ZdcEsc4JsLiteral($lat),
+						ZdcEsc4JsLiteral($lon),
+						ZdcEsc4JsLiteral($datum),
+						//ZdcEsc4JsLiteral($filter),		mod 2012/09/10 Y.Matsukawa
+						ZdcEsc4JsLiteral(urlencode($filter)),
+						//ZdcEsc4JsLiteral($pl_prm['pl'].$pl_prm_plfilter.($freeparms?'&'.$freeparms:''))		mod 2012/09/10 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm_enc['pl'].$pl_prm_plfilter_enc.($freeparms_enc?'&'.$freeparms_enc:''))	mod 2017/04/14 N.Wada
+						ZdcEsc4JsLiteral($pl_prm_enc['pl'].$pl_prm_plfilter_enc.($freeparms_enc?'&'.$freeparms_enc:'').($D_NLIST_PRM_STR?$D_NLIST_PRM_STR:''))
+						);
+	// add 2012/02/21 Y.Matsukawa ]
+	// ロード時処理
+	//$tpl['_jsInit'] = sprintf('javascript:ZdcEmapNearShopInit();ZdcEmapSearchNearShop(\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',1);',		mod 2012/02/21 Y.Matsukawa
+	$tpl['_jsInit'] = sprintf('javascript:ZdcEmapNearShopInit();ZdcEmapSearchNearShop(\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',\'%s\',1);',
+						ZdcEsc4JsLiteral($lat),
+						ZdcEsc4JsLiteral($lon),
+						ZdcEsc4JsLiteral($datum),
+						//ZdcEsc4JsLiteral($filter),		mod 2012/09/10 Y.Matsukawa
+						ZdcEsc4JsLiteral(urlencode($filter)),
+						//ZdcEsc4JsLiteral($pl_prm_all)		mod 2012/01/11 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm_all.($freeparms?'&'.$freeparms:''))		mod 2012/02/21 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm['pl'].$pl_prm_plfilter.($freeparms?'&'.$freeparms:'')),		mod 2012/09/10 Y.Matsukawa
+						//ZdcEsc4JsLiteral($pl_prm_enc['pl'].$pl_prm_plfilter_enc.($freeparms_enc?'&'.$freeparms_enc:'')),	mod 2017/04/14 N.Wada
+						ZdcEsc4JsLiteral($pl_prm_enc['pl'].$pl_prm_plfilter_enc.($freeparms_enc?'&'.$freeparms_enc:'').($D_NLIST_PRM_STR?$D_NLIST_PRM_STR:'')),
+						//$cond_prm		mod 2012/09/10 Y.Matsukawa
+						$cond_prm_enc
+						);
+	// js
+	$j = 0;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'common.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	$j++;
+	$tpl['js'][$j]['src'] = $D_DIR_BASE_G.'search.js';
+	$tpl['js'][$j]['charset'] = 'EUC-JP';
+	
+	// add 2015/12/25 H.Yasunaga 711mapニッセン向けカスタマイズ [
+	// タブクリック
+	if (isset($D_CUST_711MAP_NISSEN) && $D_CUST_711MAP_NISSEN == 1)
+	{
+		for ($i=1; $i<=3; $i++) {
+			// javascriptの関数本体はcustom.jsに記述
+			$tpl['_jsTabClick'.$i] = "ZdcEmapNissenNTabClick($i);";
+		}
+		// 地図タブと店舗一覧タブの初期表示の設定
+		// init_view1:地図タブ
+		// init_view2:店舗一覧タブ
+		// TOPページの"現在地周辺の店舗一覧からは init_view=2でくる
+		if (isset($init_view) == true) {
+			$tpl['init_view'.$init_view] = 1;
+		} else {
+			$tpl['init_view1'] = 1;
+			$init_view = 1;
+		}
+		// 地図表示領域設定のためのカスタム関数をonloadで呼ぶ
+		$tpl['_jsInit'] = "javascript:n_MapDivInit();".$tpl['_jsInit'].";ZdcEmapNissenNTabClick(".$init_view.");";
+		// 店舗数
+		// mod 2016/01/26 H.Yasunaga 表示件数0件問題 [
+		/*
+		店舗一覧で件数が0件になる不具合の対応
+			店舗一覧を検索しdivタグに検索結果を置き換える際に件数の部分を取得し
+			タブの件数の部分を置換しようとするが、困難であると思われる。
+			理由
+			1.検索結果の件数の部分が文字列である（例. 1件ヒット) 
+			2.店舗一覧検索が完了するタイミングが掴めないこと　と検索の種別を
+			  特定できない
+			  search.jsのZdcEmapSearchNearShop関数から
+			  ZdcEmapSearchRequest関数にてn_list.htmに検索を行っているが
+			  ZdcEmapSearchRequest関数が共通の検索と置換を行う関数になっている
+			  また、ZdcEmapSearchRequest関数が何を検索しているか判断する材料を
+			  保持していないことが（拠点のリストなのか駅のリストなのか）
+			  ZdcEmapSearchRequest関数内で呼ばれるZdcEmapHttpRequestHtml関数の
+			  コールバックでのタブの件数の置換を困難にしている。
+		*/
+		$tpl['shopcount'] = $max == 0 ? 1: $max;
+		// mod 2016/01/26 H.Yasunaga ]
+	}
+	// add 2015/12/25 H.Yasunaga ]
+	
+	// add 2017/05/11 H.Yasunaga ヤマトロッカーセキュリティコード対応 [
+	if ($D_YTC_SECURITY_CODE) {
+		$tpl["D_DATA_CID"] = $D_DATA_CID;
+		$tpl["security_rd_group"] = $D_YTC_SECURITY_RD_GROUP;
+		$tpl["security_rd_item"] = $D_YTC_SECURITY_RD_ITEM;
+		// mod 2017/05/29 H.Yasunaga URLを設定する際にドメインの変数が間違っていた [
+		//$tpl["codecheckurl"] = "$protocol://$EMAP_SSAPI_SRV/cgi/ytc_securtycode_check.cgi";
+		$tpl["codecheckurl"] = "$protocol://$EMAP_SSAPI_SRV_G/cgi/ytc_securtycode_check.cgi";
+		// mod 2017/05/29 H.Yasunaga ]
+	}
+	// add 2017/05/11 H.Yasunaga ]
+}
+
+$tpl['D_URL_SEARCH_TOP'] .= '?'.$pl_prm_enc_all;
+if($freeparms_enc) $tpl['D_URL_SEARCH_TOP'] .= '&'.$freeparms_enc;		// add 2012/01/11 Y.Matsukawa
+
+$tpl['_urlMap'] = 'nmap.htm?'.$pl_prm_enc_all.($freeparms_enc?'&'.$freeparms_enc:'');	// add 2015/08/27 N.Wada
+
+//-------------------
+// 画面出力
+//-------------------
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($err)) {
+	$err = "";
+}
+// mod 2011/07/05 Y.Nakajima ]
+$tpl['err'] = $err;
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'n.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

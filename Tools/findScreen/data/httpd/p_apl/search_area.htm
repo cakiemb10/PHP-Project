@@ -1,0 +1,103 @@
+<?PHP
+// ------------------------------------------------------------
+// 地域図検索
+// 
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2011/12/12 Y.Matsukawa	ログ出力改修
+// 2012/01/10 Y.Matsukawa	【不具合修正】POSTの場合、遷移履歴のリンクからパラメータが消える
+// 2012/03/12 Y.Matsukawa	スマホリダイレクト（各種接続I/F対応）
+// 2015/01/26 Y.Matsukawa	パンくずを1.0の仕様に合わせる
+// 2015/03/17 Y.Matsukawa	絞り込み：任意カラムの部分一致
+// 2015/03/25 Y.Matsukawa	フリーワード検索対応／エリア名をテンプレート表示
+// 2015/03/26 Y.Matsukawa	search.js読み込み
+// 2015/10/20 N.Wada		common.jsの読み込み追加
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// パンくず追加
+//-------------------
+//ZdcHistoryAdd('ar', $D_HISTORY_NAME['Area'], $_SERVER['REQUEST_URI'], (isset($his) ? $his : ''));		mod 2012/01/10 Y.Matsukawa
+//ZdcHistoryAdd('ar', $D_HISTORY_NAME['Area'], ZdcGetRequestURI(), (isset($his) ? $his : ''));		mod 2015/01/26 Y.Matsukawa
+ZdcHistoryAdd('ar', $D_HISTORY_NAME['Area'].'('.$D_SEARCH_AREA[$area].')', ZdcGetRequestURI(), (isset($his) ? $his : ''));
+//dbl('----- ZdcHistory -----');
+//dbl(print_r($ZdcHistory, true));
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	// add 2012/03/12 Y.Matsukawa
+	//-------------------
+	// UA判定でリダイレクト
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_redirect_ua.inc');
+
+	// ログ出力用		add 2011/12/12 Y.Matsukawa
+	$_VARS["type"] = "Area";
+
+	// 入力値チェック
+	if(!$D_SEARCH_AREA[$area]) $err = $D_MSG_SEARCH_ERRPRM;
+
+	$template = "search_area";
+
+	if($err) {
+		$tpl["msg"] .= $err;
+		$template = "search_error";
+	}
+
+	//その他
+	$tpl["title"] = $D_HISTORY_NAME[$type];
+	$tpl['area'] = $D_SEARCH_AREA[$area];		// add 2015/03/25 Y.Matsukawa
+
+	//$tpl["_jsInit"] .= sprintf("ZdcEmapSearchAreaDisp('%s','%s');",$area,$D_SEARCH_AREA[$area]);
+	$tpl["_jsInit"] .= sprintf("ZdcEmapSearchAreaDisp('%s');",$area);
+	// add 2015/03/25 Y.Matsukawa [
+	$tpl['_urlSearch'] = 'search.htm';
+	$tpl['_jsSetCond'] = 'ZdcEmapSetCond';
+	$tpl['_jsSetFreeParams'] = 'ZdcEmapSetFreeParams';
+	$tpl['_jsEscapeKeyword'] = 'ZdcEmapEscapeKeyword';
+	// add 2015/03/25 Y.Matsukawa ]
+
+	$D_JS[] = $D_DIR_BASE_G.'common.js';	// add 2015/10/20 N.Wada
+	$D_JS[] = $D_DIR_BASE_G.'search.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');		// add 2015/03/26 Y.Matsukawa
+	//$D_JS[] = $D_DIR_BASE_G.'search_area.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');		mod 2015/03/17 Y.Matsukawa
+	$D_JS[] = $D_DIR_BASE_G.'search_area.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+	$j = 0;
+	foreach ($D_JS as $value) {
+		$tpl['js'][$j]['src'] = $value;
+		$tpl['js'][$j]['charset']  = $D_JSAPI_charset;
+		$j++;
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+//header('X-UA-Compatible: IE=emulateIE7');
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.$template.".tpl", $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

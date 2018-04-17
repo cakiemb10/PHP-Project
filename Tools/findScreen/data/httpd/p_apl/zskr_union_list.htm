@@ -1,0 +1,134 @@
+<?PHP
+// ------------------------------------------------------------
+// 信用組合一覧（住所絞り込み）
+// 画面遷移
+// 1.住所リスト→信用組合一覧（住所絞り込み）→店舗分布（信用組合絞り込み）
+// 2.地域図→信用組合一覧（住所絞り込み）→店舗分布（信用組合絞り込み）
+//
+// 開発履歴
+// 2016/02/29 H.Yasunaga	新規作成
+// 2016/03/20 H.Yasunaga	フッターの文言の表示は一覧表示ではなく画像表示で行う
+// 2016/03/22 H.Yasunaga	管轄エリア画像表示に渡すパラメータを拡張子を除外したパラメータに変更
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+// パンくずリスト追加
+$hisid = "zskr_list";
+if (isset($addr_name) && strlen($addr_name)) {
+	// 住所リスト経由はパラメータに住所の名称がある
+	$hisnm = "信用組合一覧(" . $addr_name . ")";
+} else if (isset($adcd) == false){
+	// 地域図経由は住所の名称がない
+	// 緯度・経度を基に住所コードと住所の名称を取得する
+	$cgi = sprintf("%s?key=%s&opt=%s&enc=%s&mclv=%d&sep=0&lat=%s&lon=%s&pflg=%d&datum=%s",
+			$D_SSAPI["getadstr"], $D_SSAPI_KEY, $D_LOG_CID, "EUC", 1, $lat, $lon, 2, "TOKYO");
+	$dat = ZdcHttpRead($cgi, false, 5, $D_Z2H_OPTION);
+	$status = explode("\t", $dat[0]);
+	$rec = explode("\t", $dat[1]);
+	$adcd = $rec[0];
+	
+	$hisnm = "信用組合一覧(".$rec[1].")";
+}
+ZdcHistoryAdd($hisid, $hisnm, ZdcGetRequestURI(), (isset($his) ? $his : ''));
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+//-------------------
+// 引き継ぎパラメータ
+//-------------------
+require_once('/home/emap/src/p/inc/act_get_parm.inc');
+//-------------------
+// パラメーターの処理
+//-------------------
+
+// 住所コードを都道府県コードと市区町村コードに分解（都道府県コード2桁 市区町村コード3桁）
+error_log("adcd is not empty");
+$prefectures_code = substr($adcd, 0, 2);
+$city_code = substr($adcd, 2,3);
+
+//-------------------
+// データアクセス
+//-------------------
+// 信用組合のリストの取得
+// pcd:都道府県コード
+// ccd:市区町村コード
+$cgi =  "http://".$EMAP_SSAPI_SRV."/cgi/zskr_unionlist.cgi";
+$url = sprintf("%s?&pcd=%s&ccd=%s", $cgi, $prefectures_code, $city_code);
+$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+$status = explode("\t", $dat[0]);
+$cnt = count($dat);
+
+//-------------------
+// 画面設定
+//-------------------
+//信用組合一覧
+for ($i = 0; $i < $cnt - 1; $i++) {
+	$tpl["list"][$i]["id"] = $i;
+	$tpl["list"][$i]["no"] = ($i+1);
+	$rec = ZdcConvertEncoding($dat[$i+1]);
+	$rec = explode("\t", $rec);
+	$tpl["list"][$i]["union_id"] = $rec[0];				// 信用組合識別子（金融機関コード）
+	$tpl["list"][$i]["union_name"] = $rec[1];			// 信用組合名称
+	$tpl["list"][$i]["union_name_kana"] = $rec[2];		// 信用組合名称（かな）
+	$tpl["list"][$i]["nation_wide_flg"] = $rec[3];		// 全国管轄フラグ
+	$tpl["list"][$i]["lat"] = $rec[4];					// 緯度
+	$tpl["list"][$i]["lon"] = $rec[5];					// 経度
+	$tpl["list"][$i]["jurisdiction_file"] = $rec[6];	// 管轄図ファイル
+	// 次遷移用URL（パンくずリスト履歴・緯度・経度・絞り込み）
+	$tpl["list"][$i]["next_url"] = sprintf("nmap.htm?his=%s&lat=%s&lon=%s&cond1=%s",$ZdcHistoryParm, $lat, $lon, $rec[0]);
+	// add  2016/03/20 H.Yasunaga 管轄エリア画像用URL [
+	// 管轄エリア用遷移URL
+	// mod 2016/03/22 H.Yasunaga 管轄エリア画像表示に渡すパラメータを拡張子を除いたファイル名にする[
+	//$tpl["list"][$i]["areamap_url"] = sprintf("zskr_union_areamap.htm?areamap_filename=%s", $rec[6]);
+	$tpl["list"][$i]["areamap_url"] = sprintf("zskr_union_areamap.htm?areamap_filename=%s", preg_replace("/(.+)(\.[^.]+$)/", "$1", $rec[6]));
+	// mod 2016/03/22 H.Yasunaga ]
+	// add 2016/03/20 H.Yasunaga]
+}
+if($cnt < 2) $tpl["msg"] = "選択した地域に該当する信用組合はありませんでした。";
+
+// del 2016/03/20 H.Yasunaga フッターの文言は信用組合管轄エリア画像表示でおこなう
+// テンプレートに信用組合リスト表示であることのフラグを付与
+//$tpl["zskr_union_list"] = 1;
+//$tpl["footer_note"] = $ZSKR_AREA_FOOTER_NOTE;
+// del 2016/03/20 H.Yasunaga ]
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+//ZdcLogPut(0);
+//htmloutput($D_SYSDIR_COMPANY.'zskr_unionlist.tpl', $tpl);
+$template = "zskr_unionlist";
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	if (isset($D_SEARCH_RESULT_TEMPLATE_ONLY) && $D_SEARCH_RESULT_TEMPLATE_ONLY) {
+		htmloutput($D_SYSDIR_COMPANY.$template.".tpl", $tpl);
+	} else {
+		for($i = 0;$i <= 4;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		htmloutput($D_SYSDIR_COMPANY."zskr_unionlist.tpl", $tpl);
+		for($i = 6;$i <= 9;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	}
+} else {
+	ZdcLogPut(1);
+	if (isset($D_SEARCH_ERROR_TEMPLATE_ONLY) && $D_SEARCH_ERROR_TEMPLATE_ONLY) {
+		htmloutput($D_SYSDIR_COMPANY."search_error.tpl", $tpl);
+	} else {
+		for($i = 0;$i <= 4;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		htmloutput($D_SYSDIR_COMPANY."search_error.tpl", $tpl);
+		for($i = 6;$i <= 9;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	}
+}
+?>

@@ -1,0 +1,18 @@
+/* ACEナビ・システム全画面用スタイルシート */
+
+/* 印刷不可 */
+@media print{
+    body{
+        display:none;
+    }
+}
+
+/* 全体 */
+.bodystyle {
+}
+
+/* formスタイル */
+.formstyle {
+		top              : 12px;
+		left             :  7px;
+}

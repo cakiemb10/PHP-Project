@@ -1,0 +1,68 @@
+@charset "shift_jis";
+
+/* T-MALL */
+
+.tmallBoxWrapper{width:656px; background:url(../img/tmall/tmall_box.gif) repeat-y; margin-bottom:10px; clear:both; position:relative;}
+.tmallBoxArea{background:url(../img/tmall/tmall_box_bottom.gif) left bottom no-repeat; padding:6px 10px 10px 10px;}
+.tmallStory{width:628px; margin-left:4px; margin-bottom:10px;}
+.tmallStory2{width:630px; margin-left:4px; margin-bottom:10px;}
+.tmallStory h3,.tmallStory2 h3{margin-bottom:10px;}
+.tmallCampaignLeft{float:left;}
+.tmallCampaignRight{float:right;}
+.tmallCampaign li{width:310px; height:140px;}
+.tmallCampaign2 li{width:214px; height:80px;}
+.tmallCampaign2 li.tmallCampaignRight{width:200px;}
+.tmallReccom li{width:157px; float:left; text-align:center;}
+
+.MypageInformationList{position:absolute; top:10px; right:13px;}
+.tmallSideBanner{}
+.osrlin {margin-bottom:7px;}
+.tmallosr{padding-bottom:10px;width:628px; background:url(../img/tmall/os_bg01.gif) no-repeat left bottom; clear:both;}
+/* SearchBox */
+#tmallSearchBoxWrapper{width:636px; background:url(../img/tmall/search_bg_box.gif) no-repeat left bottom; clear:both;}
+#tmallSearchBoxArea{background:url(../img/tmall/search_bg_box_top.gif) no-repeat; padding-top:10px;}
+
+#tmallSearchLinkShopping,#tmallSearchLinkEntry{width:614px; padding-left:11px;}
+#tmallSearchLinkShopping h2,#tmallSearchLinkEntry h2{width:133px; height:22px; /* \*/overflow:hidden;/* */}
+#tmallSearchLinkShopping h2 a{width:100%; display:block; padding-top:30px; background:url(../img/tmall/button_shoping.gif) no-repeat;}
+#tmallSearchLinkEntry h2 a{width:100%; display:block; padding-top:30px; background:url(../img/tmall/button_entry.gif) no-repeat;}
+#tmallSearchLinkShopping p,#tmallSearchLinkEntry p{margin-left:140px; margin-top:-22px; line-height:140%;}
+#tmallSearchLinkShopping p a,#tmallSearchLinkEntry p a{white-space:nowrap; font-size:10px !important;}
+#tmallSearchLinkEntry{padding-top:5px; padding-bottom:15px;}
+
+/* 08.08.05 */
+.tmallReccom{margin-left:40px;}
+.tmallReccom li{width:137px; float:left; text-align:center;}
+.tmallStCampaignLeft2{float:left; width:310px; padding-bottom:10px;}
+.tmallStCampaignRight2{float:right; width:310px; padding-bottom:10px;}
+.tmallStCampaignImg{width:125px; float:left;}
+.tmallStCampaignTxt{width:175px; float:right;}
+.tmallStCampaignTxt a{display:block; padding-bottom:5px;}
+
+
+
+
+/* 10.01.28 レイアウト変更 */
+.tmallRnTokushu{width:595px; margin-left:10px;}
+.tmallRnTokushu p{width:93px; float:left;}
+.tmallRnTokushuInner{width:485px; float:right;}
+.tmallRnTokushuInner h3{font-size:14px; margin-bottom:5px; padding-top:3px;}
+.tmallRnTokushuInner ul li{float:left; width:235px; margin-bottom:2px;}
+.tmallRnSearch{background:url(../img/tmall/rn_bg_line.gif) repeat-x; margin-top:6px; padding-top:7px;}
+.tmallRnSearch dl{clear:both}
+.tmallRnSearch dl dt{height:23px;}
+.tmallRnSearch dl dd{margin-left:116px; margin-top:-23px;}
+.tmallRnSearch dl dd ul li{float:left; font-size:10px; height:23px; color:#3366FF;}
+.tmallRnSearch dl dd ul li a{padding-left:23px;}
+.tmallRnSearch dl dd ul li.tmallRnIcon04 a{padding-left:26px;}
+.tmallRnSearch dl dd ul li.tmallRnIcon01{background:url(../img/tmall/rn_icon01.gif) 3px 0px no-repeat;}
+.tmallRnSearch dl dd ul li.tmallRnIcon02{background:url(../img/tmall/rn_icon02.gif) 3px 0px no-repeat;}
+.tmallRnSearch dl dd ul li.tmallRnIcon03{background:url(../img/tmall/rn_icon03.gif) 3px 0px no-repeat;}
+.tmallRnSearch dl dd ul li.tmallRnIcon04{background:url(../img/tmall/rn_icon04.gif) 3px 0px no-repeat;}
+.tmallRnSearch dl dd ul li.tmallRnIcon05{background:url(../img/tmall/rn_icon05.gif) 3px 0px no-repeat;}
+.tmallRnSearch dl dd ul li.tmallRnIcon06{background:url(../img/tmall/rn_icon06.gif) 3px 0px no-repeat;}
+.tmallRnSearch dl dd ul li.tmallRnIcon07{background:url(../img/tmall/rn_icon07.gif) 3px 0px no-repeat;}
+.tmallRnSearch dl dd ul li.tmallRnIcon08{background:url(../img/tmall/rn_icon08.gif) 3px 0px no-repeat;}
+
+
+

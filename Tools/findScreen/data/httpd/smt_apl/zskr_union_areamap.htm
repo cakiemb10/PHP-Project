@@ -1,0 +1,70 @@
+<?PHP
+// ------------------------------------------------------------
+// 信用組合管轄エリア画像表示
+//
+// 開発履歴
+// 2016/03/20 H.Yasunaga	新規作成
+// 2016/03/22 H.Yasunaga	受け取るパラメータ（ファイル名）を拡張子を除外した形で受け取る
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+//-------------------
+// 引き継ぎパラメータ
+//-------------------
+require_once('/home/emap/src/p/inc/act_get_parm.inc');
+//-------------------
+// パラメーターの処理
+//-------------------
+
+// mod 2016/03/22 H.Yasunaga ファイル名の拡張子なしでパラメータの受け渡しを行う [
+// $tpl['areamap_filename'] = $areamap_filename;
+$tpl['areamap_filename'] = $areamap_filename . ".png";
+// mod 2016/03/22 H.Yasunaga ]
+$tpl['P_FLG_1'] = 1;
+// テンプレートに信用組合管轄エリア画像表示であることのフラグを付与
+$tpl["zskr_union_list"] = 1;
+$tpl["footer_note"] = $ZSKR_AREA_FOOTER_NOTE;
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+//ZdcLogPut(0);
+//htmloutput($D_SYSDIR_COMPANY.'zskr_unionlist.tpl', $tpl);
+$template = "zskr_unionlist";
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	if (isset($D_SEARCH_RESULT_TEMPLATE_ONLY) && $D_SEARCH_RESULT_TEMPLATE_ONLY) {
+		htmloutput($D_SYSDIR_COMPANY.$template.".tpl", $tpl);
+	} else {
+		for($i = 0;$i <= 4;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		htmloutput($D_SYSDIR_COMPANY."zskr_union_areamap.tpl", $tpl);
+		for($i = 6;$i <= 9;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	}
+} else {
+	ZdcLogPut(1);
+	if (isset($D_SEARCH_ERROR_TEMPLATE_ONLY) && $D_SEARCH_ERROR_TEMPLATE_ONLY) {
+		htmloutput($D_SYSDIR_COMPANY."search_error.tpl", $tpl);
+	} else {
+		for($i = 0;$i <= 4;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		htmloutput($D_SYSDIR_COMPANY."search_error.tpl", $tpl);
+		for($i = 6;$i <= 9;$i ++)
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	}
+}
+?>

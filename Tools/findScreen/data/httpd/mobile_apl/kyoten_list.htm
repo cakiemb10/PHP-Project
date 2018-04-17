@@ -1,0 +1,305 @@
+<?PHP
+// ------------------------------------------------------------
+// 拠点一覧
+// 
+// 新規作成 : H.Osamoto
+// 2012/01/04 Y.Matsukawa	別企業ID参照
+// 2012/02/09 H.Osamoto		php5にて非推奨となった関数を変更(split⇒explode, ereg⇒preg_match)
+// 2012/02/13 Y.Matsukawa	ソートキーに複数カラム指定可能にする（sortkeysパラメータ）
+// 2012/02/14 Y.Matsukawa	日時項目の分割表示
+// 2012/02/16 Y.Matsukawa	複数カラム指定
+// 2012/03/04 K.Masuda		テンプレート設定共通処理(proc_template.inc)追加
+// 2012/06/28 H.Osamoto		課金ログ出力追加
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// 2012/11/21 H.osamoto		専用区分の名称を設定、禁則文字緩和不具合対応
+// ------------------------------------------------------------
+
+//------------------------------------------
+//	初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("./inc/define_mobile.inc");  // 基本設定
+include("./inc/carrier.inc");  // 基本設定
+include("./inc/function.inc");
+include("./inc/define_msg.inc");
+include("inc/proc_get_freeparam.inc");		// add 2009/06/29 Y.Matsukawa
+// checkbox @add 2009/02/10
+include_once("inc/proc_optcheck.inc");
+
+//-------------------
+// 変数初期化
+//-------------------
+if(!$slg ) $slg  = "1";
+if(!$pg) $pg = 1;
+
+$ua = $HTTP_USER_AGENT;
+$carrier = new CARRIER($ua);
+$carrier->AddReplaceWord("@WORD@", $D_USR_DEFNAME);
+
+$header = array();
+$body   = array();
+$footer = array();
+// add 2008/07/17 matsukawa ↓
+$header["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+$body["D_DIR_COMPANY"]   = $D_HTTP_DIR_COMPANY;
+$footer["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+// add 2008/07/17 matsukawa ↑
+// del 2010/10/20 Y.Matsukawa [
+//// add 2010/08/12 Y.Matsukawa [
+//if ($carrier->isIPHONE()) {
+//	$header["iPhone"] = 1;
+//	$body["iPhone"]   = 1;
+//	$footer["iPhone"] = 1;
+//}
+//// add 2010/08/12 Y.Matsukawa ]
+// del 2010/10/20 Y.Matsukawa ]
+include("inc/proc_carrier2tpl.inc");		// add 2010/10/20 Y.Matsukawa
+include("inc/proc_template.inc");			// add 2012/03/04 K.Masuda
+
+//-------------------
+// 検索処理
+//-------------------
+// ページ処理		add 2012/05/14 Y.Matsukawa
+if ($D_KLIST_PAGING) {
+	$list_pos = ($pg-1) * $D_KLIST_PAGE + 1;
+	$list_cnt = $D_KLIST_PAGE;
+} else {
+	$list_pos = 1;
+	$list_cnt = 10000;
+}
+$template = "kyoten_list.tpl";
+$body["midashi"] = "@WORD@一覧";
+
+//絞り込み条件分割
+//	$arr_col = split(',', $col);	mod 2012/02/09 H.osamoto
+$arr_col = explode(',', $col);
+$col_cnt = count($arr_col);
+
+//ソート分割
+//	$arr_sort = split(',', $sort);	mod 2012/02/09 H.osamoto
+$arr_sort = explode(',', $sort);
+
+//ソートキー（複数カラム）を指定されたらそちらを優先		add 2012/02/13 Y.Matsukawa
+if (isset($sortkeys) && $sortkeys != '') {
+	$arr_sort = explode(';', $sortkeys);
+}
+
+for($k = 0; $k < $col_cnt; $k++) {
+	$cgi = $D_SSAPI["kyotenlist"];
+	
+	//$prm  = sprintf("&cid=%s&opt=%s",$D_CID,$D_LOG_CID); 		mod 2012/01/04 Y.Matsukawa
+	$prm  = sprintf("&cid=%s&opt=%s", $D_DATA_CID, $D_LOG_CID);
+	//$prm .= sprintf("&jkn=%s",$arr_col[$k]);		mod 2012/02/16 Y.Matsukawa
+	$prm .= sprintf("&jkn=%s", urlencode($arr_col[$k]));
+	//$prm .= sprintf("&sort=%s",$arr_sort[$k]);		mod 2012/02/16 Y.Matsukawa
+	$prm .= sprintf("&sort=%s", urlencode($arr_sort[$k]));
+	
+	$nkey="key";
+	$col_name = 5;
+	// add 2009/03/23 Y.Matsukawa [
+	if ($D_KYO_COL_NAME[0] && is_array($D_KYO_COL_NAME[0])) {
+		foreach ($D_KYO_COL_NAME[0] as $dispnum => $colnm) {
+			if (strtolower($colnm) == 'name') {
+				$col_name += $dispnum;
+				break;
+			}
+		}
+	}
+	// add 2009/03/23 Y.Matsukawa ]
+	$col_lat = 1;
+	$col_lon = 2;
+
+	$url = sprintf("%s?sid=%s&key=%s%s&z2h=%s",$cgi,$D_SRARCH_SRVSID,$D_SSAPI_KEY,$prm, $D_Z2H_OPTION);
+	$url .= sprintf('&pos=%d&cnt=%d', $list_pos, $list_cnt);		// add 2012/05/14 Y.Matsukawa
+	$dat = ZdcHttpRead($url,false,5);
+	$status  = explode("\t",$dat[0]);
+	$cnt = count($dat) - 1;
+
+	// 2012/06/28 H.osamoto mod [
+	//	// 該当なしの場合、エラーメッセージを設定
+	//	if($cnt == 0){
+	//		dbl("CPFW NOT FOUND[".$dat[0]."][$url]");
+	//		$template = "err.tpl";
+	//		//$body["errmsg"] = $D_ERR_NOTFOUND;		mod 2008/08/28 matsukawa
+	//		$body["errmsg"] = (isset($D_ERR_NOTFOUND_C)?$D_ERR_NOTFOUND_C:$D_ERR_NOTFOUND);
+	//		ZdcMobileLogPut($D_SEARCH_CORPID, $status[0], $D_LOG_NOTFOUND_CD, 0);
+	//	}
+    //
+	//	//	if(!ereg("^[0-9]+$",$status[0])){	mod 2012/02/09 H.osamoto
+	//	if(preg_match("/^[0-9]+$/",$status[0],$matches) === false){
+	//		$template = "err.tpl";
+	//		$body["errmsg"] = $D_ERR_PARAMETER;
+	//		$cnt = 0;
+	//		erl("サーバーＣＧＩの結果が無効です。[$url][$status]");
+	//		ZdcMobileLogPut($D_SEARCH_CORPID, $status[0], $D_LOG_SVRERR_CD, 0);
+	//	}
+	// 該当なしの場合、エラーメッセージを設定
+	if(preg_match("/^[0-9]+$/",$status[0],$matches) === false){
+		$template = "err.tpl";
+		$body["errmsg"] = $D_ERR_PARAMETER;
+		$cnt = 0;
+		erl("サーバーＣＧＩの結果が無効です。[$url][$status]");
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status[0], $D_LOG_SVRERR_CD, 0);
+	} else 	if($cnt == 0){
+		dbl("CPFW NOT FOUND[".$dat[0]."][$url]");
+		$template = "err.tpl";
+		//$body["errmsg"] = $D_ERR_NOTFOUND;		mod 2008/08/28 matsukawa
+		$body["errmsg"] = (isset($D_ERR_NOTFOUND_C)?$D_ERR_NOTFOUND_C:$D_ERR_NOTFOUND);
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status[0], $D_LOG_NOTFOUND_CD, 0);
+	} else {
+		ZdcMobileLogPut($D_SEARCH_CORPID, "", $D_LOG_NORMAL_CD, 0);
+	}
+	// 2012/06/28 H.osamoto mod ]
+	
+	// 一覧データ設定
+	for($i = 0;$i < $cnt;$i ++) {
+		$rec = explode("\t",$dat[$i + 1]);
+		$body["listdata"]["data"][$k][$i]["no"] = $i+1;		// add 2010/10/28 Y.Matsukawa
+		$body["listdata"]["data"][$k][$i]["url"] = "d.htm?id=".$rec[0].($opt != "" ? "&opt=$opt" : "");
+		$body["listdata"]["data"][$k][$i]["url"] .= ($freeparms_enc?"&".$freeparms_enc:"");		// add 2009/06/29 Y.Matsukawa
+		$body["listdata"]["data"][$k][$i]["url"] .= ($optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+		$body["listdata"]["data"][$k][$i]["kurl"] = "d.htm?kid=".$rec[0].($opt != "" ? "&opt=$opt" : "");
+		$body["listdata"]["data"][$k][$i]["kurl"] .= ($freeparms_enc?"&".$freeparms_enc:"");		// add 2009/06/29 Y.Matsukawa
+		$body["listdata"]["data"][$k][$i]["kurl"] .= ($optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+		$body["listdata"]["data"][$k][$i]["icon_id"] = $rec[3];	// アイコンID		add 2009/12/25 Y.Matsukawa
+		// add 2009/05/25 Y.Matsukawa [
+		foreach($D_KYO_COL_NAME[0] as $cidx => $val){
+			$key_name = strtoupper($val);
+			if($rec[$cidx+5] == "0"){
+			} else {
+				$det_value = mb_convert_encoding($rec[$cidx+5],"EUC-JP","EUC-JP,ASCII,JIS,UTF-8,SJIS");
+				if($det_value != ""){
+					//	$body["listdata"]["data"][$k][$i][$key_name] = $det_value;		2012/08/03 H.osamoto mod
+					$body["listdata"]["data"][$k][$i][$key_name] = zdcHtmlspecialchars($det_value, $key_name);
+					$body["listdata"]["data"][$k][$i][$key_name."l".$det_value] = true;
+					// add 2012/11/21 H.Osamoto [
+					// 専用区分定義を適用
+					if ($key_name == $D_ORG_KBN_COL && $det_value && $D_ORG_KBN_NAME_LIST[$det_value]) {
+						$body["listdata"]["data"][$k][$i][$key_name."_NAME"] = $D_ORG_KBN_NAME_LIST[$det_value];
+					}
+					// add 2012/11/21 H.Osamoto ]
+					// add 2012/02/14 Y.Matsukawa [
+					// 日時項目を分割
+					if (isset($D_KYOTEN_ITEM_DATETIME[$key_name]) && $D_KYOTEN_ITEM_DATETIME[$key_name]) {
+						splitDateTimeCol($key_name, $det_value, &$body["listdata"]["data"][$k][$i]);
+					}
+					// add 2012/02/14 Y.Matsukawa ]
+				}
+			}
+		}
+		// add 2009/05/25 Y.Matsukawa ]
+		//$body["listdata"]["data"][$i]["name"] = mb_convert_encoding($rec[$col_name],"EUC-JP","ASCII,JIS,UTF-8,EUC-JP,SJIS");		mod 2009/02/13 Y.Matsukawa
+		//	$body["listdata"]["data"][$k][$i]["name"] = mb_convert_encoding($rec[$col_name],"EUC-JP","EUC-JP,ASCII,JIS,UTF-8,SJIS");	2012/08/03 H.osamoto mod
+		//	$body["listdata"]["data"][$k][$i]["name"] = htmlspecialchars(mb_convert_encoding($rec[$col_name],"EUC-JP","EUC-JP,ASCII,JIS,UTF-8,SJIS"));	2012/11/21 H.Osamoto mod
+		$body["listdata"]["data"][$k][$i]["name"] = zdcHtmlspecialchars(mb_convert_encoding($rec[$col_name],"EUC-JP","EUC-JP,ASCII,JIS,UTF-8,SJIS"), "NAME");
+
+		// アクセスキー設定の場合、数字アイコンとアクセスキー情報を設定
+		if($SETTING["access_key"]){
+			$body["listdata"]["data"][$k][$i]["icon_no"] = (($i+1) < 10) ? $carrier->getEmoji("#NO".($i+1)."#") : "□";
+			$body["listdata"]["data"][$k][$i]["access_key"] = (($i+1) < 10) ? $carrier->makeAccessKeyTag($i+1) : "";
+		}
+	}
+}
+
+// add 2012/05/14 Y.Matsukawa
+//-------------------
+// ページング制御
+//-------------------
+if ($D_KLIST_PAGING && $cnt > 0) {
+	$body["now_page"] = $pg;
+	$body["max_page"] = ceil($status[2]/$D_KLIST_PAGE);
+	if($pg > 1){
+		$body["pre_link"] = "kyoten_list.htm?pg=".($pg-1);
+		$body["pre_link"] .= sprintf('&col=%s&sort=%s&sortkeys=%s', urlencode($col), urlencode($sort), urlencode($sortkeys));
+		$body["pre_link"] .= ($freeparms_enc?"&".$freeparms_enc:"");
+		$body["pre_name"] = $D_PAGE_BEFORE;
+	}
+	if($status[2] >= ($list_pos+$cnt)){
+		$pg=$pg+1; 
+		$body["next_link"] = "kyoten_list.htm?pg=".$pg;
+		$body["next_link"] .= sprintf('&col=%s&sort=%s&sortkeys=%s', urlencode($col), urlencode($sort), urlencode($sortkeys));
+		$body["next_link"] .= ($freeparms_enc?"&".$freeparms_enc:"");
+		$body["next_name"] = $D_PAGE_AFTER;
+	}
+	if((isset($body["pre_link"]) && $body["pre_link"] != "") || (isset($body["next_link"]) && $body["next_link"] != "")) $body["page"] = "true";
+	if((isset($body["pre_link"]) && $body["pre_link"] != "") && (isset($body["next_link"]) && $body["next_link"] != "")) $body["separator"] = $D_PAGE_SEPARATOR;
+}
+
+//$body["icon_cgi"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select_g"],$D_CID);	// アイコン画像CGI		add 2009/12/25 Y.Matsukawa	mod 2012/01/04 Y.Matsukawa
+$body["icon_cgi"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+
+if ($SETTING["showcolonlist"]) $body["showcolonlist"] = true;		// add 2009/05/25 Y.Matsukawa
+$header["TITLE"] = $D_HEADER_TITLE;
+if ($D_HEADER_TITLE_KYOTEN_LIST) $header["TITLE"] = $D_HEADER_TITLE_KYOTEN_LIST;
+//$footer["search_top"] = $D_URL_BASE."s.htm";		mod 2009/06/29 Y.Matsukawa
+//$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc;		mod 2009/11/30 Y.Matsukawa
+$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.($D_OPT_BACKTO_TOP && $opt != "" ? "&opt=$opt" : "");
+$footer["search_top"] .= ($D_OPTCD_BACKTO_TOP && $optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+$footer["CORPNAME"] = $D_CORP_NAME;
+$footer["TOPTXT"] = $D_TOP_TXT;
+$footer["COPYTXT"] = $D_COPYRIGHT_TXT;
+
+// add 2009/07/06 Y.Matsukawa [
+// optを画面へ渡す
+if ($opt) {
+	$body["srch_opt"] = $opt;
+	$header["srch_opt"] = $opt;
+	$footer["srch_opt"] = $opt;
+	$opts = explode('@', $opt);
+	foreach ($opts as $op) {
+		list($opt_col, $opt_val) = explode('=', $op);
+		if (strlen($opt_val)) {
+			$body['opt_'.$opt_col.'l'.$opt_val] = 1;
+			$header['opt_'.$opt_col.'l'.$opt_val] = 1;
+			$footer['opt_'.$opt_col.'l'.$opt_val] = 1;
+		}
+	}
+}
+// add 2009/07/06 Y.Matsukawa ]
+
+// add 2010/08/23 Y.Matsukawa [
+// optcdを画面へ渡す
+if ($optcd != '') {
+	$body["optcd"] = $optcd;
+	$header["optcd"] = $optcd;
+	$footer["optcd"] = $optcd;
+	$opts = explode('@', $optcd);
+	foreach ($opts as $opt_val) {
+		if (strlen($opt_val)) {
+			$body['optcd_l'.$opt_val] = 1;
+			$header['optcd_l'.$opt_val] = 1;
+			$footer['optcd_l'.$opt_val] = 1;
+		}
+	}
+}
+// add 2010/08/23 Y.Matsukawa ]
+
+foreach($D_CAPTION["c.htm"] as $hash_key => $hash_val){
+	$body[$hash_key] = $hash_val;
+	// add 2009/06/29 Y.Matsukawa [
+	if (substr($hash_key, 0, 2) == "P_") {
+		$header[$hash_key] = $hash_val;
+		$footer[$hash_key] = $hash_val;
+	}
+	// add 2009/06/29 Y.Matsukawa ]
+}
+
+//-------------------
+// 画面出力
+//-------------------
+//header("Content-Type: text/html;charset=Shift_JIS");		mod 2009/07/01 Y.Matsukawa
+if ($D_XHTML) header("Content-type: application/xhtml+xml;charset=Shift_JIS");
+else header("Content-Type: text/html;charset=Shift_JIS");
+$HtmlTemplate = new HtmlTemplate();		// add 2016/06/14 Y.Matsukawa
+//$head_html=HtmlTemplate::t_buffer($D_DIR_COMPANY."header.tpl",$header);		mod 2016/06/14 Y.Matsukawa
+$head_html=$HtmlTemplate->t_buffer($D_DIR_COMPANY."header.tpl",$header);
+echo $carrier->ConvertPictString($head_html, "SJIS", "EUC-JP");
+// コンテンツ
+//$content_html=HtmlTemplate::t_buffer($D_DIR_COMPANY.$template,$body);		mod 2016/06/14 Y.Matsukawa
+$content_html=$HtmlTemplate->t_buffer($D_DIR_COMPANY.$template,$body);
+echo $carrier->ConvertPictString($content_html, "SJIS", "EUC-JP");
+// フッタ
+//$foot_html=HtmlTemplate::t_buffer($D_DIR_COMPANY."footer.tpl",$footer);		mod 2016/06/14 Y.Matsukawa
+$foot_html=$HtmlTemplate->t_buffer($D_DIR_COMPANY."footer.tpl",$footer);
+echo $carrier->ConvertPictString($foot_html, "SJIS", "EUC-JP");
+?>

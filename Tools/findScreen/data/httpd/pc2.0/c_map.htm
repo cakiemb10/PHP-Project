@@ -1,0 +1,333 @@
+<?PHP
+// ------------------------------------------------------------
+// 【クリック版（非対応ブラウザ対応）】
+// 地図表示
+//
+// 開発履歴
+//   2008/02/15 Y.Matsukawa 新規作成
+//   2008/12/18 Y.Matsukawa Maplinkのデフォルトアイコン（☆）を追加
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("./inc/define.inc");  // 基本設定
+include("./inc/define_cmdn.inc");  // CMDN設定
+include("./inc/c_function.inc");  // 画面遷移タイプ用関数定義
+include("./inc/define_get_icon.inc");  // アイコン取得
+
+//-------------------
+// 地図イメージ取得
+//-------------------
+if ($lay == "") $lay = 1;
+if ($rstpos && $redpos) {
+	list($r_lat[0], $r_lon[0]) = explode(",", $rstpos);
+	list($r_lat[1], $r_lon[1]) = explode(",", $redpos);
+	$rtyp = ($D_ROUTE_TYPE == 2) ? 2 : 3;	// 自動車指定以外は自動判別
+	$im = getRouteMapImage($r_lat[0], $r_lon[0], $r_lat[1], $r_lon[1], $lat, $lon, $lv, $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, 0, $D_CLK_MAP_LAYER[$lay], $D_CLK_MAP_MTYPE[$lay], $rtyp);
+} else {
+	$im = getMapImage($lat, $lon, $lv, $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT, 0, $D_CLK_MAP_LAYER[$lay], $D_CLK_MAP_MTYPE[$lay]);
+}
+if(substr($im, 0, 3) == "400" || substr($im, 0, 3) == "404") {
+	$errimg = @ImageCreate($D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT);
+	if(substr($im, 3, 4) == "9999"){
+		$background_color = @Imagecolorallocate($errimg, 255,204,255);
+	} else {
+		$background_color = @Imagecolorallocate($errimg, 255,255,204);
+	}
+	$font_color = @Imagecolorallocate($errimg, 255, 0, 0);
+	//@imagestring($errimg, 3, 10, 10, "Can't Display Map", $font_color);
+	@imagestring($errimg, 3, 10, 10, trim($im), $font_color);
+	if($img_type == 0){
+		@ImageGif ($errimg);
+	} else if ($img_type == 1){
+		@ImagePng ($errimg);
+	} else if ($img_type == 3){
+		ImageJPEG ($errimg);
+	}
+	@Imagedestroy($errimg);
+	exit;
+}
+
+// 地図画像からGDImage作成
+$map_img = ImageCreateFromString($im);
+
+list($LBL, $LBG, $RTL, $RTG) = getMapInfo($lat, $lon, intval($lv), $D_CLK_MAP_IMG_WIDTH, $D_CLK_MAP_IMG_HEIGHT);
+
+$px2ms_lon = ($RTG - $LBG) / $D_CLK_MAP_IMG_WIDTH;
+$px2ms_lat = ($RTL - $LBL) / $D_CLK_MAP_IMG_HEIGHT;
+
+// 地図の中心とレベルから１ピクセル当たりのＭＳを算出
+$px = ($D_CLK_MAP_IMG_WIDTH * $px2ms_lon);
+$py = ($D_CLK_MAP_IMG_HEIGHT * $px2ms_lat);
+
+// 地図左下緯度経度を算出
+$left_side = $lon - ($px / 2);
+$left_under= $lat - ($py / 2);
+
+//-------------------
+// フォーカスイメージ取得
+//-------------------
+$waku_img = @ImageCreateFromString(getUserIconImage("@SEL"));
+if (!$waku_img) {
+	$waku_img = @ImageCreateFromGif($D_ICON["@SEL"]["IMG"]);
+}
+
+//-------------------
+// アイコンイメージ取得
+//-------------------
+// 拠点（中心）アイコン
+//if ($icon) {		mod 2008/12/18 Y.Matsukawa
+if (strlen($icon)) {
+	$icon_img = @ImageCreateFromString(getUserIconImage($icon));
+}
+// add 2008/12/18 Y.Matsukawa [
+else if ($D_DEFAULT_ICN) {
+	$icon_img = @ImageCreateFromGif($D_ICON["@SHOP"]["IMG"]);
+}
+// add 2008/12/18 Y.Matsukawa ]
+
+//-------------------
+// アイコン重畳
+//-------------------
+if ($map_img) {
+	// 周辺拠点アイコン（メインの拠点アイコンの背後にしたいので、先に重畳）
+	if ($nkic) {
+		$nkic_list = explode(",", $nkic);
+		$nklat_list = explode(",", $nklat);
+		$nklon_list = explode(",", $nklon);
+		for ($i=0; $i<count($nkic_list); $i++) {
+			$nk_icon_img = @ImageCreateFromString(getUserIconImage($nkic_list[$i]));
+			if ($nk_icon_img) {
+				$klat = $nklat_list[$i];
+				$klon = $nklon_list[$i];
+				$icon_x = ($klon - $left_side) / $px2ms_lon;
+				$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($klat - $left_under) / $px2ms_lat);
+				$icon_x -= round(imagesx($nk_icon_img)/2);
+				$icon_y -= round(imagesy($nk_icon_img)/2);
+				// 合成
+				@ImageCopyMerge($map_img, $nk_icon_img,
+					$icon_x,
+					$icon_y,
+					0,0,
+					imagesx($nk_icon_img), imagesy($nk_icon_img),
+					100
+				);
+				@imagedestroy($nk_icon_img);
+			}
+		}
+	}
+	// 拠点（中心）アイコン
+	if ($icon_img) {
+		$icon_x = ($iclon - $left_side) / $px2ms_lon;
+		$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($iclat - $left_under) / $px2ms_lat);
+		if($waku_img) $waku_icon_x = $icon_x - round(imagesx($waku_img)/2);
+		if($waku_img) $waku_icon_y = $icon_y - round(imagesy($waku_img)/2);
+		$icon_x -= round(imagesx($icon_img)/2);
+		$icon_y -= round(imagesy($icon_img)/2);
+		// 合成
+		@ImageCopyMerge($map_img, $icon_img,
+			$icon_x,
+			$icon_y,
+			0,0,
+			imagesx($icon_img), imagesy($icon_img),
+			100
+		);
+		@imagedestroy($icon_img);
+		if($waku_img){
+			@ImageCopyMerge($map_img, $waku_img,
+				$waku_icon_x,
+				$waku_icon_y,
+				0,0,
+				imagesx($waku_img), imagesy($waku_img),
+				100
+			);
+			@imagedestroy($waku_img);
+		}
+	}
+	// 駅アイコン
+	if ($eiclat && $eiclon) {
+		$eiclat_list = explode(",", $eiclat);
+		$eiclon_list = explode(",", $eiclon);
+		$eki_icon_img = @ImageCreateFromGif($D_ICON_EKI_IMAGE);
+		if ($eki_icon_img) {
+			//for ($i=0; $i<count($eiclat_list); $i++) {
+			for ($i=count($eiclat_list)-1; $i>=0; $i--) {
+				$elat = $eiclat_list[$i];
+				$elon = $eiclon_list[$i];
+				$icon_x = ($elon - $left_side) / $px2ms_lon;
+				$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($elat - $left_under) / $px2ms_lat);
+				$icon_x -= round(imagesx($eki_icon_img)/2);
+				$icon_y -= round(imagesy($eki_icon_img)/2);
+				// 合成
+				@ImageCopyMerge($map_img, $eki_icon_img,
+					$icon_x,
+					$icon_y,
+					0,0,
+					imagesx($eki_icon_img), imagesy($eki_icon_img),
+					100
+				);
+			}
+			@imagedestroy($eki_icon_img);
+		}
+		if ($ekinumicon && (!$rstpos || !$redpos)) {
+			for ($i=count($eiclat_list)-1; $i>=0; $i--) {
+				// 数字アイコン
+				$eki_icon_img = @ImageCreateFromGif(sprintf($D_ICON_NUM_POINT_IMAGE, $i+1));
+				if ($eki_icon_img) {
+					$elat = $eiclat_list[$i];
+					$elon = $eiclon_list[$i];
+					$icon_x = ($elon - $left_side) / $px2ms_lon;
+					$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($elat - $left_under) / $px2ms_lat);
+					$icon_x -= round(imagesx($eki_icon_img)/2);
+					$icon_y -= imagesy($eki_icon_img);
+					// 合成
+					@ImageCopyMerge($map_img, $eki_icon_img,
+						$icon_x,
+						$icon_y,
+						0,0,
+						imagesx($eki_icon_img), imagesy($eki_icon_img),
+						100
+					);
+					@imagedestroy($eki_icon_img);
+				}
+			}
+		}
+	}
+	// ルート始点終点（旗アイコン）
+	if ($rstpos && $redpos) {
+		$r_img[0] = @ImageCreateFromGif($D_ROUTE_START_GIF);
+		$r_img[1] = @ImageCreateFromGif($D_ROUTE_GOAL_GIF);
+		if ($r_img[0] && $r_img[1]) {
+			for ($i=0; $i<2; $i++) {
+				$icon_x = ($r_lon[$i] - $left_side) / $px2ms_lon;
+				$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($r_lat[$i] - $left_under) / $px2ms_lat);
+				$icon_x += $D_ROUTE_START_OFFSET_X;
+				$icon_y -= imagesy($r_img[$i]);
+				// 合成
+				@ImageCopyMerge($map_img, $r_img[$i],
+					$icon_x,
+					$icon_y,
+					0,0,
+					imagesx($r_img[$i]), imagesy($r_img[$i]),
+					100
+				);
+			}
+			@imagedestroy($r_img[0]);
+			@imagedestroy($r_img[1]);
+		}
+	}
+	// 施設アイコン（現ページ範囲外）
+	if ($pxiclat && $pxiclon) {
+		$piclat_list = explode(",", $pxiclat);
+		$piclon_list = explode(",", $pxiclon);
+		$picjnrmn_list = explode(",", $pxicjnrmn);
+		//グレーアイコン
+		//		$poi_icon_img = @ImageCreateFromGif(sprintf($D_ICON_NUM_POINT_IMAGE, 0));
+		//		if ($poi_icon_img) {
+		//			for ($i=count($piclat_list)-1; $i>=0; $i--) {
+		//				$plat = $piclat_list[$i];
+		//				$plon = $piclon_list[$i];
+		//				$icon_x = ($plon - $left_side) / $px2ms_lon;
+		//				$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($plat - $left_under) / $px2ms_lat);
+		//				$icon_x -= round(imagesx($poi_icon_img)/2);
+		//				$icon_y -= imagesy($poi_icon_img);
+		//				// 合成
+		//				@ImageCopyMerge($map_img, $poi_icon_img,
+		//					$icon_x,
+		//					$icon_y,
+		//					0,0,
+		//					imagesx($poi_icon_img), imagesy($poi_icon_img),
+		//					30
+		//				);
+		//			}
+		//			@imagedestroy($poi_icon_img);
+		//			// 範囲外アイコン（半透明）の上に数字アイコンを重畳すると、
+		//			// 数字アイコンの色が壊れることがあるので、一旦ファイルに書き出して再読込します。
+		//			$tmp_file_name = "./tmp/cmap_".$cid."_".time().".gif";
+		//			ImageGif ($map_img, $tmp_file_name);
+		//			$tmp_map_img = @ImageCreateFromGif($tmp_file_name);
+		//			if ($tmp_map_img) {
+		//				@imagedestroy($map_img);
+		//				$map_img = $tmp_map_img;
+		//			}
+		//			@unlink($tmp_file_name);
+		//		}
+		//ジャンルアイコン
+		for ($i=count($piclat_list)-1; $i>=0; $i--) {
+			$poi_icon_img = @ImageCreateFromGif($D_ICON_POI_IMAGE_DIR. $picjnrmn_list[$i]);
+			if ($poi_icon_img) {
+				$plat = $piclat_list[$i];
+				$plon = $piclon_list[$i];
+				$icon_x = ($plon - $left_side) / $px2ms_lon;
+				$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($plat - $left_under) / $px2ms_lat);
+				$icon_x -= round(imagesx($poi_icon_img)/2);
+				$icon_y -= round(imagesy($poi_icon_img)/2);
+				// 合成
+				@ImageCopyMerge($map_img, $poi_icon_img,
+					$icon_x,
+					$icon_y,
+					0,0,
+					imagesx($poi_icon_img), imagesy($poi_icon_img),
+					100
+				);
+				@imagedestroy($poi_icon_img);
+			}
+		}
+	}
+	// 施設アイコン（現ページ）
+	if ($piclat && $piclon) {
+		$piclat_list = explode(",", $piclat);
+		$piclon_list = explode(",", $piclon);
+		$picjnrmn_list = explode(",", $picjnrmn);
+		for ($i=count($piclat_list)-1; $i>=0; $i--) {
+			// ジャンルアイコン
+			$poi_icon_img = @ImageCreateFromGif($D_ICON_POI_IMAGE_DIR.$picjnrmn_list[$i].".gif");
+			if ($poi_icon_img) {
+				$plat = $piclat_list[$i];
+				$plon = $piclon_list[$i];
+				$icon_x = ($plon - $left_side) / $px2ms_lon;
+				$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($plat - $left_under) / $px2ms_lat);
+				$icon_x -= round(imagesx($poi_icon_img)/2);
+				$icon_y -= round(imagesy($poi_icon_img)/2);
+				// 合成
+				@ImageCopyMerge($map_img, $poi_icon_img,
+					$icon_x,
+					$icon_y,
+					0,0,
+					imagesx($poi_icon_img), imagesy($poi_icon_img),
+					100
+				);
+				@imagedestroy($poi_icon_img);
+			}
+		}
+		for ($i=count($piclat_list)-1; $i>=0; $i--) {
+			// 数字アイコン
+			$poi_icon_img = @ImageCreateFromGif(sprintf($D_ICON_NUM_POINT_IMAGE, $i+1));
+			if ($poi_icon_img) {
+				$plat = $piclat_list[$i];
+				$plon = $piclon_list[$i];
+				$icon_x = ($plon - $left_side) / $px2ms_lon;
+				$icon_y = $D_CLK_MAP_IMG_HEIGHT - (($plat - $left_under) / $px2ms_lat);
+				$icon_x -= round(imagesx($poi_icon_img)/2);
+				$icon_y -= imagesy($poi_icon_img);
+				// 合成
+				@ImageCopyMerge($map_img, $poi_icon_img,
+					$icon_x,
+					$icon_y,
+					0,0,
+					imagesx($poi_icon_img), imagesy($poi_icon_img),
+					100
+				);
+				@imagedestroy($poi_icon_img);
+			}
+		}
+	}
+}
+
+//-------------------
+// 出力
+//-------------------
+ImageGif ($map_img);
+?>

@@ -1,0 +1,119 @@
+
+body{
+
+	font-family: Arial;
+	font-size: 13;
+}
+.back_button{
+	position: fixed;
+	margin: auto;
+	top: 2%;
+	left: 1%;
+	color: white;
+	padding: 10px;
+	background-color: #f44336;
+	border-radius: 5px;
+	font-size:15px;
+	z-index: 1;
+	text-decoration: none;
+	
+}
+
+.back_button:hover {
+	text-shadow: 2px 2px 20px black;
+	background-color: #7BC25C;
+	font-size: 15px;
+}
+
+#text_content{
+	color: black;
+}
+
+.banner_title{
+	position: fixed;
+	margin: auto;
+	top: 2%;
+	left: 1%;
+
+	color: white;
+	padding: 10px;
+	background-color: #f44336;
+	border-radius: 5px;
+	
+	z-index: 1;
+
+}
+
+.left_panel{
+	position: absolute;
+	background-color: #F8FBF7;
+	border: 2px solid #49784B;	
+	top: 8%;
+	left: 1%;
+	width: 15%;
+	min-height: 90%;
+	border-radius: 6px;
+}
+
+.left_panel p#title{
+	background-color: #49784B;
+	margin: auto;
+	font-size: 16px;
+	text-align: center;
+	font-family: Arial;
+	padding: 5px;
+	color: white;
+	text-shadow: 2px 2px 11px black;
+}
+
+
+.left_panel ul{
+	list-style-type: none;
+	margin: 0;
+    padding: 0;
+
+}
+
+.left_panel ul li{	
+	margin: auto;
+	border-bottom: 1px solid #969E96;
+
+}
+
+.left_panel li a{	
+ 	display: block;
+    color: black;
+    padding: 8px 16px;
+    text-decoration: none;
+
+}
+
+.left_panel ul li a:hover{
+   background-color: #111;
+   color: white;
+}
+
+
+
+.right_panel{
+	position: absolute;
+	background-color: #F8FBF7;
+	border: 2px solid #49784B;	
+	top: 8%;
+	right: 1%;
+	left: 17%;
+	min-height: 90%;
+	border-radius: 6px;
+}
+
+.right_panel p#title{
+	background-color: #49784B;
+	margin: auto;
+	font-size: 16px;
+	text-align: center;
+	font-family: Arial;
+	padding: 5px;
+	color: white;
+	text-shadow: 2px 2px 11px black;
+}
+

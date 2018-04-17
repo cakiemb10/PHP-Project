@@ -1,0 +1,313 @@
+<?PHP
+// ------------------------------------------------------------
+// 印刷画面
+// 
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2012/03/16 Y.Matsukawa	印刷画面の地図制御
+// 2012/04/16 Y.Matsukawa	任意カラムのアイコンIDを使用
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// 2012/11/06 H.osamoto		SEJキャンペーン対応
+// 2013/03/15 H.Iijima		RDデータ取得
+// 2013/10/02 Y.Matsukawa	Google Maps版
+// 2015/03/17 Y.Matsukawa	絞り込み：任意カラムの部分一致
+// 2015/03/18 N.Wada		店舗詳細取得時にcond絞り込みを有効にする
+// 2015/05/18 N.Wada		日本設備工業用 社員番号からCGIを通じて社員名を取得
+// 2015/10/20 N.Wada		common.jsの読み込み追加
+// 2015/10/29 Y.Uesugi		ヤマト運輸 サービスセンター情報取得
+// 2015/12/22 F.Yokoi		HTMLエンティティ文字の表示対応（別変数に追加）
+// 2016/06/30 N.Wada		日本設備工業用 社員番号カラム名のハードコーディングを修正
+// 2016/08/16 Y.Matsukawa	世界測地系保持
+// 2017/03/01 N.Wada		ルート検索
+// 2017/04/21 H.Yasunaga	ローソンキャンペーン対応カスタマイズ
+// 2017/05/22 H.Yasunaga	コーディングミス(カスタマイズ変数に$付け忘れ)
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+include('/home/emap/src/p/inc/define_get_icon.inc');		// add 2012/04/16 Y.Matsukawa
+
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	//-------------------
+	// cond絞り込み		add 2015/03/18 N.Wada
+	//-------------------
+	$jkn = '';
+	if(isset($D_USE_COND_DETAIL) && $D_USE_COND_DETAIL){
+		if ($cond_jkn) $jkn = $cond_jkn;
+	}
+
+	//-------------------
+	// 画面設定
+	//-------------------
+	//拠点情報
+	//$arr = ZdcSearchCgiKyotenid($kid, 2);		// mod 2015/03/18 N.Wada
+	$arr = ZdcSearchCgiKyotenid($kid, 2, true, $jkn);
+	$arr_raw = zdcHtmlspecialchars_arr_raw($arr);	// 2015/12/22 F.Yokoi add
+	$arr = zdcHtmlspecialchars_arr($arr);		// 2012/08/03 H.Osamoto add
+	if($arr == false) {
+		$err = $D_MSG_EMAPVIEW_NOKID;
+	} else {
+		$tpl = array_merge($tpl, $arr_raw); // add 2015/12/22 F.Yokoi 先に未変換データをマージ → 変換データで上書きする
+		$tpl = array_merge($tpl, $arr);//拠点情報の取得
+	}
+	//拠点縮尺
+	$init_lv = ($tpl['kyoten_lvl']?$tpl['kyoten_lvl']:0);
+	if (isset($lvl)) $init_lv = $lvl;	// add 2012/11/06 H.osamoto
+	
+	// 拠点データで保持している世界測地系を使用		add 2016/08/16 Y.Matsukawa
+	$wgs = 0;
+	if ($D_KYOTEN_WGS_COL) {
+		$wgslat_col = strtolower($D_KYOTEN_WGS_COL['LAT']);
+		$wgslon_col = strtolower($D_KYOTEN_WGS_COL['LON']);
+		if ($tpl[$wgslat_col] && $tpl[$wgslon_col]) {
+			$tpl['lat'] = $tpl[$wgslat_col];
+			$tpl['lon'] = $tpl[$wgslon_col];
+			$wgs = 1;
+		}
+	}
+
+	// add 2017/03/01 N.Wada [
+	// ルート検索
+	$tpl_jsInit_add = '';
+	if ($mode == 'rs') {
+		if ($comb == 1) {
+			// 複合ルート検索
+			// shop_print.htmに渡されたGETパラメータの使い道
+			// comb:		=1なら複合ルート検索を実行
+			// from:		複合ルート候補検索CGIの出発地緯度経度
+			// formname:	複合ルート候補検索CGIの出発地名称指定
+			// to:			複合ルート候補検索CGIの目的地緯度経度
+			// toname:		複合ルート候補検索CGIの目的地名称指定
+			// when:		複合ルート候補検索CGIの時間指定区分('now','departure','arrival')
+			// date:		複合ルート候補検索CGIの日時指定(YYYYMMDDhhmmss)
+			// routetype:	地図に描画したいルート('comb','drive','walk')
+			// routeno:		地図に描画したいルート候補番号(1〜)
+			if ($wgs) {
+				$to = $arr['lat_wgs_dec'].",".$arr['lon_wgs_dec'];
+			} else {
+				$to = $arr['lat_dec'].",".$arr['lon_dec'];
+			}
+			
+			$param = '';
+			if (isset($D_SEARCH_COMB_ROUTE_USE_BUS) && $D_SEARCH_COMB_ROUTE_USE_BUS) {
+				$param .= "&usetype=comb_bus";
+			} else {
+				$param .= "&usetype=comb";
+			}
+			
+			if ($from != '') $param .= "&from=".$from;
+			if ($fromname != '') $param .= "&fromname=".urlencode(zdc_htmlspecialchars_decode($fromname));
+			if ($to != '') $param .= "&to=".$to;
+			if ($toname != '') $param .= "&toname=".urlencode(zdc_htmlspecialchars_decode($toname));
+			if ($date == '') $date = date('YmdHis');
+			$param .= "&when=".$when;
+			$param .= "&date=".$date;
+			$param .= "&datum=".($wgs ? 'WGS84' : 'TOKYO');
+			
+			$cgi = $D_SSAPI["comb_route/searchlist"];
+			$url = sprintf("%s?if_clientid=%s&if_auth_type=ip%s", $cgi, $D_CORE_IF_V3_KEY, $param);
+			$json = ZdcHttpReadCoreIF($url);
+			mb_convert_variables("EUC-JP", "UTF-8", $json);
+			if ($json['status']['code'] != 0) {
+				$err = $D_MSG_ERR_JS_ROUTE;
+			} else {
+				$route_types = array('comb', 'drive', 'walk');
+				foreach ($route_types as $route_type) {
+					foreach ($json['routelist'][$route_type] as $idx => $route) {
+						$data = ZdcShapingRouteSrchCombResult($route);
+						// ルート情報番号
+						$route_no = ($idx + 1);
+						$data['no'] = $route_no;
+						$data['no_'.$route_no] = 1;
+						// ルート描画
+						$data['_jsRouteDraw'] = sprintf("ZdcEmapRouteCombGetByNaviID('%s', %d);", $data['naviid'], $wgs);
+						if ($routetype != '' && $routeno != '') {
+							// 地図にルートを描画したい場合は、その経路情報のみを取得し、かつonload時にルート描画処理を実行
+							if ($routetype == $route_type && $routeno == $route_no) {
+								$tpl_jsInit_add = $data['_jsRouteDraw'];
+								$tpl[$route_type][] = $data;
+							}
+						} else {
+							$tpl[$route_type][] = $data;
+						}
+					}
+				}
+			}
+			if ($routetype) {
+				$tpl['routetype'] = $routetype;
+				$tpl['routetype_'.$routetype] = 1;
+			}
+			if ($routeno) {
+				$tpl['routeno'] = $routeno;
+				$tpl['routeno_'.$routeno] = 1;
+			}
+		} else {
+			// ルート検索
+			// shop_print.htmに渡されたGETパラメータの使い道
+			// comb:		!=1ならルート検索を実行
+			// s_lat:		ルート検索JSの出発地緯度
+			// s_lon:		ルート検索JSの出発地経度
+			// e_lat:		ルート検索JSの出発地緯度
+			// e_lon:		ルート検索JSの出発地経度
+			// routetype:	地図に描画したいルート('drive','walk')
+			if ($wgs) {
+				$e_lat = $arr['lat_wgs_dec'];
+				$e_lon = $arr['lon_wgs_dec'];
+			} else {
+				$e_lat = $arr['lat_dec'];
+				$e_lon = $arr['lon_dec'];
+			}
+			switch ($routetype) {
+				case 'walk':
+					$route_type = 1;
+					break;
+				case 'drive':
+					$route_type = 2;
+					break;
+				default:
+					$route_type = 1;
+					break;
+			}
+			$tpl_jsInit_add = sprintf("ZdcEmapRouteType=%d;ZdcEmapRouteSearch('%s', '%s', '%s', '%s', %d);", $route_type, $s_lat, $s_lon, $e_lat, $e_lon, $wgs);
+		}
+	}
+	// add 2017/03/01 N.Wada ]
+	
+	// add 2015/05/18 N.Wada [
+	// 日本設備工業用 社員番号からCGIを通じて社員名を取得
+	if ( isset($D_NSNET01_EMPNO_SEQ_ICON) && $D_NSNET01_EMPNO_SEQ_ICON ) {
+		// mod 2016/06/30 N.Wada [
+		//$arr_empcol = array("col_13","col_15");
+		$arr_empcol = array();
+		foreach ( $D_NSNET01_EMPNO_COL as $empcol ) {
+			$arr_empcol[] = $empcol["name"];
+		}
+		// mod 2016/06/30 N.Wada ]
+		$arr_empno = array();
+		foreach ( $arr_empcol as $empcol ) {
+			if ( $tpl[$empcol] ) $arr_empno[] = $tpl[$empcol];
+		}
+		if ( count($arr_empno) ) {
+			$url = sprintf("%s?empno=%s", $D_SSAPI["nsnet01_syainnm"], implode(",", array_unique($arr_empno)));
+			$dat = ZdcHttpRead($url, 0, $D_SOCKET_TIMEOUT);
+			$status  = explode("\t", $dat[0]);
+			$cnt = count($dat);
+			$arr_empname = array();
+			for($i = 0; $i < $cnt - 1; $i++) {
+				$rec = ZdcConvertEncoding($dat[$i+1]);
+				$rec = explode("\t", $rec);
+				$arr_empname[$rec[0]] = $rec[1];
+			}
+			foreach ( $arr_empcol as $empcol ) {
+				if ( $arr_empname[$tpl[$empcol]] ) $tpl[$empcol] .= " " . $arr_empname[$tpl[$empcol]];
+			}
+		}
+	}
+	// add 2015/05/18 N.Wada ]
+
+	//js
+	// add 2013/10/02 Y.Matsukawa [
+	if ($D_GOOGLEMAPS) {
+		// Google Maps版
+		$emapview_js = 'emapview_g.js';
+		$emapview_shop_js = 'emapview_shop_g.js';
+		$print_js = 'print_g.js';
+	} else {
+		// 通常版
+		$emapview_js = 'emapview.js';
+		$emapview_shop_js = 'emapview_shop.js';
+		$print_js = 'print.js';
+	}
+	// add 2013/10/02 Y.Matsukawa ]
+	$D_JS[] = $D_DIR_BASE_G.'common.js';	// add 2015/10/20 N.Wada
+	$D_JS[] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	// add 2017/04/21 H.Yasunaga ローソンキャンペーン対応 [
+	// mod 2017/05/22 H.Yasunaga コーディングミス [
+	//if (D_LOWSON_CAM_CUST) {
+	if ($D_LOWSON_CAM_CUST) {
+	// mod 2017/05/22 H.Yasunaga ]
+		$D_JS[] = $D_DIR_BASE_G.'nkyoten.js' . '?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'');
+	} else {
+	// add 2017/04/21 H.Yasunaga ]
+		$D_JS[] = $D_DIR_BASE_G.'nkyoten.js';
+	// add 2017/04/21 H.Yasunaga ローソンキャンペーン対応 [
+	}
+	// add 2017/04/21 H.Yasunaga ]
+	//$D_JS[] = $D_DIR_BASE_G.'emapview.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');	mod 2012/03/16 Y.Matsukawa
+	//$D_JS[] = $D_DIR_BASE_G.'emapview.js?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2013/10/02 Y.Matsukawa
+	//$D_JS[] = $D_DIR_BASE_G.$emapview_js.'?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2015/03/17 Y.Matsukawa
+	$D_JS[] = $D_DIR_BASE_G.$emapview_js.'?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+	//$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2012/11/22 Y.Matsukawa
+	//	$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');	mod 2012/11/06 H.Osamoto
+	//$D_JS[] = $D_DIR_BASE_G.'emapview_shop.js?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').'&printflg=1';		mod 2013/10/02 Y.Matsukawa
+	//$D_JS[] = $D_DIR_BASE_G.$emapview_shop_js.'?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').'&printflg=1';		mod 2015/03/17 Y.Matsukawa
+	$D_JS[] = $D_DIR_BASE_G.$emapview_shop_js.'?htm=shop_print'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'').'&printflg=1';
+	//$D_JS[] = $D_DIR_BASE_G.'print.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2013/10/02 Y.Matsukawa
+	//$D_JS[] = $D_DIR_BASE_G.$print_js.'?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');		mod 2015/03/17 Y.Matsukawa
+	$D_JS[] = $D_DIR_BASE_G.$print_js.'?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+	$j = 0;
+	foreach ($D_JS as $value) {
+		$tpl['js'][$j]['src'] = $value;
+		$tpl['js'][$j]['charset']  = $D_JSAPI_charset;
+		$j++;
+	}
+
+	//その他
+	if (!isset($tpl["_jsInit"])) $tpl["_jsInit"] = "";
+	if (!isset($err)) $err = "";
+
+	//$tpl["_jsInit"] = sprintf("ZdcEmapInit('%s','%s');",cnv_dms2hour($tpl["lat"]),cnv_dms2hour($tpl["lon"])).$tpl["_jsInit"];		mod 2016/08/16 Y.Matsukawa
+	$tpl["_jsInit"] = sprintf("ZdcEmapInit('%s','%s',null,%d);", cnv_dms2hour($tpl["lat"]), cnv_dms2hour($tpl["lon"]), $wgs).$tpl["_jsInit"];
+	//$tpl["_jsInit"] .= sprintf("ZdcEmapPrintInit('%s','%s','%s','%s','%s');",cnv_dms2hour($tpl["lat"]),cnv_dms2hour($tpl["lon"]),$tpl["icon"],$tpl["new"],$init_lv);		mod 2016/08/16 Y.Matsukawa
+	$tpl["_jsInit"] .= sprintf("ZdcEmapPrintInit('%s','%s','%s','%s','%s',%d);", cnv_dms2hour($tpl["lat"]), cnv_dms2hour($tpl["lon"]), $tpl["icon"], $tpl["new"], $init_lv, $wgs);
+
+	if ($tpl_jsInit_add) $tpl["_jsInit"] .= $tpl_jsInit_add;	// add 2017/03/01 N.Wada
+
+	///===> RDデータ取得 2013/03/15 H.Iijima
+	$rd_grp= implode(",",$D_RD_GRP[2]);
+	if($rd_grp){
+		$rd_info = ZdcSearchCgiRd($kid,$rd_grp);
+		if($rd_info){
+			$tpl = array_merge($tpl,$rd_info);
+		}
+	}
+	///<---
+
+	// ヤマト運輸 サービスセンター情報取得		add 2015/10/29 Y.Uesugi
+	if ($D_YTC_GET_JIGYOCD['INF']) {
+		$arr_ytc = YTCGetJigyoCd($kid);
+		if ($arr_ytc) {
+			$tpl = array_merge($tpl, $arr_ytc);
+		}
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+//header('X-UA-Compatible: IE=emulateIE7');
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'shop_print_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

@@ -1,0 +1,103 @@
+<?PHP
+// ------------------------------------------------------------
+// 複合ルート検索画面
+// 
+// 2017/02/22 N.Wada		新規作成
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!isset($err) || !$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	$wgs = $D_KYOTEN_WGS_COL ? 1 : 0;
+	if (isset($kid) && $kid != '') {
+		$kyoten_info = ZdcSearchCgiKyotenid($kid, 1, false, $jkn);
+		$kyoten_info = zdcHtmlspecialchars_arr($kyoten_info);
+		$tpl = array_merge($tpl, $kyoten_info);
+		if ($wgs) {
+			$to = $kyoten_info['lat_wgs_dec'].",".$kyoten_info['lon_wgs_dec'];
+		} else {
+			$to = $kyoten_info['lat_dec'].",".$kyoten_info['lon_dec'];
+		}
+	}
+
+	$param = "";
+	if (isset($D_SEARCH_COMB_ROUTE_USE_BUS) && $D_SEARCH_COMB_ROUTE_USE_BUS) {
+		$param .= "&usetype=comb_bus";
+	} else {
+		$param .= "&usetype=comb";
+	}
+	
+	if ($from != '') $param .= "&from=".$from;
+	if ($fromname != '') $param .= "&fromname=".urlencode(zdc_htmlspecialchars_decode($fromname));
+	if ($to != '') $param .= "&to=".$to;
+	if ($toname != '') $param .= "&toname=".urlencode(zdc_htmlspecialchars_decode($toname));
+	if ($when == '') $when = 'departure';
+	if ($date == '') $date = date('YmdHis');
+	$param .= "&when=".$when;
+	$param .= "&date=".$date;
+	$param .= "&datum=".($wgs ? 'WGS84' : 'TOKYO');
+	
+	$print_param = "&mode=rs&comb=1";
+	if ($from != '') $print_param .= "&from=".$from;
+	if ($fromname != '') $print_param .= "&fromname=".urlencode(zdc_htmlspecialchars_decode($fromname));
+	//if ($to != '') $print_param .= "&to=".$to;	詳細印刷画面では拠点IDを元に検索した拠点の緯度経度を使うため、toパラメータは必要ない
+	if ($toname != '') $print_param .= "&toname=".urlencode(zdc_htmlspecialchars_decode($toname));
+	$print_param .= "&when=".$when;
+	$print_param .= "&date=".$date;
+	//-------------------
+	// データ取得
+	//-------------------
+	$cgi = $D_SSAPI["comb_route/searchlist"];
+	$url = sprintf("%s?if_clientid=%s&if_auth_type=ip%s", $cgi, $D_CORE_IF_V3_KEY, $param);
+	$json = ZdcHttpReadCoreIF($url);
+	mb_convert_variables("EUC-JP", "UTF-8", $json);
+	if ($json['status']['code'] != 0) {
+		$err = $D_MSG_ERR_JS_ROUTE;
+	} else {
+		$route_types = array('comb', 'drive', 'walk');
+		foreach ($route_types as $route_type) {
+			foreach ($json['routelist'][$route_type] as $idx => $route) {
+				$data = ZdcShapingRouteSrchCombResult($route);
+				// ルート情報番号
+				$route_no = ($idx + 1);
+				$data['no'] = $route_no;
+				$data['no_'.$route_no] = 1;
+				// ルート描画
+				$data['_jsRouteDraw'] = sprintf("ZdcEmapRouteCombGetByNaviID('%s', %d);", $data['naviid'], $wgs);
+				// 印刷画面用パラメータ
+				$data['print_param'] = sprintf("%s&routetype=%s&routeno=%d", $print_param, $route_type, $route_no);
+				$tpl[$route_type][] = $data;
+			}
+		}
+	}
+	
+	//-------------------
+	// 画面設定
+	//-------------------
+	if (isset($mode) && $mode != '') {
+		$tpl['mode'] = $mode;
+		$tpl['mode_'.$mode] = 1;
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+$tpl['msg'] = $err;
+ZdcLogPut(0);
+htmloutput($D_SYSDIR_COMPANY.'route_srch_comb.tpl', $tpl);
+
+?>

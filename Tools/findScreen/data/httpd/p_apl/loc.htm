@@ -1,0 +1,70 @@
+<?PHP
+// ------------------------------------------------------------
+// 現在地取得（接続I/F用画面）
+// 
+// 2016/02/03 N.Wada		新規作成（SMTのloc.htmをコピー）
+// 2015/07/14 H.Osamoto		common.jsに任意パラメータ(freeparms)を引継ぐよう変更
+// 2016/04/26 N.Wada		現在地取得失敗時にはTOP画面へ遷移させる
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理
+//-------------------
+require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+	//-------------------
+	// 画面設定
+	//-------------------
+	// ロード時処理
+	$tpl['_jsInit'] = 'javascript:ZdcEmapLocProgress();'.$carrier->MakeLocationSearchScript();
+	// 現在地取得コールバック関数
+	$url = 'nmap.htm?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+	$err_url = $D_LOC_ERR_URL.'?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+	$tpl['_jsLocCallback'] = $carrier->MakeLocationCallbackFunc($url, '', $err_url);
+	// js
+	$D_JS[] = $D_DIR_BASE_G.'common.js';
+	$D_JS[] = $D_DIR_BASE_G.'search.js?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm_enc?'&'.$condprm_enc:'');
+	$D_JS[] = $D_DIR_BASE_G.'zdcemaphttp.js';
+	$j = 0;
+	foreach ($D_JS as $value) {
+		$tpl['js'][$j]['src'] = $value;
+		$tpl['js'][$j]['charset']  = $D_JSAPI_charset;
+		$j++;
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+if (!isset($err)) {
+	$err = "";
+}
+$tpl['err'] = $err;
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	for($i = 0;$i <= 4;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+	htmloutput($D_SYSDIR_COMPANY.'loc.tpl', $tpl);
+	for($i = 6;$i <= 9;$i ++)
+		htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

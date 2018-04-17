@@ -1,0 +1,543 @@
+<?PHP
+// ------------------------------------------------------------
+// 住所リスト検索
+//
+// 2011/03/10 Y.Matsukawa	新規作成
+// 2011/06/10 Y.Matsukawa	【不具合修正】Basic認証を有効にすると一覧が表示されない
+// 2011/07/13 Y.Matsukawa	機能追加（ルート探索、最寄駅）
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/08/01 K.Masuda		リストからTOPに戻らず直接検索結果表示
+// 2011/09/02 Y.Matsukawa	住所リスト下位なし住所名称に対応
+// 2011/09/07 K.Masuda		リストからTOPに戻らず直接検索結果表示で除外可能に対応
+// 2011/12/13 K.Masuda 		パラメータ処理追加
+// 2012/01/11 Y.Matsukawa	任意パラメータ
+// 2012/02/28 Y.Matsukawa	任意パラメータのエンコード漏れ
+// 2012/05/23 Y.Matsukawa	機能追加：位置検索後、最寄一覧ではなく、最寄地図へ遷移するモード
+// 2012/05/29 Y.Matsukawa	不具合修正：出発地指定ルート住所リスト検索の遷移先不正
+// 2012/09/10 Y.Matsukawa	【不具合修正】任意パラメータに「&」を含めると正しく引き継がれない、任意パラメータに半角スペース指定すると消える
+// 2012/12/03 Y.Matsukawa	場所検索からTOPへ戻る際にアンカー移動
+// 2013/05/30 Y.Matsukawa	都道府県コード複数指定
+// 2013/07/19 Y.Matsukawa	住所リストの最下位階層を指定可能にする
+// 2014/12/23 Y.Matsukawa	前へ戻るリンク
+// 2015/03/18 Y.Matsukawa	総件数表示
+// 2015/03/20 Y.Matsukawa	件数表示
+// 2016/02/29 H.Yasunaga	全国信用協同組合連合会向けカスタマイズ
+// 2016/03/18 Y.Matsukawa	長尺URL対応（condをパラメータで引き継がずp_sで代用する）
+// 2016/03/29 F.Yokoi		英語版対応
+// 2017/03/14 H.Yasunaga	日本郵便カスタマイズ
+// 2017/04/19 H.Yasunaga	日本郵便カスタマイズ
+// ------------------------------------------------------------
+require_once('/home/emap/src/smt/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+//require_once('/home/emap/src/smt/inc/act_basic_auth.inc');		del 2011/06/10 Y.Matsukawa
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/smt/inc/act_accept.inc');
+
+//-------------------
+// パラメータ処理	add 2011/12/13 K.Masuda
+//-------------------
+//require_once('/home/emap/src/smt/inc/proc_get_freeparam.inc');		del 2012/01/11 Y.Matsukawa
+require_once('/home/emap/src/smt/inc/act_get_freeparm.inc');		// add 2012/01/11 Y.Matsukawa
+
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err)) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/smt/inc/act_get_parm.inc');
+	// add 2011/07/13 Y.Matsukawa [
+	$param = '';
+	if ($mode != '') $param .= "&mode=$mode";
+	if ($kid != '')  $param .= "&kid=$kid";
+	// add 2011/07/13 Y.Matsukawa ]
+	// add 2016/03/18 Y.Matsukawa [
+	if ($D_NO_COND_PRM) {
+		$pl_prm_enc_all = '';
+		$pl_prm_enc_enc_all = '';
+		$pl_prm_enc['cond'] = '';
+	}
+	// add 2016/03/18 Y.Matsukawa ]
+	// add 2013/05/30 Y.Matsukawa [
+	//-------------------
+	// 都道府県コード複数指定
+	//-------------------
+	// 地方リスト非表示の場合
+	if ($adcd == '' && $area == '' && $D_ADDRLIST_AREA_SKIP) {
+		// 都道府県絞込み設定があったら
+		if ($D_SELECT_TODS != '') {
+			$area = 'SEL';
+			$AREA_INFO[$area]['tod'] = $D_SELECT_TODS;
+		}
+	}
+	// 都道府県限定の場合
+	$arr_tod = array();
+	if ($area != '') {
+		if ($D_SELECT_TODS != '') {
+			$arr_tod = explode('|', $D_SELECT_TODS);
+		}
+	}
+	// add 2013/05/30 Y.Matsukawa ]
+	// 一覧遷移先（下位ページ）に渡すキー履歴		add 2014/12/23 Y.Matsukawa
+	if (!isset($keyhis)) $keyhis = '';
+	$keyhis_param = ($keyhis!=''?'&keyhis='.urlencode($keyhis):'');
+	//-------------------
+	// 住所リスト
+	//-------------------
+	if ($adcd != '') {
+		//-------------------
+		// データ取得
+		//-------------------
+		$pos = ((($pg-1) * $D_SEARCH_ADDRL_PAGE)+1);
+		if ($D_LANG) { // mod 2016/03/29 F.Yokoi [
+			$cgi = $D_SSAPI['ml_listadcd'];
+			$limit = ($pos-1).",$D_SEARCH_ADDRL_PAGE";
+			$prm = sprintf('&limit=%s&adcd=%s&pflg=2', $limit, $adcd);
+			$url = sprintf(
+				'%s?cid=%s&key=%s&opt=%s%s', 
+				$cgi, $D_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm
+			);
+			$lang = $D_LANG=='ja'?'en':$D_LANG;
+			$url .= "&lang=mlang_$lang";
+			$dat = ZdcHttpSimpleRead($url, "", 0, $D_SOCKET_TIMEOUT, "", "UTF-8");
+			$data = zdc_json_decode(mb_convert_encoding($dat[0], 'EUC', 'UTF-8'), true);
+			$status = $data['status']['code'];
+			$cnt = 0;
+			if ($status != '000') {
+			} else {
+				$hit_count = ($data['result']['info']['hit']);
+				$item = $data['result']['item'];
+				$cnt = count($item);
+				$tpl['page'] = $pg;
+			}
+		} else {
+			$cgi = $D_SSAPI['listadcd'];
+			$prm = sprintf('&pos=%d&cnt=%d&adcd=%s', $pos, $D_SEARCH_ADDRL_PAGE, $adcd);
+			$url = sprintf('%s?cid=%s&enc=EUC&key=%s&opt=%s%s', $cgi, $D_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+			$dat = ZdcHttpRead($url, false, 5);
+			// mod 2011/07/05 Y.Nakajima [
+			$status = explode("\t", $dat[0]);
+			$cnt = count($dat) - 1;
+		} // mod 2016/03/29 F.Yokoi ]
+		if (!isset($pl_prm_enc['cond'])) $pl_prm_enc['cond'] = "";
+		// mod 2011/07/05 Y.Nakajima ]
+
+		// データなし
+		if($cnt == 0){
+			// mod 2011/07/05 Y.Nakajima
+			//erl('LISTADCD NOT FOUND['.$dat[0]."][$url]");
+			erl('LISTADCD NOT FOUND['.$data_list[0]."][$url]");
+			$tpl['errmsg'] = $D_MSG_SEARCH_NODATA['AddrL'];
+			$err = true;
+		// データあり
+		} else {
+			if ($D_LANG) { // mod 2016/03/29 F.Yokoi [
+			} else {
+				$hit_count = intval(trim($status[2]));
+			} // mod 2016/03/29 F.Yokoi ]
+			$tpl['page'] = $pg;
+			$tpl['max'] = $hit_count;		// add 2015/03/18 Y.Matsukawa
+			$tpl['end'] = $pos + $cnt - 1;		// add 2015/03/20 Y.Matsukawa
+			if ($pos + $cnt - 1 < $hit_count) {
+				$tpl['next'] = 1;
+				$tpl['next_pos'] = $pos + $cnt;
+				$tpl['next_url'] = sprintf('javascript:ZdcEmapSearchAddrL(\'%s\',\'%s\',\'%s\',%d);',
+									ZdcEsc4JsLiteral($area),
+									ZdcEsc4JsLiteral($adcd),
+									//ZdcEsc4JsLiteral($pl_prm_all),		mod 2011/07/13 Y.Matsukawa
+									//ZdcEsc4JsLiteral($pl_prm_all.$param),		mod 2012/01/11 Y.Matsukawa
+									//ZdcEsc4JsLiteral($pl_prm_all.$param.($freeparms?'&'.$freeparms:'')),		mod 2012/09/10 Y.Matsukawa
+									//ZdcEsc4JsLiteral($pl_prm_enc_enc_all.$param.($freeparms_enc_enc?'&'.$freeparms_enc_enc:'')),		mod 2014/12/23 Y.Matsukawa
+									ZdcEsc4JsLiteral($pl_prm_enc_enc_all.$param.$keyhis_param.($freeparms_enc_enc?'&'.$freeparms_enc_enc:'')),
+									$pg + 1
+									);
+			}
+			for($i = 0; $i < $cnt; $i++) {
+				if ($D_LANG) { // mod 2016/03/29 F.Yokoi [
+					$tpl['list'][$i]['no'] = $i+1;
+					$tpl['list'][$i]['adcd'] = $item[$i]['code'];
+					$tpl['list'][$i]['fullname'] = htmlspecialchars(trim($item[$i]['text']));
+					$tpl['list'][$i]['name'] = (trim($item[$i]['text'])==''?$D_GEO_NONAME:htmlspecialchars(trim($item[$i]['text'])));
+					if($D_LANG != 'ja'){
+						if($D_LANG == 'cn' || $D_LANG == 'tw')
+							$tpl['list'][$i]['name'] = (trim($item[$i]['language']["zh-$D_LANG"]['text'])==''?$D_GEO_NONAME:htmlspecialchars(trim($item[$i]['language']["zh-$D_LANG"]['text'])));
+						else
+							$tpl['list'][$i]['name'] = (trim($item[$i]['language'][$D_LANG]['text'])==''?$D_GEO_NONAME:htmlspecialchars(trim($item[$i]['language'][$D_LANG]['text'])));
+					}
+					$tpl['list'][$i]['lat'] = trim($item[$i]['point']['lat']);
+					$tpl['list'][$i]['lon'] = trim($item[$i]['point']['lon']);
+					$last = $item[$i]['end'];
+				} else {
+					$rec = explode("\t", $dat[$i + 1]);
+					$tpl['list'][$i]['no'] = $i+1;
+					$tpl['list'][$i]['adcd'] = $rec[0];
+					$tpl['list'][$i]['fullname'] = htmlspecialchars(trim($rec[1]));
+					//$tpl['list'][$i]['name'] = htmlspecialchars(trim($rec[2]));
+					$tpl['list'][$i]['name'] = (trim($rec[2])==''?$D_GEO_NONAME:htmlspecialchars(trim($rec[2])));
+					$tpl['list'][$i]['lat'] = trim($rec[4]);
+					$tpl['list'][$i]['lon'] = trim($rec[5]);
+					$last = $rec[6];
+				} // mod 2016/03/29 F.Yokoi ]
+				// 下位なし
+				//if ($last) {		mod 2013/07/19 Y.Matsukawa
+				if ($last || strlen($tpl['list'][$i]['adcd']) >= $D_ADCD_LEN[$D_ADDRL_BOTTOM_LVL]) {
+					if ($D_LANG) { // mod 2016/03/29 F.Yokoi [
+						if ($mode == 'rs') {
+							$tpl['list'][$i]['url'] = sprintf($D_DIR_BASE_G.'map/%s/?mode=rs&lat=%s&lon=%s%s',
+								$kid,
+								trim($tpl['list'][$i]['lat']),
+								trim($tpl['list'][$i]['lon']),
+								($freeparms_enc?'&'.$freeparms_enc:'')
+							);
+						} else {
+							if( (isset($D_DIRECT_SEARCH) && $D_DIRECT_SEARCH == 1) && $D_DIRECT_SEARCH_NOTADDR != 1 ){
+								if ($D_ADDRL_NMAP) {
+									$tpl['list'][$i]['url'] = 'nmap.htm';
+								} else {
+									$tpl['list'][$i]['url'] = 'n.htm';
+								}
+								$tpl['list'][$i]['url'] .= sprintf('?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+									'2',
+									urlencode($rec[1]),
+									trim($tpl['list'][$i]['lat']),
+									trim($tpl['list'][$i]['lon']),
+									$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+								);
+							} else {
+								$tpl['list'][$i]['url'] = sprintf('search.htm?pldone=1&pltype=%s&plname=%s&lat=%s&lon=%s%s',
+									'2',
+									urlencode($tpl['list'][$i]['fullname']),
+									trim($tpl['list'][$i]['lat']),
+									trim($tpl['list'][$i]['lon']),
+									$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+								);
+							}
+						}
+					} else {
+						// add 2011/07/13 Y.Matsukawa [
+						if ($mode == 'rs') {
+							//$tpl['list'][$i]['url'] = sprintf($D_DIR_BASE_G.'map/%s/?mode=rs&lat=%s&lon=%s',		mod 2012/01/11 Y.Matsukawa
+							$tpl['list'][$i]['url'] = sprintf($D_DIR_BASE_G.'map/%s/?mode=rs&lat=%s&lon=%s%s',
+														$kid,
+														trim($rec[4]),
+														trim($rec[5]),
+														($freeparms_enc?'&'.$freeparms_enc:'')		// add 2012/01/11 Y.Matsukawa
+														);
+						} else {
+						// add 2011/07/13 Y.Matsukawa ]
+						// mod 2011/08/01 K.Masuda [
+						//	$tpl['list'][$i]['url'] = sprintf('search.htm?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+							//if( isset($D_DIRECT_SEARCH) && $D_DIRECT_SEARCH == 1 ){	// mod 2011/09/07 K.Masuda
+							if( (isset($D_DIRECT_SEARCH) && $D_DIRECT_SEARCH == 1) && $D_DIRECT_SEARCH_NOTADDR != 1 ){
+								// add 2012/05/23 Y.Matsukawa [
+								if ($D_ADDRL_NMAP) {
+									$tpl['list'][$i]['url'] = 'nmap.htm';
+								} else {
+									$tpl['list'][$i]['url'] = 'n.htm';
+								}
+								// add 2012/05/23 Y.Matsukawa ]
+								// add 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+								if ($D_JPOST_CUSTOM_ENCODE) {
+									$tpl['list'][$i]['url'] .= sprintf('?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+													'2',
+													urlencode(mb_convert_encoding($rec[1], $tpl['jp_param_enc'], "EUC-JP")),
+													trim($rec[4]),
+													trim($rec[5]),
+													//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+													$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+									);
+								} else {
+								// add 2017/04/19 H.Yasunaga ]
+								
+									//$tpl['list'][$i]['url'] = sprintf('n.htm?pltype=%s&plname=%s&lat=%s&lon=%s%s',		mod 2012/05/23 Y.Matsukawa
+									$tpl['list'][$i]['url'] .= sprintf('?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+														'2',
+														urlencode(mb_convert_encoding($rec[1], 'UTF-8', 'EUC-JP')),
+														trim($rec[4]),
+														trim($rec[5]),
+														//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+														$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+														);
+														
+								// add 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+								}
+								// add 2017/04/19 H.Yasunaga ]
+								
+								// del 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+								// add 2017/03/14 H.Yasunaga 日本郵便カスタマイズ [
+								//if ($cid == 'jppost15' || $cid == 'jppost15test') {
+								//	$tpl['list'][$i]['url'] .= sprintf('search.htm?pldone=1&pltype=%s&plname=%s&lat=%s&lon=%s%s',
+								//					'2',
+								//					urlencode(mb_convert_encoding($rec[1], $tpl['jp_param_enc'], "EUC-JP")),
+								//					trim($rec[4]),
+								//					trim($rec[5]),
+								//					//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+								//					$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+								//);
+								//}
+								// add 2017/03/14 H.Yasunaga ]
+								// del 2017/04/19 H.Yasunaga ]
+								// add 2016/02/29 H.Yasunaga 全国信用協同組合連合会向けカスタマイズ [
+								if (isset($D_CUST_ZENSHINKUMIREN) && $D_CUST_ZENSHINKUMIREN) {
+									// 信用組合リストへ遷移
+									$tpl['list'][$i]['url'] = sprintf("%s?lat=%s&lon=%s&adcd=%s", "zskr_union_list.htm",trim($rec[4]), trim($rec[5]), trim($rec[0]));
+								}
+								// add 2016/02/29 H.Yasunaga ]
+							
+							} else {
+								//$tpl['list'][$i]['url'] = sprintf('search.htm?pltype=%s&plname=%s&lat=%s&lon=%s%s',		mod 2012/12/03 Y.Matsukawa
+								$tpl['list'][$i]['url'] = sprintf('search.htm?pldone=1&pltype=%s&plname=%s&lat=%s&lon=%s%s',
+													'2',
+													urlencode(mb_convert_encoding($rec[1], 'UTF-8', 'EUC-JP')),
+													trim($rec[4]),
+													trim($rec[5]),
+													//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+													$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+													);
+								// add 2017/03/14 H.Yasunaga 日本郵便カスタマイズ [
+								// mod 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+								//if ($cid == 'jppost15' || $cid == 'jppost15test') {
+								if ($D_JPOST_CUSTOM_ENCODE) {
+								// mod 2017/04/19 H.Yasunaga ]
+									$tpl['list'][$i]['url'] = sprintf('search.htm?pldone=1&pltype=%s&plname=%s&lat=%s&lon=%s%s',
+													'2',
+													urlencode(mb_convert_encoding($rec[1], $tpl['jp_param_enc'], 'EUC-JP')),
+													trim($rec[4]),
+													trim($rec[5]),
+													//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+													$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+													);
+								}
+							}
+						// mod 2011/08/01 K.Masuda ]
+						}
+					} // mod 2016/03/29 F.Yokoi ]
+				// 下位あり
+				} else {
+					if ($D_LANG) { // mod 2016/03/29 F.Yokoi [
+						$tpl['list'][$i]['url'] =
+							sprintf('search_addr.htm?adcd=%s%s&pg=1&title=%s',
+								$item[$i]['code'],
+								$pl_prm_enc['cond'].$param.($freeparms_enc?'&'.$freeparms_enc:''),
+								urlencode($tpl['list'][$i]['name'])
+							);
+					} else {
+						$tpl['list'][$i]['url'] = sprintf('search_addr.htm?adcd=%s%s&pg=1',
+												//ZdcEsc4JsLiteral($rec[0]),		mod 2012/02/28 Y.Matsukawa
+												$rec[0],
+												//ZdcEsc4JsLiteral($pl_prm_enc_all)
+												//ZdcEsc4JsLiteral($pl_prm_enc_all.$param)		mod 2012/01/11 Y.Matsukawa
+												//ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms?'&'.$freeparms:''))		mod 2012/02/28 Y.Matsukawa
+												//$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')		mod 2012/05/29 Y.Matsukawa
+												//$pl_prm_enc['cond'].$param.($freeparms_enc?'&'.$freeparms_enc:'')		mod 2014/12/23 Y.Matsukawa
+												$pl_prm_enc['cond'].$param.$keyhis_param.($freeparms_enc?'&'.$freeparms_enc:'')
+												);
+					}
+				}
+			}
+			if ($pg == 1) {
+				$tpl['hit_count'] = $hit_count;
+				//-------------------
+				// 上位コードの情報を取得
+				//-------------------
+				$cgi = $D_SSAPI['selectadcd'];
+				$prm = sprintf('&adcd=%s', $adcd);
+				$url = sprintf('%s?cid=%s&enc=EUC&key=%s&opt=%s%s', $cgi, $D_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+				$dat = ZdcHttpRead($url, false, 5);
+				$status = explode("\t", $dat[0]);
+				$cnt = count($dat) - 1;
+				
+				// データなし
+				if($cnt == 0){
+					// mod 2011/07/05 Y.Nakajima
+					//erl('SELECTADCD NOT FOUND['.$dat[0]."][$url]");
+					erl('SELECTADCD NOT FOUND['.$data_list[0]."][$url]");
+				// データあり
+				} else {
+					$rec = explode("\t", $dat[1]);
+					$tpl['upper_name'] = htmlspecialchars($rec[4]);
+
+					if ($D_LANG != "" && $D_LANG != 'ja') { // add 2016/03/29 F.Yokoi [
+						$tpl['upper_name'] = $_GET['title'];
+					} // add 2016/03/29 F.Yokoi ]
+
+					// add 2011/07/13 Y.Matsukawa [
+					if ($mode == 'rs') {
+						//$tpl['upper_url'] = sprintf($D_DIR_BASE_G.'map/%s/?mode=rs&lat=%s&lon=%s',		mod 2012/01/11 Y.Matsukawa
+						$tpl['upper_url'] = sprintf($D_DIR_BASE_G.'map/%s/?mode=rs&lat=%s&lon=%s%s',
+													$kid,
+													trim($rec[5]),
+													trim($rec[6]),
+													($freeparms_enc?'&'.$freeparms_enc:'')		// add 2012/01/11 Y.Matsukawa
+													);
+					} else {
+					// add 2011/07/13 Y.Matsukawa ]
+					// mod 2011/08/01 K.Masuda [
+					//	$tpl['upper_url'] = sprintf('search.htm?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+						//if( isset($D_DIRECT_SEARCH) && $D_DIRECT_SEARCH == 1 ){	// mod 2011/09/07 K.Masuda
+						if( (isset($D_DIRECT_SEARCH) && $D_DIRECT_SEARCH == 1) && $D_DIRECT_SEARCH_NOTADDR != 1 ){
+							// add 2012/05/23 Y.Matsukawa [
+							if ($D_ADDRL_NMAP) {
+								$tpl['upper_url'] = 'nmap.htm';
+							} else {
+								$tpl['upper_url'] = 'n.htm';
+							}
+							// add 2012/05/23 Y.Matsukawa ]
+							//$tpl['upper_url'] = sprintf('n.htm?pltype=%s&plname=%s&lat=%s&lon=%s%s',		mod 2012/05/23 Y.Matsukawa
+							
+							// add 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+							if ($D_JPOST_CUSTOM_ENCODE) {
+								$tpl['upper_url'] .= sprintf('?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+													'2',
+													urlencode(mb_convert_encoding($rec[4], $tpl['jp_param_enc'], 'EUC-JP')),
+													trim($rec[5]),
+													trim($rec[6]),
+													//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+													$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+													);
+							} else {
+							// add 2017/04/19 H.Yasunaga ]
+							
+								$tpl['upper_url'] .= sprintf('?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+													'2',
+													urlencode(mb_convert_encoding($rec[4], 'UTF-8', 'EUC-JP')),
+													trim($rec[5]),
+													trim($rec[6]),
+													//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+													$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+													);
+							// add 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+							}
+							// add 2017/04/19 H.Yasunaga ]
+							
+							// del 2017/04/19 H.Yasunaga 日本郵便カスタマイズ [
+							// add 2017/03/14 H.Yasunaga 日本郵便カスタマイズ [
+							//if ($cid == 'jppost15' || $cid == 'jppost15test') {
+							//	$tpl['upper_url'] .= sprintf('?pltype=%s&plname=%s&lat=%s&lon=%s%s',
+							//						'2',
+							//						urlencode(mb_convert_encoding($rec[4], $tpl['jp_param_enc'], 'EUC-JP')),
+							//						trim($rec[5]),
+							//						trim($rec[6]),
+							//						//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+							//						$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+							//						);
+							//
+							//}
+							// add 2017/03/14 H.Yasunaga ]
+							// del 2017/04/19 H.Yasunaga ]
+							
+							// add 2016/02/29 H.Yasunaga 全国信用協同組合連合会向けカスタマイズ [
+							if (isset($D_CUST_ZENSHINKUMIREN) && $D_CUST_ZENSHINKUMIREN) {
+								// 都道府県の上位を非表示
+								$tpl['upper_url'] = "";
+							}
+							// add 2016/02/29 H.Yasunaga ]
+							
+						} else {
+							//$tpl['upper_url'] = sprintf('search.htm?pltype=%s&plname=%s&lat=%s&lon=%s%s',		mod 2012/12/03 Y.Matsukawa
+							$tpl['upper_url'] = sprintf('search.htm?pldone=1&pltype=%s&plname=%s&lat=%s&lon=%s%s',
+													'2',
+													urlencode(mb_convert_encoding($rec[4], 'UTF-8', 'EUC-JP')),
+													trim($rec[5]),
+													trim($rec[6]),
+													//$pl_prm_enc['cond']		mod 2012/01/11 Y.Matsukawa
+													$pl_prm_enc['cond'].($freeparms_enc?'&'.$freeparms_enc:'')
+													);
+						}
+					// mod 2011/08/01 K.Masuda ]
+					}
+				}
+			}
+		}
+	//-------------------
+	// 都道府県リスト
+	//-------------------
+	} else if ($area != '') {
+		if ($AREA_INFO[$area]) {
+			$tods = explode('|', $AREA_INFO[$area]['tod']);
+			// del 2013/05/30 Y.Matsukawa [
+			//			foreach ($tods as $i => $tod) {
+			//				$tpl['list'][$i]['name'] = $D_TOD[$tod];
+			//				$tpl['list'][$i]['url'] = sprintf('search_addr.htm?adcd=%s%s&pg=1',
+			//										$tod,
+			//										//ZdcEsc4JsLiteral($pl_prm_enc_all)		mod 2011/07/13 Y.Matsukawa
+			//										//ZdcEsc4JsLiteral($pl_prm_enc_all.$param)		mod 2012/01/11 Y.Matsukawa
+			//										//ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms?'&'.$freeparms:''))		mod 2012/09/10 Y.Matsukawa
+			//										ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))
+			//										);
+			//			}
+			// del 2013/05/30 Y.Matsukawa ]
+			// add 2013/05/30 Y.Matsukawa [
+			$i = 0;
+			foreach ($tods as $tod) {
+				if (!count($arr_tod) || in_array($tod, $arr_tod)) {	// 都道府県指定の場合		add 2013/05/30 Y.Matsukawa
+					$tpl['list'][$i]['name'] = $D_TOD[$tod];
+					if ($D_LANG) { // mod 2016/03/29 F.Yokoi [
+						$tpl['list'][$i]['url'] = sprintf(
+							'search_addr.htm?adcd=%s%s&pg=1&title=%s',
+							$tod,
+							ZdcEsc4JsLiteral($pl_prm_enc_all.$param.$keyhis_param.($freeparms_enc?'&'.$freeparms_enc:'')),
+							urlencode($D_TOD[$tod])
+						);
+					} else {
+						$tpl['list'][$i]['url'] = sprintf('search_addr.htm?adcd=%s%s&pg=1',
+												$tod,
+												//ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))		mod 2014/12/23 Y.Matsukawa
+												ZdcEsc4JsLiteral($pl_prm_enc_all.$param.$keyhis_param.($freeparms_enc?'&'.$freeparms_enc:''))
+												);
+					} // mod 2016/03/29 F.Yokoi ]
+					$i++;
+				}
+			}
+			// add 2013/05/30 Y.Matsukawa ]
+		}
+	//-------------------
+	// 地方リスト
+	//-------------------
+	} else {
+		foreach ($AREA_INFO as $i => $areainfo) {
+			$tpl['list'][$i]['name'] = htmlspecialchars($areainfo['name']);
+			if ($D_LANG) { // mod 2016/03/29 F.Yokoi [
+				$tpl['list'][$i]['url'] = sprintf(
+					'search_addr.htm?area=%s%s&pg=1&title=%s',// 2014/12/24 Truong khuong mod
+					$i,
+					ZdcEsc4JsLiteral($pl_prm_enc_all.$param.$keyhis_param.($freeparms_enc?'&'.$freeparms_enc:'')),
+					urlencode(htmlspecialchars($areainfo['name']))
+				);
+			} else {
+				$tpl['list'][$i]['url'] = sprintf('search_addr.htm?area=%s%s&pg=1',
+										$i,
+										//ZdcEsc4JsLiteral($pl_prm_enc_all)		mod 2011/07/13 Y.Matsukawa
+										//ZdcEsc4JsLiteral($pl_prm_enc_all.$param)		mod 2012/01/11 Y.Matsukawa
+										//ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms?'&'.$freeparms:''))		mod 2012/09/10 Y.Matsukawa
+										//ZdcEsc4JsLiteral($pl_prm_enc_all.$param.($freeparms_enc?'&'.$freeparms_enc:''))		mod 2014/12/23 Y.Matsukawa
+										ZdcEsc4JsLiteral($pl_prm_enc_all.$param.$keyhis_param.($freeparms_enc?'&'.$freeparms_enc:''))
+										);
+			} // mod 2016/03/29 F.Yokoi ]
+		}
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($err)) {
+	$err = "";
+}
+// mod 2011/07/05 Y.Nakajima ]
+$tpl['err'] = $err;
+// mod 2011/07/05 Y.Nakajima
+if(!isset($err) || $err == "") {
+	ZdcLogPut(0);
+	htmloutput($D_SYSDIR_COMPANY.'search_addr_list.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'error.tpl', $tpl);
+}
+?>

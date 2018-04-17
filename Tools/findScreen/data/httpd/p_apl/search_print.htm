@@ -1,0 +1,116 @@
+<?PHP
+// ------------------------------------------------------------
+// 拠点フリーワード一覧印刷ページ
+// 
+// 開発履歴
+// 2015/03/26 H.Osamoto		search_print.htmをベースに作成
+// 2015/12/22 F.Yokoi		HTMLエンティティ文字の表示対応（別変数に追加）
+// 2016/07/27 Y.Uesugi		SSL許可時のアイコンCGI SSL対応
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+
+//-------------------
+// Basic認証
+//-------------------
+require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	// add 2012/03/12 Y.Matsukawa
+	//-------------------
+	// UA判定でリダイレクト
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_redirect_ua.inc');
+
+	// add 2012/05/11 Y.Matsukawa
+	//-------------------
+	// ページ制御
+	//-------------------
+	if (!isset($page)) $page = 0;
+	$pos = 1;
+	$kcnt = 1000;
+
+	//--------------------------------------------------------------------------------
+	// 検索CGI
+	//--------------------------------------------------------------------------------
+	//-------------------
+	// データ取得
+	//-------------------
+	$cgi = $D_SSAPI['kyotenlist'];
+	$prm = '';
+	$prm .= sprintf("&jkn=%s", urlencode($jkn));
+	$prm .= sprintf("&pos=%d&cnt=%d", $pos, $kcnt);		// add 2012/05/11 Y.Matsukawa
+	$url = sprintf('%s?cid=%s&key=%s&opt=%s%s', $cgi, $D_DATA_CID, $D_SSAPI_KEY, $D_LOG_CID, $prm);
+	$dat = ZdcHttpRead($url, false, 5);
+	$cnt = 0;	//初期化
+	if (isset($dat) && $dat != "") {
+		$status = explode("\t", $dat[0]);
+		$cnt = count($dat) - 1;
+	}
+
+	//-------------------
+	// データなし
+	//-------------------
+	if($cnt == 0){
+		$err = $D_MSG_SEARCH_NODATA['KL'];
+	//-------------------
+	// データあり
+	//-------------------
+	} else {
+		for($i = 0;$i < $cnt;$i ++) {
+			$rec = explode("\t",$dat[$i + 1]);
+			// 拠点縮尺（PC）
+			$kyoten_lvl = $rec[count($rec)-2];
+			if (ctype_digit($kyoten_lvl) && 1 <= $kyoten_lvl && $kyoten_lvl <= 18) {
+			} else $kyoten_lvl = 0;
+			$tpl["list"][$i]["no"] = $page * $D_SEARCH_SHOPLIST_PAGE + $i + 1;
+			$tpl["list"][$i]["_urlNameLink"] = $D_DIR_BASE_G.'dtl/'.$rec[0].'/?'.($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'').($ZdcHistoryParm?'&his='.$ZdcHistoryParm:'');
+			$tpl["list"][$i]["cid"] = $rec[0];
+			$tpl["list"][$i]["lat"] = $rec[1];
+			$tpl["list"][$i]["lon"] = $rec[2];
+			$tpl["list"][$i]["icon"] = $rec[3];
+			$tpl["list"][$i]["new"]  = $rec[4];
+			for($j = 0;$j < 202;$j ++) {
+				$tmp = $D_KYO_COL_NAME[0][$j];
+				if ($tmp != '') {
+					$d = $rec[5+$j];
+					$tpl["list"][$i][$tmp] = zdcHtmlspecialchars($d, $tmp);
+					$tpl["list"][$i][$tmp."_raw"] = zdcHtmlspecialchars_raw($d, $tmp); // add 2015/12/22 F.Yokoi
+					if($d) $tpl["list"][$i][$tmp."l".$d] = "1";
+					if(intval($d) == 1) $tpl["list"][$i][$tmp."b"] = "1";
+					// 日時項目を分割
+					if (isset($D_KYOTEN_ITEM_DATETIME[$tmp]) && $D_KYOTEN_ITEM_DATETIME[$tmp]) {
+						splitDateTimeCol($tmp, $d, &$tpl['list'][$i]);
+					}
+				}
+			}
+			$tpl["list"][$i]["iconimg"] = sprintf("%s?cid=%s&icon_id=%s", $D_SSAPI["icon_select_g"], $D_ICON_CID, $tpl["list"][$i]["icon"]);
+			$tpl["list"][$i]["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+			$tpl["list"][$i]["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select"], $D_DATA_CID);
+			$tpl["list"][$i]["_cgiSysIconimgSSL"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["sys_icon_select_ssl"], $D_DATA_CID);	//add 2016/07/27 Y.Uesugi
+			$tpl["list"][$i]["_cgiGifimg"]  = sprintf("%s?cid=%s&kid=", $D_SSAPI["gif_select"], $D_DATA_CID);
+		}
+	}
+}
+$tpl["keyword"] = $keyword;
+//-------------------
+// 画面出力
+//-------------------
+$tpl['err'] = $err;
+if(!$err) {
+	ZdcLogPut(0);
+	htmloutput($D_SYSDIR_COMPANY.'search_shop_list_print.tpl', $tpl);
+} else {
+	ZdcLogPut(1);
+	htmloutput($D_SYSDIR_COMPANY.'errorview.tpl', $tpl);
+}
+?>

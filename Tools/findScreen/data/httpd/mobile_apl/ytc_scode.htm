@@ -1,0 +1,216 @@
+<?php
+// ------------------------------------------------------------
+// ヤマト運輸様用 ロッカーセキュリティコード入力画面
+// 
+// 2017/05/11 H.Yasunaga	新規作成
+// 2017/05/30 H.Yasunaga	yamato04で使用されているD_YTC_BACK_BUTTONカスタマイズの対応
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("./inc/define_mobile.inc");  // 基本設定
+include("./inc/carrier.inc");  // 基本設定
+include("./inc/function.inc");
+include("./inc/define_msg.inc");
+include("inc/proc_get_freeparam.inc");
+include("./inc/define_get_icon.inc");  // アイコン定義取得
+include_once("inc/proc_optcheck.inc");  //checkbox処理
+
+//-------------------
+// 変数初期化
+//-------------------
+
+$ua = $HTTP_USER_AGENT;
+$carrier = new CARRIER($ua);
+$carrier->AddReplaceWord("@WORD@", $D_USR_DEFNAME);
+
+$header = array();
+$body   = array();
+$footer = array();
+
+
+if (isset($D_YTC_BACK_BUTTON) && $D_YTC_BACK_BUTTON) {
+	$his_array = array();
+	$his_array = explode("_", $his);
+	if (substr($his_array[count($his_array) - 1], 0, 1) == "P") {
+		$body["back_url"] = $D_URL_BASE."n.htm";
+		$body["back_pos"] = substr($his_array[count($his_array) - 1], 1);
+		foreach($his_array as $hkey => $hval) {
+			if ($hkey == "0") {
+				$tmp_his = $hval;
+			} else if ($hkey < count($his_array) - 1) {
+				$tmp_his .= "_".$hval;
+			}
+		}
+		$body["back_his"] = $tmp_his;
+		// del 2017/05/30 H.Yasunaga 詳細画面用のDから始まるパラメータは付与しない [
+		//$freeparms_enc .= "&his=".$his."_D".$id;
+		// del 2017/05/30 H.Yasunaga ]
+	}
+}
+
+$htmfnm = "ytc_scode.htm";
+for($pcnt=1;$pcnt<=$D_P_S_MAX;$pcnt++){
+	if (isset(${'p_s'.$pcnt})) {
+		$D_CAPTION[$htmfnm]["P_STRING_".$pcnt] = ${'p_s'.$pcnt};
+		$D_CAPTION[$htmfnm]["P_STRING_".$pcnt."_ENC"] = urlencode(${'p_s'.$pcnt.'_sjis'});
+		$D_CAPTION[$htmfnm]["P_STRING_".$pcnt."_HTML_SQ"] = htmlspecialchars(${'p_s'.$pcnt}, ENT_QUOTES);
+		$i++;
+		$D_CAPTION[$htmfnm]['freeparms'][$i]['name'] = 'p_s'.$pcnt;
+		$D_CAPTION[$htmfnm]['freeparms'][$i]['val'] = ${'p_s'.$pcnt};
+	}
+}
+for($pcnt=1;$pcnt<=$D_P_F_MAX;$pcnt++){
+	if (isset(${'p_f'.$pcnt}) && ${'p_f'.$pcnt}) {
+		$D_CAPTION[$htmfnm]["P_FLG_".$pcnt] = ${'p_f'.$pcnt};
+		$i++;
+		$D_CAPTION[$htmfnm]['freeparms'][$i]['name'] = 'p_f'.$pcnt;
+		$D_CAPTION[$htmfnm]['freeparms'][$i]['val'] = ${'p_f'.$pcnt};
+	}
+}
+
+
+if (isset($D_CAPTION["ytc_scode.htm"]) && $D_CAPTION["ytc_scode.htm"]) {
+	foreach($D_CAPTION["ytc_scode.htm"] as $hash_key => $hash_val){
+		$body[$hash_key] = $hash_val;
+		if (substr($hash_key, 0, 2) == "P_") {
+			$header[$hash_key] = $hash_val;
+			$footer[$hash_key] = $hash_val;
+		}
+	}
+}
+if (isset($_GET["kid"])) {
+	$body["kid"] = $_GET["kid"];
+} else {
+	$body["kid"] = $_POST["kid"];
+}
+// add 2017/05/30 H.Yasunaga yamato04用 hisパラメータ追加[
+if ($D_YTC_BACK_BUTTON) {
+	$body["his"] = $his;
+	$body["pos"] = $pos;
+}
+// add 2017/05/30 H.Yasunaga ]
+
+if (isset($_POST["scode"])) {
+	$url = "http://" . $EMAP_SSAPI_SRV . "/cgi/ytc_securtycode_check.cgi";
+	
+	$data  = "?&cid=" . $D_DATA_CID;
+	$data .= "&kid=" . $body["kid"];
+	$data .= "&grpid=" . $D_YTC_SECURITY_RD_GROUP;
+	$data .= "&itmid=" . $D_YTC_SECURITY_RD_ITEM;
+	$data .= "&scode=" . $_POST["scode"];
+
+	$options = array('http' =>
+	 	array(
+    		'method' => 'POST',
+    		'content' => $data,
+		)
+	);
+	$options = stream_context_create($options);
+
+	$dat = file_get_contents($url,false,$options);
+	$json = zdc_json_decode($dat);
+	
+	$status = $json['status'];
+	$match = $json['match'];
+	$message = $json['message'];
+	
+	if ($status == true && $match == true) {
+		// セキュリティコード確認OK
+		// mod 2017/05/30 H.Yasunaga p_s系とp_f系のパラメータ生成方法変更 [
+		//$tmp_freeparm_enc = "&p_s1=$p_s1&p_s2=".urlencode($p_s2)."&p_s3=$p_s3&p_s4=$p_s4&p_s5=$p_s5&p_s6=$p_s6&p_s7=$p_s7&p_s8=$p_s8&p_s10=$p_s10&p_s13=$p_s13";
+		$tmp_freeparm_enc = $freeparms_enc;
+		// mod 2017/05/30 H.Yasunaga ]
+		$url = $D_BASE_URL."d.htm?ksid=".$body["kid"] . "&" . $tmp_freeparm_enc.'&p_f3=1' . "&scodecheck=1";
+		// add 2017/05/30 H.Yasunaga  hisパラメータ追加[
+		if ($D_YTC_BACK_BUTTON) {
+			// セキュリティコード入力画面は、店舗一覧から引き継いだhisパラメータを操作せずに詳細画面へ渡す
+			$url .= "&his=" . $his;
+		}
+		// add 2017/05/30 H.Yasunaga ]
+		header("location: $url");
+		exit;
+	} else {
+		// セキュリティコード確認エラー
+		$body["scodeerror"] = "セキュリティコード認証に失敗しました。";
+	}
+}
+
+
+if (!isset($D_HEADER_TITLE)) $D_HEADER_TITLE = "";
+
+if( isset($D_HEADER_TITLE_DT) && $D_HEADER_TITLE_DT ){
+	$header["TITLE"] = $D_HEADER_TITLE_DT;
+} else {
+	$header["TITLE"] = $D_HEADER_TITLE;
+}
+
+// フッター制御
+if (!isset($D_CORP_NAME)) $D_CORP_NAME = "";
+if (!isset($D_TOP_TXT)) $D_TOP_TXT = "";
+if (!isset($D_COPYRIGHT_TXT)) $D_COPYRIGHT_TXT = "";
+
+if($SETTING["noncpdata"] == "S"){
+	$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.(isset($D_OPT_BACKTO_TOP) && $D_OPT_BACKTO_TOP && isset($opt) && $opt != "" ? "&opt=$opt" : "");
+	
+	if (isset($D_MYAREA_USE) && $D_MYAREA_USE) {
+		//初期化
+		$footer["p_s2"] = "";
+		$footer["p_s3"] = "";
+		$footer["lm"]   = "";
+		if (!isset($myar)) $myar = "";
+
+		$footer["search_top"] .= "&myar=".$myar."&lm=".$lm;
+		if (isset($p_s2) && $p_s2 != "") 
+		$footer["p_s2"] = urlencode(str_replace(" ", "+", $p_s2));
+		if (isset($p_s3) && $p_s3 != "") 
+		$footer["p_s3"] = urlencode(str_replace(" ", "+", $p_s3));
+		if (isset($lm) && $lm != "") 
+		$footer["lm"]   = urlencode(str_replace(" ", "+", $lm));
+		// テスト環境フラグ
+		if ($D_EMAP_ENV == "test") {
+			$footer["test_flg"] = "1";
+		} else {
+			$footer["test_flg"] = "";
+		}
+	}
+	$footer["search_top"] .= (isset($D_OPTCD_BACKTO_TOP) && $D_OPTCD_BACKTO_TOP && isset($optcd) && $optcd != '' ? "&optcd=$optcd" : '');
+	$body["search_top"] = $footer["search_top"];
+	$footer["TOPTXT"] = $D_TOP_TXT;
+}
+$footer["CORPNAME"] = $D_CORP_NAME;
+$footer["COPYTXT"] = $D_COPYRIGHT_TXT;
+
+if ($body_cst) {
+	$header = array_merge($header, $body_cst);
+	$body = array_merge($body, $body_cst);
+	$footer = array_merge($footer, $body_cst);
+}
+
+
+
+
+//-------------------
+// 画面出力
+//-------------------
+
+if (isset($D_XHTML) && $D_XHTML) header("Content-type: application/xhtml+xml;charset=Shift_JIS");
+else header("Content-Type: text/html;charset=Shift_JIS");
+$HtmlTemplate = new HtmlTemplate();
+$head_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."header.tpl",$header);
+
+echo $carrier->ConvertPictString($head_html, "SJIS", "EUC-JP");
+
+// コンテンツ
+$content_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."ytc_scode.tpl",$body);
+echo $carrier->ConvertPictString($content_html, "SJIS", "EUC-JP");
+
+// フッタ
+$foot_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."footer.tpl",$footer);
+echo $carrier->ConvertPictString($foot_html, "SJIS", "EUC-JP");
+
+
+
+?>

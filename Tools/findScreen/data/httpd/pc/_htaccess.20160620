@@ -1,0 +1,11 @@
+RewriteEngine On
+
+#sample
+#RewriteRule (.*) http://172.29.0.35/pc/index.htm?cid=docomoid [R=301,L]
+
+
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule ^(.*) - [E=HTTP_AUTHORIZATION:%1]
+
+#RewriteRule ^(.*)$ dispatch.fcgi [E=X-HTTP_AUTHORIZATION:%{HTTP:Authorization},QSA,L]
+

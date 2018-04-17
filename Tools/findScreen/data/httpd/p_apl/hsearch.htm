@@ -1,0 +1,860 @@
+<?php
+/*========================================================*/
+// セブンミール業務支援向け 複数店舗検索
+//
+// 更新履歴
+// 2011/11/16 H.Osamoto		新規作成
+// 2012/02/28 H.Osamoto		オープン日による絞込みを無条件から「$D_OPENDAY_FLG」による制御に変更
+// 2012/05/30 H.Osamoto		データ実行処理を分割する為根本的に作り直し
+// 2012/08/01 Y.Matsukawa	error_reporting記述削除
+// 2013/03/18 H.Osamoto		店渡しのみカラム追加
+// 2014/03/26 H.Osamoto		直線距離を道のり距離に変更
+// 2014/04/28 H.Osamoto		SMS業務支援にて使用していたD_DIST_ABSをD_ABS_DISTに変更
+/*========================================================*/
+
+	//error_reporting(0);		del 2012/08/01 Y.Matsukawa
+	//if(DEBUG) error_reporting(E_ALL ^ E_NOTICE);		del 2012/08/01 Y.Matsukawa
+
+	set_time_limit(600);
+
+	require_once('/home/emap/src/p/inc/define.inc');
+
+	require_once('/home/emap/src/p/inc/valid_util.inc');
+	require_once('/home/emap/src/p/inc/hsearch_func.inc');
+	
+	//-------------------
+	// データベース定義
+	//-------------------
+	require_once('d_serv_ora.inc');
+	include('/home/emap/src/p/inc/oraDBAccessMst.inc');	// ファイル設置後削除
+
+	//-------------------
+	// Basic認証
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+	//-------------------
+	// 動作許可チェック
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_accept.inc');
+
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	// add 2014/03/26 H.Osamoto [
+	
+	// nkyoten.cgi実行結果における緯度カラム
+	$D_LAT_COL_NKYOTEN = 1;
+	// nkyoten.cgi実行結果における経度カラム
+	$D_LON_COL_NKYOTEN = 2;
+	
+	// ルート距離算出
+	function getRouteDistance($slat, $slon, $elat, $elon) {
+		global $D_SSAPI;
+		global $D_SSAPI_KEY;
+		// ルートCGI
+		$url = sprintf("%s?key=%s&enc=%s&sty=%s&stx=%s&edy=%s&edx=%s",$D_SSAPI["searchroute"], $D_SSAPI_KEY, "EUC", $slat, $slon, $elat, $elon);
+		$xml = file_get_contents($url);
+		$dat = simplexml_load_string($xml);
+		
+		return $dat->status->distance;
+	}
+	// add 2014/03/26 H.Osamoto ]
+
+	/*==============================================*/
+	// 登録制限
+	/*==============================================*/
+	define("CSVFILE_MAXSIZE" , "28000000" );	//--- CSVファイルサイズ上限
+	define("D_MAX_CSVCNT", 500);				//--- CSV入力件数上限
+	define("D_CSV_STRLEN1", 15);				//--- 入力CSV項目1の文字列長
+	define("D_CSV_STRLEN2", 100);				//--- 入力CSV項目2の文字列長
+	define("D_CSV_STRLEN3", 15);				//--- 入力CSV項目3の文字列長
+
+	define("D_GEO_COUNT_ONCE", 5);						//--- ジオコーディングで1回に処理するレコード数
+	if (!isset($D_CSV_SHOP_CNT)) $D_CSV_SHOP_CNT = 5;	//--- 最寄り店舗取得数
+
+	$corp_id = $D_CID;	// 企業ID
+	$tpl["cid"] = $corp_id;
+	
+	$LOG_DIR = "/var/tmp/";					// ログディレクトリ
+	$LOG_FILE = $LOG_DIR."hsearch.log";		// ログファイル名
+	
+	if ($csv_flg && !$exec_flg) {
+		// CSVデータアップロード
+		
+		//-----------------------------------------------
+		// POSTパラメータ取得
+		//-----------------------------------------------
+		if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			if ($_FILES) {
+				$data         = $_FILES['data']['tmp_name'];
+				$file_size     = $_FILES['data']['size'];
+			}
+		}
+		
+		// 既存ログファイル削除
+		if (file_exists($LOG_FILE)) {
+			unlink($LOG_FILE);
+		}
+		
+		// ログ出力開始
+		error_log("\n======複数店舗検索(hsearch.htm)[$corp_id]【開始】======\n", 3, $LOG_FILE);
+		error_log("CGI実行日時[".date("Y/m/d H:i:s")."]\n", 3, $LOG_FILE);
+		
+		error_log("■CGI実行パラメータ\n", 3, $LOG_FILE);
+		error_log("  cid[$corp_id]\n",     3, $LOG_FILE);
+		error_log("  data[$data]\n",       3, $LOG_FILE);
+		
+		//-----------------------------------------------
+		// ファイルチェック
+		//-----------------------------------------------
+		// data 
+		if (!$data) {
+			// エラー
+			
+			error_log("[$corp_id] エラー：ファイル未指定\n", 3, $LOG_FILE);
+			$msg = "ファイルを選択して下さい";
+			
+		} else if ($_FILES['data']['size'] >= CSVFILE_MAXSIZE) {
+			// ファイルサイズがCSVFILE_MAXSIZEを超えている場合
+			
+			error_log("[$corp_id] エラー：ファイルサイズオーバー\n", 3, $LOG_FILE);
+			$msg = "ファイルサイズが大きすぎます";
+			
+		} else if (empty($data)) {
+			// ファイル未指定
+			
+			error_log("[$corp_id] エラー：ファイル未指定\n", 3, $LOG_FILE);
+			$msg = "ファイルを選択して下さい";
+			
+		} else if (strtolower(substr($_FILES['data']['name'], -4)) != '.csv'){
+			// 拡張子チェック
+			
+			error_log("[$corp_id] エラー：非csv形式\n", 3, $LOG_FILE);
+			$msg = "csvファイルを選択して下さい";
+			
+		} else if ($file_size <= 0) {
+			// ファイルサイズが０
+			
+			error_log("[$corp_id] エラー：0バイトファイル\n", 3, $LOG_FILE);
+			$msg = "指定ファイルのデータが空です";
+		}
+		
+
+		// エラーメッセージがない場合のみ実行
+		if (!$msg) {
+			unset($exec_flg);		// 処理実行中フラグ初期化
+			unset($complete_flg);	// 処理完了フラグ初期化
+			$end_count = 0;			// 処理実行済みデータブロック数
+			
+			// バッチID生成
+			$batch_id = createBatchId();
+			error_log("  batch_id[$batch_id]\n", 3, $LOG_FILE);
+			
+			$cwd = getcwd();
+			// CSVファイル読込
+			unset ($all_csv_cnt);
+			include('/home/emap/src/p/inc/hsearch_read_csv.inc');
+			$chunk_count = count($arr_data_line_chunk);
+			error_log("[$corp_id] batch_kyoten_read_csv complete\n", 3, $LOG_FILE);
+			error_log("[$corp_id] chunk_count[$chunk_count]\n", 3, $LOG_FILE);
+			
+			// DB接続
+			$dba = new oraDBAccessMst();
+			if (!$dba->open()) {
+				$dba->close();
+				exit(0);
+			}
+			
+			//--------------------------------------
+			// データ行をDBに保存
+			// ※処理単位毎に保存します（SEQNO=1〜c）
+			//--------------------------------------
+			// 処理単位毎にワークに登録
+			if (!hsearch_ins_all($dba, $batch_id, $arr_data_line_chunk)) {
+				$dba->commitTransaction();
+				$dba->close();
+				exit;
+			}
+			// DBクローズ
+			$dba->close();
+			
+			unset($arr_data_line_chunk);
+			error_log("[$corp_id] hsearch_ins_all complete\n", 3, $LOG_FILE);
+			
+			// データ件数チェック
+			
+			// 総件数が上限を超えていた場合はエラーメッセージを出力
+			if ($all_csv_cnt > D_MAX_CSVCNT) {
+				error_log("件数が". D_MAX_CSVCNT ."件を超えています。\n", 3, $LOG_FILE);
+				$msg = "件数が". D_MAX_CSVCNT ."件を超えています。";
+			} else {
+				$exec_flg = 1;
+			}
+		}
+	}
+	
+	// 検索処理実行
+	if ($exec_flg && !$csv_flg) {
+		
+		// CSVデータ参照
+		
+		if (!$line_no) $line_no = 0; // 実行済み行数
+		if (!$seqno)   $seqno   = 1; // 実行済みブロック数
+		
+		unset($csv_data_list);
+		unset($line_list);     // パース済みCSVリスト
+		unset($addr_list);     // 正常なデータのみの行数、住所リスト
+		
+		$okcnt  = 0; // 正常データ件数
+		
+		$dba = new oraDBAccessMst();
+		if (!$dba->open()) {
+			$dba->close();
+			exit(0);
+		}
+		
+		//重複チェック(ブラウザバック対策)
+		if (!hsearch_result_check($dba, $batch_id, $seqno)) {
+			
+			//検索結果が登録済みでなければCLOBのデータを参照してくる
+			hsearch_work_read($dba, $batch_id, $seqno, $csv_data_list);
+		}
+		
+		if (count($csv_data_list)) {
+			
+			foreach ($csv_data_list as $n => $line) {
+				$line_no++;
+				
+				// データチェック
+				
+				if(!strlen($line)) continue;
+				$datas = explode(',', $line);
+				
+				unset($ldata);
+				$ldata["line_no"] = $line_no; // 行番号
+				
+				// 読込レコードのエラーチェック
+				if (count($datas) != 2 && count($datas) != 3) {
+					
+					// カラム数不正
+					$ldata["err_code"] = 701;
+					$ldata["err_msg"]  = "フィールド数が合っていません。";
+					
+					error_log("フィールド数が合っていません：No[$datas[0]], Addr[$datas[1]], shopNo[".str_replace(array("\r\n","\n"), '', $datas[2])."]\n", 3, $LOG_FILE);
+					
+				} elseif (strlen(trim($datas[0])) > D_CSV_STRLEN1 ||
+						  strlen(trim($datas[1])) > D_CSV_STRLEN2 ||
+						  strlen(trim($datas[2])) > D_CSV_STRLEN3) {
+					
+					// フィールドサイズ不正
+					$ldata["err_code"] = 702;
+					$ldata["err_msg"]  = "フィールドのサイズがオーバーしています。";
+					
+					error_log("フィールドのサイズがオーバー：No[$datas[0]], Addr[$datas[1]], shopNo[".str_replace(array("\r\n","\n"), '', $datas[2])."]\n", 3, $LOG_FILE);
+					
+				} elseif ($datas[1] == "") {
+					
+					// 必須項目未設定
+					$ldata["err_code"] = 703;
+					$ldata["err_msg"]  = "お客様住所が未入力です。";
+					
+					error_log("お客様住所が未入力です：No[$datas[0]], Addr[$datas[1]], shopNo[".str_replace(array("\r\n","\n"), '', $datas[2])."]\n", 3, $LOG_FILE);
+				}
+				
+				// 基礎データセット
+				
+				$ldata["no"]      = substr(trim($datas[0]), 0, 30); // ご利用者番号
+				$ldata["addr"]    = substr(trim($datas[1]), 0, 200); // お客様住所(EUC
+				$ldata["shop_no"] = substr(trim($datas[2]), 0, 15); // 受付店舗No
+				
+				if (!$ldata["err_code"]) {
+					
+					unset($addr_data);
+					$addr_data["line_no"]  = $line_no;
+					$addr_data["addr"] = $ldata["addr"];
+					$addr_list[] = $addr_data;
+					
+					$okcnt++;
+				}
+				
+				$line_list[] = $ldata;
+			}
+		}
+		
+		// CSVデータ検索処理
+		
+		if ($okcnt) {
+			
+			// ジオコーディング
+			
+			$geo_dat = array();
+			$geo_cnt = 0;
+			$geo_cnt_max = ceil($okcnt / D_GEO_COUNT_ONCE);
+			
+			foreach ($addr_list as $i => $addr) {
+				
+				$w_arr_addr[] = $addr["addr"];
+				
+				if ((($i + 1) % D_GEO_COUNT_ONCE) == 0 || (($i + 1) == $okcnt)) {
+					$url = sprintf("%s?key=%s&enc=%s&mclv=%d&sep=&tod=&frewd=%s", $D_SSAPI["mselectaddr"],$D_SSAPI_KEY,"EUC",6,urlencode( implode( "\n",$w_arr_addr )));
+
+					// mselectaddr.cgi実行
+					$w_geo_dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+					foreach($w_geo_dat as $key => $w_dat){
+						if ($key == 0) continue;
+						$geo_dat[] = $w_dat;
+					}
+					unset($w_arr_addr);
+				}
+			}
+			
+			$search_point  = array(); // 受付店舗の座標データ
+			$near_shop_dat = array(); // 最寄店舗の座標データ
+			
+			foreach ($geo_dat as $i => $buf2) {
+				$line_no = $addr_list[$i]["line_no"];
+				
+				if (!$buf2 || !$line_no) continue;
+				
+				$rec = explode("\t",$buf2);
+				$search_point[$line_no]["lat"]       = intval($rec[6]);		// 緯度
+				$search_point[$line_no]["lon"]       = intval($rec[7]);		// 経度
+				$search_point[$line_no]["match_str"] = $rec[5];				// マッチした住所文字列(EUC
+				$search_point[$line_no]["match_lvl"] = $rec[1];				// 側位レベル(EUC
+			}
+
+			//-----------------------------------------------
+			// 指定店舗検索
+			//-----------------------------------------------
+			
+			foreach ($line_list as &$ldata) {
+				if ($ldata["err_code"]) continue; // エラーデータはスキップ
+				
+				$line_no = $ldata["line_no"];
+				$pdata = $search_point[$line_no];
+				
+				$ldata["lat"] = $pdata["lat"];
+				$ldata["lon"] = $pdata["lon"];
+				$ldata["match_str"] = $pdata["match_str"];
+				$ldata["match_lvl"] = $pdata["match_lvl"];
+				
+				if ($ldata["shop_no"]) {
+					$cgi_specified = $D_SSAPI["nkyoten"];
+					//	$jkn  = "( $D_SMS_FLG_COL:1 OR $D_SMS_FLG_COL:2 )";	// セブンミールサービスフラグ
+					$jkn  = "( $D_SMS_FLG_COL:1 OR $D_SMS_FLG_COL:2 OR $D_SMS_FLG_COL:3 )";	// セブンミールサービスフラグ	// mod 2013/03/18 H.Osamoto
+					$jkn .= "+AND+".$D_SHOP_ID_COL.":'".$ldata["shop_no"]."'";	// 指定店舗No
+					// mod 2012/02/28 H.Osamoto [
+					//	$jkn .= "+AND+".$D_OPENDAY_COL.":DT:LTE:SYSDATE";		// オープン前店舗を除外
+					if ($D_OPENDAY_FLG) {
+						$jkn .= "+AND+".$D_OPENDAY_COL.":DT:LTE:SYSDATE";		// オープン前店舗を除外
+					}
+					// mod 2012/02/28 H.Osamoto ]
+					if ($cond1) $jkn .= "+AND+".$D_COND_COL.":'".$cond1."'";	// 酒取扱絞り込み
+					
+					// 2014/03/26 H.Osamoto mod [
+					//	$url_specified = sprintf("%s?key=%s&cid=%s&opt=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&latlon=%s&jkn=%s&rad=%s&knsu=%d&hour=%s",
+					//					$cgi_specified,$D_SSAPI_KEY,$D_DATA_CID,$D_DATA_CID,"1",$D_CSV_SHOP_CNT,"EUC",$pdata["lat"],$pdata["lon"],"",urlencode($jkn),3000000,1,"1");
+					$url_specified = sprintf("%s?key=%s&cid=%s&opt=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&latlon=%s&jkn=%s&rad=%s&knsu=%d&hour=%s&cust=%s",
+									$cgi_specified,$D_SSAPI_KEY,$D_DATA_CID,$D_DATA_CID,"1",$D_CSV_SHOP_CNT,"EUC",$pdata["lat"],$pdata["lon"],"",urlencode($jkn),3000000,1,"1","SMSG");
+					// 2014/03/26 H.Osamoto mod ]
+
+					// nkyoten.cgi実行（指定店舗検索）
+					$w_specified_shop_dat = ZdcHttpRead($url_specified,0,$D_SOCKET_TIMEOUT);
+					
+					// 取得データ処理（必要データのみ配列に格納）
+					list($status, $cnt) = explode("\t", $w_specified_shop_dat[0]);
+					
+					// ステータスがない場合は再度実行
+					if (!$status){
+						// nkyoten.cgi実行（指定店舗検索）
+						$w_specified_shop_dat = ZdcHttpRead($url_specified,0,$D_SOCKET_TIMEOUT);
+
+						// 取得データ処理（必要データのみ配列に格納）
+						list($status, $cnt) = explode("\t", $w_specified_shop_dat[0]);
+					}
+					
+					if (substr($status, 3, 1) == "0") {
+						
+						$rec = $w_specified_shop_dat[1];
+						$rec = explode("\t", $rec);
+						
+						$w_specified_shop = null;
+						$w_specified_shop[] = $rec[$D_SHOP_NAME_COL_NKYOTEN]; 	// 最寄店舗名
+						$w_specified_shop[] = ($rec[$D_SHOP_SAKE_COL_NKYOTEN]) ? '有' : '無'; 	// 酒取扱フラグ
+						// 2014/03/26 H.Osamoto mod [
+						//	$w_specified_shop[] = sprintf("%1.2fkm",round($rec[$D_DISTANCE_COL_NKYOTEN]/1000, 2));		// 直線距離
+						if($rec[$D_DISTANCE_COL_NKYOTEN] == "@@ERR@@") {
+							// 直線8kmを超える場合はエラー表示
+							$w_specified_shop[] = "エラー（直線8km超）";		// エラー「エラー（直線8km超）」
+						} else {
+							// 直線8km以内の場合は道のり距離算出
+							$w_specified_shop[] = sprintf("%1.2fkm",round($rec[$D_DISTANCE_COL_NKYOTEN]/1000, 2).'km');
+						}
+						// 2014/03/26 H.Osamoto mod ]
+						// add 2013/03/18 H.Osamoto [
+						// セブンミールサービスフラグ
+						if ($rec[$D_SMS_FLG_COL_NKYOTEN] == "2") {
+							$w_specified_shop[] = "店受取り限定";
+						// 2014/03/26 H.Osamoto add [
+						} else if ($rec[$D_SMS_FLG_COL_NKYOTEN] == "3") {
+							$w_specified_shop[] = "郵送入会限定";
+						// 2014/03/26 H.Osamoto add ]
+						} else {
+							$w_specified_shop[] = "";
+						}
+						// add 2013/03/18 H.Osamoto ]
+						
+						//add 2014/03/26 H.Osamoto [
+						if (($rec[$D_SMS_FLG_COL_NKYOTEN] == "2") || ($rec[$D_SMS_FLG_COL_NKYOTEN] == "3")) {
+							$w_specified_shop[] = "-";
+						} else if ($rec[$D_SMS_DELIVERY_DIST_COL_NKYOTEN]) {
+							$w_specified_shop[] = sprintf("%1.2fkm",round($rec[$D_SMS_DELIVERY_DIST_COL_NKYOTEN]/1000, 2));	// SMSお届け距離設定
+						} else {
+							$w_specified_shop[] = "-";
+						}
+						//add 2014/03/26 H.Osamoto ]
+						$specified_shop_dat[$line_no] = $w_specified_shop;
+						
+						$dkid = $rec[0];	// 指定店舗は除外
+					} else {
+						$dkid = null;	// 除外店舗はなし
+					}
+				}
+				
+				// 最寄り店舗検索
+				$cgi = $D_SSAPI["nkyoten"];
+				//	$jkn  = "( $D_SMS_FLG_COL:1 OR $D_SMS_FLG_COL:2 )";	// セブンミールサービスフラグ	// mod 2013/03/18 H.Osamoto
+				$jkn  = "( $D_SMS_FLG_COL:1 OR $D_SMS_FLG_COL:2 OR $D_SMS_FLG_COL:3 )";	// セブンミールサービスフラグ
+				// mod 2012/02/28 H.Osamoto [
+				//	$jkn .= "+AND+".$D_OPENDAY_COL.":DT:LTE:SYSDATE";		// オープン前店舗を除外
+				if ($D_OPENDAY_FLG) {
+					$jkn .= "+AND+".$D_OPENDAY_COL.":DT:LTE:SYSDATE";		// オープン前店舗を除外
+				}
+				// mod 2012/02/28 H.Osamoto ]
+				if ($cond1) $jkn .= "+AND+".$D_COND_COL.":'".$cond1."'";	// 酒取扱絞り込み
+				
+				// mod 2014/03/26 H.Osamoto [
+				//	$url = sprintf("%s?key=%s&cid=%s&opt=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&latlon=%s&jkn=%s&rad=%s&knsu=%d&hour=%s",
+				//					$cgi,$D_SSAPI_KEY,$D_DATA_CID,$D_DATA_CID,"1",$D_CSV_SHOP_CNT,"EUC",$pdata["lat"],$pdata["lon"],"",urlencode($jkn),$D_DIST_ABS,$D_CSV_SHOP_CNT,"1");
+				$url = sprintf("%s?key=%s&cid=%s&opt=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&latlon=%s&jkn=%s&rad=%s&knsu=%d&hour=%s&absdist=%s&cust=%s",
+								$cgi,$D_SSAPI_KEY,$D_DATA_CID,$D_DATA_CID,"1",$D_CSV_SHOP_CNT,"EUC",$pdata["lat"],$pdata["lon"],"",urlencode($jkn),$D_ABS_DIST,$D_CSV_SHOP_CNT,"1",$D_ABS_DIST,"SMSG");
+				// mod 2014/03/26 H.Osamoto ]
+				// 除外拠点ID
+				if ($dkid) $url .= "&exkid=".$dkid;
+				
+				// nkyoten.cgi実行（最寄り店舗検索）
+				$w_near_shop_dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+
+				// 取得データ処理（必要データのみ配列に格納）
+				list($status, $cnt) = explode("\t", $w_near_shop_dat[0]);
+
+				// ステータスがない場合は再度実行
+				if (!$status){
+					// nkyoten.cgi実行（最寄り店舗検索）
+					$w_near_shop_dat = ZdcHttpRead($url,0,$D_SOCKET_TIMEOUT);
+
+					// 取得データ処理（必要データのみ配列に格納）
+					list($status, $cnt) = explode("\t", $w_near_shop_dat[0]);
+				}
+				
+				if (substr($status, 3, 1) == "0") {
+					
+					for ($i=0; $i<$cnt; $i++) {
+						$rec = $w_near_shop_dat[$i+1];
+						$rec = explode("\t", $rec);
+						
+						$w_nkyoten = null;
+						$w_nkyoten[] = $rec[$D_SHOP_ID_COL_NKYOTEN]; 	// 最寄店舗No
+						$w_nkyoten[] = $rec[$D_SHOP_NAME_COL_NKYOTEN]; 	// 最寄店舗名
+						$w_nkyoten[] = ($rec[$D_SHOP_SAKE_COL_NKYOTEN]) ? '有' : '無'; 	// 酒取扱フラグ
+						// 2014/03/26 H.Osamoto mod [
+						//	$w_nkyoten[] = sprintf("%1.2fkm",round($rec[$D_DISTANCE_COL_NKYOTEN]/1000, 2));		// 直線距離
+						if($rec[$D_DISTANCE_COL_NKYOTEN] == "@@ERR@@") {
+							// 直線8kmを超える場合はエラー表示
+							$w_nkyoten[] = "エラー（直線8km超）";		// エラー「エラー（直線8km超）」
+						} else {
+							// 直線8km以内の場合は道のり距離算出
+							$w_nkyoten[] = sprintf("%1.2fkm",round($rec[$D_DISTANCE_COL_NKYOTEN]/1000, 2));		// 道のり距離
+						}
+						// 2014/03/26 H.Osamoto mod ]
+						// add 2013/03/18 H.Osamoto [
+						// セブンミールサービスフラグ
+						if ($rec[$D_SMS_FLG_COL_NKYOTEN] == "2") {
+							$w_nkyoten[] = "店受取り限定";
+						// 2014/03/26 H.Osamoto add [
+						} else if ($rec[$D_SMS_FLG_COL_NKYOTEN] == "3") {
+							$w_nkyoten[] = "郵送入会限定";
+						// 2014/03/26 H.Osamoto add ]
+						} else {
+							$w_nkyoten[] = "";
+						}
+						// add 2013/03/18 H.Osamoto ]
+						//add 2014/03/26 H.Osamoto [
+						if (($rec[$D_SMS_FLG_COL_NKYOTEN] == "2") || ($rec[$D_SMS_FLG_COL_NKYOTEN] == "3")) {
+							$w_nkyoten[] = "-";
+						} else if ($rec[$D_SMS_DELIVERY_DIST_COL_NKYOTEN]) {
+							$w_nkyoten[] = sprintf("%1.2fkm",round($rec[$D_SMS_DELIVERY_DIST_COL_NKYOTEN]/1000, 2));	// SMSお届け距離設定
+						} else {
+							$w_nkyoten[] = "-";
+						}
+						//add 2014/03/26 H.Osamoto ]
+						$near_shop_dat[$line_no][] = $w_nkyoten;
+					}
+				}
+			}
+			
+			// 検索結果登録
+			
+			foreach ($line_list as &$ldata) {
+				if ($ldata["err_code"]) continue; // エラーデータはスキップ
+				
+				$line_no = $ldata["line_no"];
+				
+				$near_shop = $near_shop_dat[$line_no];
+				$spfd_shop = $specified_shop_dat[$line_no];
+				
+				// 基礎データセット
+				
+				$ldata["shop_name"] = $spfd_shop[0]; // 受付店舗名
+				$ldata["shop_sake"] = $spfd_shop[1]; // 受付店舗酒取扱
+				$ldata["shop_dist"] = $spfd_shop[2]; // 直線距離
+				$ldata["shop_smsflg"] = $spfd_shop[3]; // セブンミールサービス種別		// add 2013/03/18 H.Osamoto
+				$ldata["shop_delidist"] = $spfd_shop[4]; // SMSお届け距離設定			// add 2014/03/26 H.Osamoto
+				
+				// エラーメッセージ生成
+				
+				if ($ldata["match_lvl"] == "NO MATCH") {
+					// 住所マッチングしなかった場合
+					
+					$ldata["err_code"] = "704"; // エラーコード
+					$ldata["err_msg"]  = "該当するお客様住所が存在しません。"; // エラーメッセージ
+					
+				} else {
+					
+					// 受付店舗Noの店舗が入力されいていて且つ該当の店舗が存在しない場合
+					if ($ldata["shop_no"] && !$ldata["shop_name"]) {
+						
+						$ldata["err_code"] = "705"; // エラーコード
+						$ldata["err_msg"]  = "該当する受付店舗Noが存在しません。"; // エラーメッセージ
+					}
+					
+					// 検索結果セット
+					foreach ($near_shop as $n => $nshop) {
+						$number = $n + 1;
+						
+						if ($nshop[0]) {
+							$ldata["nshop_no".$number]   = $nshop[0]; // 最寄店舗
+							$ldata["nshop_name".$number] = $nshop[1]; // 最寄店舗名
+							$ldata["nshop_sake".$number] = $nshop[2]; // 最寄店舗酒取扱
+							$ldata["nshop_dist".$number] = $nshop[3]; // 直線距離
+							$ldata["nshop_smsflg".$number] = $nshop[4]; // セブンミールサービス種別		// add 2013/03/18 H.Osamoto
+							$ldata["nshop_delidist".$number] = $nshop[5]; // SMSお届け距離設定		// add 2014/03/26 H.Osamoto
+						}
+					}
+				}
+				
+			}
+			
+			// 登録処理
+			hsearch_result_ins($dba, $batch_id, $seqno, $line_list, $D_CSV_SHOP_CNT);
+		}
+		
+		$end_count++; // 処理実行済みデータブロック数
+		$seqno++;     // SEQ
+		
+		// DBクローズ
+		$dba->close();
+		
+		error_log("  end_count/chunk_count[$end_count/$chunk_count]\n", 3, $LOG_FILE);
+		
+		// 全件終了の場合はCSVダウンロードフラグ立てる
+		if ($end_count >= $chunk_count) {
+			$complete_flg = 1;
+		}
+	}
+
+	// CSVファイルダウンロードボタン表示
+	if ($complete_flg) {
+		// 実行済みフラグ下げる
+		unset($exec_flg);
+	}
+
+
+	//-----------------------------------------------
+	// 出力処理
+	//-----------------------------------------------
+	
+	if ($csvdl) {
+		
+		// CSV出力
+		
+		// DLCSV用のマッチレベル文字列
+		$MATCH_LVL_MAP = array (
+			'EBN' => "枝番レベル",
+			'TBN' => "地番レベル",
+			'GIK' => "街区レベル",
+			'AZC' => "字丁目レベル",
+			'OAZ' => "大字レベル",
+			'SHK' => "市区町村レベル",
+			'KEN' => "都道府県レベル",
+		);
+		
+		// DLCSV用のカラムマッピング
+		$CSV_KEY_MAP = array ();
+		$CSV_KEY_MAP[] = array (key => 'ERR_CODE',		clm_name => 'エラーコード');
+		$CSV_KEY_MAP[] = array (key => 'ERR_MSG',		clm_name => 'エラーメッセージ');
+		$CSV_KEY_MAP[] = array (key => 'NO',			clm_name => 'ご利用者番号');
+		$CSV_KEY_MAP[] = array (key => 'ADDR',			clm_name => 'お客様住所');
+		$CSV_KEY_MAP[] = array (key => 'SHOP_NO',		clm_name => '受付店舗No');
+		$CSV_KEY_MAP[] = array (key => 'SHOP_NAME',		clm_name => '受付店舗名');
+		$CSV_KEY_MAP[] = array (key => 'SHOP_SAKE',		clm_name => '受付店舗酒取扱');
+		$CSV_KEY_MAP[] = array (key => 'NSHOP_DIST20',	clm_name => 'SMSお届け距離設定');	// add 2014/03/26 H.Osamoto
+		//	$CSV_KEY_MAP[] = array (key => 'SHOP_DIST',		clm_name => '直線距離');	// mod 2014/03/26 H.Osamoto
+		$CSV_KEY_MAP[] = array (key => 'SHOP_DIST',		clm_name => '道のり距離');
+		//	$CSV_KEY_MAP[] = array (key => 'SHOP_SMSFLG',	clm_name => '店渡しのみ');		// add 2013/03/18 H.Osamoto		mod 2014/03/26 H.Osamoto
+		$CSV_KEY_MAP[] = array (key => 'SHOP_SMSFLG',	clm_name => 'お届けサービス区分');
+		$CSV_KEY_MAP[] = array (key => 'MATCH_LVL',		clm_name => '住所マッチングレベル');
+		
+		for ($i=1; $i <= $D_CSV_SHOP_CNT; $i++) {
+			$k = $i + 20;	// add 2014/03/26 H.Osamoto
+			$CSV_KEY_MAP[] = array (key => 'NSHOP_NO'.$i,		clm_name => '最寄店舗No'.$i);
+			$CSV_KEY_MAP[] = array (key => 'NSHOP_NAME'.$i,		clm_name => '最寄店舗名'.$i);
+			$CSV_KEY_MAP[] = array (key => 'NSHOP_SAKE'.$i,		clm_name => '最寄店舗酒取扱'.$i);
+			$CSV_KEY_MAP[] = array (key => 'NSHOP_DIST'.$k,		clm_name => '最寄店舗SMSお届け距離設定'.$i);		// add 2014/03/26 H.Osamoto
+			//	$CSV_KEY_MAP[] = array (key => 'NSHOP_DIST'.$i,		clm_name => '直線距離'.$i);		// mod 2014/03/26 H.Osamoto
+			$CSV_KEY_MAP[] = array (key => 'NSHOP_DIST'.$i,		clm_name => '道のり距離'.$i);
+			//	$CSV_KEY_MAP[] = array (key => 'NSHOP_SMSFLG'.$i,	clm_name => '店渡しのみ'.$i);		// add 2013/03/18 H.Osamoto		mod 2014/03/26 H.Osamoto
+			$CSV_KEY_MAP[] = array (key => 'NSHOP_SMSFLG'.$i,	clm_name => 'お届けサービス区分'.$i);
+		}
+		
+		$dba = new oraDBAccessMst();
+		if (!$dba->open()) {
+			$dba->close();
+			exit(0);
+		}
+		
+		unset($result_list);
+		hsearch_result_read($dba, $batch_id, $result_list, $D_CSV_SHOP_CNT);
+		
+		// DBクローズ
+		$dba->close();
+		
+		
+		// CSV本体データ作成
+		
+		unset ($csv_str_list); // CSVデータの配列
+		
+		$err_cnt   = 0; // エラー件数
+		$total_cnt = 0; // トータル件数
+		
+		foreach ($result_list as $line_data) {
+			
+			unset ($str_vals);
+			foreach ($CSV_KEY_MAP as $keyset) {
+				unset($str_val);
+				
+				// カラム毎に値の加工を行う
+				
+				$val = $line_data[$keyset['key']];
+				switch ($keyset['key']) {
+					case SHOP_NAME:
+						$str_val = ($val) ? $val : '-';
+						break;
+					case SHOP_SAKE:
+						$str_val = ($val) ? $val : '-';
+						break;
+					case SHOP_DIST:
+						$str_val = ($val) ? $val : '-km';
+						break;
+					// add 2013/03/18 H.Osamoto [
+					case SHOP_SMSFLG:
+						$str_val = $val;
+						break;
+					// add 2013/03/18 H.Osamoto ]
+					case MATCH_LVL:
+						$str_val = ($val) ? $MATCH_LVL_MAP[$val] : '';
+						break;
+					default:
+						$str_val = $val;
+						break;
+				}
+				
+				$str_vals[] = $str_val;
+			}
+			
+			$csv_str_list[] = mb_convert_encoding(implode(',', $str_vals), 'SJIS', 'EUC-JP');
+			
+			$total_cnt++; // トータル件数加算
+			if ($line_data['ERR_CODE']) $err_cnt++; // エラー件数加算
+		}
+		
+		// ヘッダー
+		unset ($header_list);
+		
+		$header_list[] = mb_convert_encoding (
+			sprintf("ダウンロード件数：%d件、エラー件数：%d件", $total_cnt, $err_cnt)
+			, 'SJIS', 'EUC-JP'
+		);
+		
+		unset($clm_name_list);
+		foreach ($CSV_KEY_MAP as $keyset) {
+			$clm_name_list[] = $keyset['clm_name'];
+		}
+		
+		$header_list[] = mb_convert_encoding (
+			implode (',', $clm_name_list), 'SJIS', 'EUC-JP'
+		);
+		
+		// ファイルデータ合体
+		
+		unset ($out_str);
+		$out_str .= implode("\n", $header_list);
+		$out_str .= "\n";
+		$out_str .= implode("\n", $csv_str_list);
+		$out_str .= "\n";
+		
+		//-------------------
+		// CSVファイル出力
+		//-------------------
+		// ファイル名はdlYYMMDDHHMM(DL件数_ERR件数).csv
+		$FNAME = sprintf("dl%s(%d_%d).csv", date("ymdHi"), $total_cnt, $err_cnt);
+		header("Content-Disposition: inline;filename=". $FNAME);
+		header("Content-Type: application/data");
+		print $out_str;
+		error_log("======複数店舗検索結果ダウンロード完了[$corp_id]【ダウンロード完了】======\n", 3, $LOG_FILE);
+		
+		// DB掃除
+		
+		$dba = new oraDBAccessMst();
+		if (!$dba->open()) {
+			$dba->close();
+			exit(0);
+		}
+		
+		hsearch_work_delete($dba, $batch_id);
+		hsearch_result_delete($dba, $batch_id);
+		
+		$dba->commitTransaction();
+		$dba->close();
+		
+		// ログ出力
+		ZdcLogPut(0);
+		
+	} else if ($complete_flg) {
+		// CSVファイルダウンロードボタン表示
+		
+		$tpl["complete_flg"] = $complete_flg;
+		
+		// batch_id
+		$tpl["batch_id"] = $batch_id;
+		
+		// 酒絞り込みフラグ
+		$tpl["cond1"] = $cond1;
+		
+		// 実行中メッセージ
+		$tpl["msg"] = "上のボタンからCSVファイルをダウンロードしてください。";
+		
+		// リンク
+		$tpl['_jsSetCond'] = 'ZdcEmapSetCond';
+		$tpl['_jsSetFreeParams'] = 'ZdcEmapSetFreeParams';
+		
+		//-------------------
+		// 画面出力
+		//-------------------
+		for ($i = 0;$i <= 4;$i ++) {
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		}
+		htmloutput($D_SYSDIR_COMPANY.'hsearch.tpl', $tpl);
+		for ($i = 6;$i <= 9;$i ++) {
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		}
+		error_log("CGI完了日時[".date("Y/m/d H:i:s")."]\n", 3, $LOG_FILE);
+		error_log("======複数店舗検索(hsearch.htm)[$corp_id]【正常終了】======\n", 3, $LOG_FILE);
+		
+	} else if ($exec_flg) {
+		// 処理実行中
+		
+		$tpl["exec_flg"] = $exec_flg;
+		$tpl["_body_style"] =  "style=\"cursor:wait;\"";
+		
+		// batch_id
+		$tpl["batch_id"] = $batch_id;
+		
+		// 実行済み行数
+		$tpl["line_no"] = $line_no;
+		
+		// SEQNO
+		$tpl["seqno"] = $seqno;
+		
+		// 酒絞り込みフラグ
+		$tpl["cond1"] = $cond1;
+		
+		// データブロック数
+		$tpl["chunk_count"] = $chunk_count;
+		
+		// 実行済みデータブロック数
+		$tpl["end_count"] = $end_count;
+		
+		$c_cnt = 0;
+		$i_cnt = 0;
+		for($i=0; $i < $chunk_count; $i++) {
+			// 進捗状況
+			if ($i < $end_count) {
+				$tpl["complete"][$c_cnt] = 1;
+				$c_cnt++;
+			} else {
+				$tpl["incomplete"][$i_cnt] = 1;
+				$i_cnt++;
+			}
+		}
+		
+		// リンク
+		$tpl['_jsSetCond'] = 'ZdcEmapSetCond';
+		$tpl['_jsSetFreeParams'] = 'ZdcEmapSetFreeParams';
+		$tpl["_jsInit"] = "setTimeout(setTimerSubmit, 1000);";
+		
+		//-------------------
+		// 画面出力
+		//-------------------
+		for ($i = 0;$i <= 4;$i ++) {
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		}
+		htmloutput($D_SYSDIR_COMPANY.'hsearch.tpl', $tpl);
+		for ($i = 6;$i <= 9;$i ++) {
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		}
+		
+	} else if (!$csv_flg || $msg) {
+		// CSV出力フラグがない（初期表示） or エラーメッセージ有りの場合
+
+		// ログ出力
+		ZdcLogPut(0);
+		
+		// 酒絞り込みフラグ
+		if (isset($cond1)) $tpl["cond1"] = $cond1;
+		
+		// 実行中メッセージ
+		if (isset($msg)) $tpl["msg"] = $msg;
+		
+		// リンク
+		$tpl['_jsSetCond'] = 'ZdcEmapSetCond';
+		$tpl['_jsSetFreeParams'] = 'ZdcEmapSetFreeParams';
+		
+		//-------------------
+		// 画面出力
+		//-------------------
+		for ($i = 0;$i <= 4;$i ++) {
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		}
+		htmloutput($D_SYSDIR_COMPANY.'hsearch.tpl', $tpl);
+		for ($i = 6;$i <= 9;$i ++) {
+			htmloutput($D_SYSDIR_COMPANY.'pageview_'.$i.'.tpl', $tpl);
+		}
+		
+	}
+
+
+?>

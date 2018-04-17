@@ -1,0 +1,107 @@
+<?PHP
+// ------------------------------------------------------------
+// フキダシ
+// 
+// 開発履歴
+// 2011/10/15 Y.Matsukawa	新規作成
+// 2012/08/03 H.Osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// 2013/03/15 H.Iijima		RDデータ取得
+// 2014/12/08 Y.Matsukawa	詳細地図にも検索位置マーカー表示（中心に表示）
+// 2015/03/18 N.Wada		拠点アイコンの表示に対応
+// 2015/10/20 N.Wada		検索結果件数の表示に対応
+// 2015/12/22 F.Yokoi		HTMLエンティティ文字の表示対応（別変数に追加）  
+// 2016/03/14 Y.Matsukawa	吹き出し（複数リスト）に連番表示
+// 2016/04/25 N.Wada		【不具合】吹き出し（複数リスト）の場合に、テンプレート情報が一部欠落する不具合を修正
+// 2016/12/12 H.Yasunaga	ヤマトロッカー対応 吹き出しに受け取り可能日時を表示
+// 2016/12/20 H.Yasunaga	ヤマトロッカー対応 ロッカーAPIエラー時の受取可能日時を"-"にする
+// 2017/05/11 H.Yasunaga	ヤマトロッカーセキュリティコード対応
+// ------------------------------------------------------------
+require_once('/home/emap/src/p/inc/define.inc');
+require_once('/home/emap/src/p/inc/act_get_parm.inc');
+require_once('/home/emap/src/p/inc/define_get_icon.inc');		// add 2015/03/18 N.Wada
+
+//-------------------
+// 画面設定
+//-------------------
+//拠点情報
+///tplに取り込む前に取得した内容の判定を行うので、ここで取得する
+$kyotenid_arr = ZdcSearchCgiKyotenid($kid,3);//拠点情報の取得
+$kyotenid_arr_raw = zdcHtmlspecialchars_arr_raw($kyotenid_arr);	// 2015/12/22 F.Yokoi add
+$kyotenid_arr = zdcHtmlspecialchars_arr($kyotenid_arr);		// 2012/08/03 H.Osamoto add
+//取得内容が配列で、かつ、すでに$tplが存在すれば、mergeを実施する
+if (isset($tpl) && $tpl != "" && is_array($tpl) && isset($kyotenid_arr) && is_array($kyotenid_arr)) {
+	$tpl = array_merge($tpl,$kyotenid_arr_raw); // 2015/12/22 F.Yokoi add　先に未変換のデータをマージ → 変換データ部分を上書きする
+	$tpl = array_merge($tpl,$kyotenid_arr);//拠点情報の取得
+} else {
+	//$tpl = $kyotenid_arr;//拠点情報の取得	mod 2016/04/25 N.Wada
+	if (!isset($kid0)) {
+		$tpl = $kyotenid_arr;//拠点情報の取得
+	}
+}
+
+for( $i=0; isset(${'kid'.$i}); $i++ ){
+	//	$tpl["fukilist"][$i] = ZdcSearchCgiKyotenid(${'kid'.$i},3);	//拠点情報の取得	2012/08/03 H.Osamoto mod
+	$tpl["fukilist"][$i] = zdcHtmlspecialchars_arr(ZdcSearchCgiKyotenid(${'kid'.$i},3));	//拠点情報の取得
+	$tpl["fukilist_raw"][$i] = zdcHtmlspecialchars_arr_raw(ZdcSearchCgiKyotenid(${'kid'.$i},3));	// 2015/12/22 F.Yokoi add
+}
+// add 2016/03/14 Y.Matsukawa [
+for ($i = 0; isset(${'lseq'.$i}); $i++) {
+	$tpl["fukilist"][$i]['lseq'] = ${'lseq'.$i};
+	if (${'lseq'.$i} < 10) $tpl["fukilist"][$i]['lseq_1d'] = 1;
+}
+// add 2016/03/14 Y.Matsukawa ]
+
+// 検索結果件数	add 2015/10/20 N.Wada
+if (isset($tpl["fukilist"])) {
+	$tpl["fukilist_cnt"] = count($tpl["fukilist"]);
+}
+
+// 検索位置		add 2014/12/08 Y.Matsukawa
+if (isset($srchplace)) $tpl["srchplace"] = $srchplace;
+
+///===> RDデータ取得 2013/03/15 H.Iijima
+$rd_grp= implode(",",$D_RD_GRP[3]);
+if($rd_grp){
+	$rd_info = ZdcSearchCgiRd($kid,$rd_grp);
+	if($rd_info){
+		$tpl = array_merge($tpl,$rd_info);
+	}
+}
+// add 2016/12/12 H.Yasunaga ヤマトロッカー対応 [
+if (isset($D_YTC_LOCKER) && $D_YTC_LOCKER) {
+	if (isset($rdate) && $rdate) {
+		// add 2016/12/20 H.Yasunaga ロッカーAPIエラー時の受取可能日時を"-"にする[
+		// ロッカーAPIエラー時はrdateに'error'が入る
+		if ($rdate != 'error') {
+		// add 2016/12/20 H.Yasunaga ]
+			$tpl["uketoriKanoDate"] = date("n月j日", strtotime($rdate)) . "〜";
+		// add 2016/12/20 H.Yasunaga ロッカーAPIエラー時の受取可能日時を"-"にする[
+		} else {
+			$tpl["uketoriKanoDate"] = "-";
+		}
+		// add 2016/12/20 H.Yasunaga ]
+	}else {
+		// msg.tpl側で受取可能日欄の表示をロッカーに絞ってある
+		$tpl["uketoriKanoDate"] = "空きなし";
+	}
+}
+// add 2016/12/12 H.Yasunaga ]
+
+// add 2017/05/11 H.Yasunaga ヤマトロッカーセキュリティコード対応 [
+if ($D_YTC_SECURITY_CODE) {
+	if ($tpl["col_01"] == "2" && $tpl["col_39"] == "563") {
+		$tpl["isLocker"] = true;
+		if (isset($tpl[$D_YTC_SECURITY_RD_ITEM_TEXT]) && strlen($tpl[$D_YTC_SECURITY_RD_ITEM_TEXT]) > 0) {
+			$tpl["isSecCodeLocker"] = true;
+		}
+	}
+}
+// add 2017/05/11 H.Yasunaga ]
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+htmloutput($D_SYSDIR_COMPANY.'msg.tpl', $tpl);
+?>

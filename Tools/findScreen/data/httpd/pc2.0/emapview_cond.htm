@@ -1,0 +1,60 @@
+<?PHP
+// ------------------------------------------------------------
+// テンプレートを表示するだけ
+// 
+// 新規作成 : bando
+// 2009/11/07 Y.Matsukawa	拠点項目拡張（50→200）
+// 2010/01/27 Y.Matsukawa	絞り込みテンプレートに都道府県コードを渡す
+// 2010/07/20 Y.Matsukawa	SSL対応
+// 2011/10/03 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");  // 基本設定
+
+
+//-------------------
+// 画面設定
+//-------------------
+$tpl["_jsSearch"] = "ZdcEmapSearchShopClick()";
+//$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select"],$D_CID);		mod 2010/07/20 Y.Matsukawa
+$tpl["_cgiIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select_g"],$D_CID);
+$tpl["_cgiSysIconimg"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["sys_icon_select"],$D_CID);
+//検索条件
+//for($i = 0;$i < 50;$i ++) {		mod 2009/11/07 Y.Matsukawa
+for($i = 1;$i <= 200;$i ++) {
+	$cond = "cond".$i;
+	//mod 2011/10/03 Y.Nakajima
+	//if($_VARS[$cond]) {
+	if(isset($_VARS[$cond])) {
+		//check
+		$tpl[$cond."chk"] = "checked";
+		//select
+		$tpl[$cond."_".$_VARS[$cond]."sel"] = "selected";
+		//radio
+		$tpl[$cond."_".$_VARS[$cond]."chk"] = "checked";
+	}
+}
+// add 2010/01/27 Y.Matsukawa [
+$p_tod = "";
+//mod 2011/10/03 Y.Nakajima [
+if (isset($adcd) && $adcd != "") $p_tod = substr($adcd, 0, 2);
+else if (isset($area) && $area != "" && ctype_digit(substr($area, 0, 2))) $p_tod = substr($area, 0, 2);
+//mod 2011/10/03 Y.Nakajima ]
+if ($p_tod != "") {
+	$tpl["p_tod"] = $p_tod;
+	$tpl["p_tod_$p_tod"] = 1;
+}
+// add 2010/01/27 Y.Matsukawa ]
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_cond.tpl",$tpl);
+?>

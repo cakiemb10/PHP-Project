@@ -1,0 +1,946 @@
+<?PHP
+// ------------------------------------------------------------
+// 拠点一覧（地図）
+// 
+// 新規作成 : Y.Hayashida
+// 2008/07/17 matsukawa   $D_DIR_COMPANYをテンプレートに渡す
+// 2008/08/28 matsukawa   $D_ERR_NOTFOUNDを検索種類毎に分ける
+// 2009/02/13 Y.Matsukawa 【不具合改修】文字化け
+// 2009/02/16 Y.Matsukawa 全角→半角コンバート機能（$D_Z2H_OPTION）追加
+// 2009/03/23 Y.Matsukawa 【不具合修正】拠点名（name）の表示順が１以外の場合、拠点一覧で名称が表示されない
+// 2009/05/25 Y.Matsukawa name以外のカラムも一覧に表示可能にする
+// 2009/06/29 Y.Matsukawa	任意パラメータ追加
+// 2009/07/01 Y.Matsukawa	XHTML対応
+// 2009/07/06 Y.Matsukawa	optを画面に渡す
+// 2009/11/30 Y.Matsukawa	TOP画面opt接続対応
+// 2009/12/25 Y.Matsukawa	アイコンIDをテンプレートに渡す
+// 2010/02/10 Y.Matsukawa	路線名は消さずに距離表示を消す
+// 2010/06/21 Y.Matsukawa	最寄り拠点検索の件数設定
+// 2010/08/12 Y.Matsukawa	iPhone対応
+// 2010/08/23 Y.Matsukawa	カスタマイズ絞り込み検索（optcd）
+// 2010/10/20 Y.Matsukawa	Android対応
+// 2011/05/09 H.Osamoto		Myエリア機能追加
+// 2011/07/05 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2011/12/12 H.Osamoto		Myエリア用CGIをd_serv_emap.incにて定義したものに変更
+// 							環境判別方法を修正
+// 2012/01/04 Y.Matsukawa	別企業ID参照
+// 2012/01/11 N.Wada		表示する店舗の選別処理（内部・外部範囲）を追加
+// 2012/03/04 K.Masuda		テンプレート設定共通処理(proc_template.inc)追加
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// 2012/10/15 H.Osamoto		検索範囲の指定を実距離で指定可能に変更
+// 2012/11/19 Y.Matsukawa	JCN満空情報取得
+// 2012/11/21 H.osamoto		専用区分の名称を設定、禁則文字緩和不具合対応
+// 2013/04/15 H.Osamoto		最寄検索結果が0件の場合再検索で取得する件数指定機能追加
+// 2014/03/10 H.Osamoto		ポリゴン内外判定追加
+// 2015/01/08 Y.Matsukawa	年をテンプレートに渡す
+// 2015/06/08 Y.Uesugi		最寄地図表示にて一覧画面へ戻る機能利用の場合、遷移リンクを一覧の先頭に表示させる。
+// 2015/06/09 Y.Uesugi		セブン&アイ専用最寄り検索
+// 2016/06/01 Y.Matsukawa	1ページあたりの件数を任意指定
+// 2016/06/01 Y.Matsukawa	最寄りアイコン10個表示
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("./inc/define_mobile.inc");  // 基本設定
+include("./inc/carrier.inc");  // 基本設定
+include("./inc/function.inc");
+include("./inc/define_msg.inc");
+//include("inc/hpl.inc");
+include("inc/proc_get_freeparam.inc");		// add 2009/06/29 Y.Matsukawa
+//checkbox 処理 @add 2009/02/10
+include_once("inc/proc_optcheck.inc");
+include("./inc/define_get_icon.inc");  // アイコン定義取得		add 2012/11/19 Y.Matsukawa
+
+//-------------------
+// 変数初期化
+//-------------------
+// mod 2011/07/05 Y.Nakajima 
+if(!isset($pg)) $pg = 1;
+
+$ua = $HTTP_USER_AGENT;
+$carrier = new CARRIER($ua);
+$carrier->AddReplaceWord("@WORD@", $D_USR_DEFNAME);
+
+$mapw = $carrier->G_DISPLAY_W;
+$maph = $carrier->G_DISPLAY_H;
+
+$header = array();
+$body   = array();
+$footer = array();
+// add 2008/07/17 matsukawa ↓
+$header["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+$body["D_DIR_COMPANY"]   = $D_HTTP_DIR_COMPANY;
+$footer["D_DIR_COMPANY"] = $D_HTTP_DIR_COMPANY;
+// add 2008/07/17 matsukawa ↑
+// del 2010/10/20 Y.Matsukawa [
+//// add 2010/08/12 Y.Matsukawa [
+//if ($carrier->isIPHONE()) {
+//	$header["iPhone"] = 1;
+//	$body["iPhone"]   = 1;
+//	$footer["iPhone"] = 1;
+//}
+//// add 2010/08/12 Y.Matsukawa ]
+// del 2010/10/20 Y.Matsukawa ]
+include("inc/proc_carrier2tpl.inc");		// add 2010/10/20 Y.Matsukawa
+include("inc/proc_template.inc");			// add 2012/03/04 K.Masuda
+
+// add 2011/05/09 H.Osamoto [
+// mod 2011/07/05 Y.Nakajima 
+if (isset($D_MYAREA_USE)) {
+	if (isset($_GET["lm"])) {
+		$lm = urlencode(str_replace(" ", "+", $_GET["lm"]));
+	} else {
+		$lm = "";
+	}
+}
+if (!isset($myar)) $myar ="";
+// add 2011/05/09 H.Osamoto ]
+
+
+//-------------------
+// 検索処理
+//-------------------
+//$list_pos = ((($pg-1) * $D_SEARCH_LIST_PAGE)+1);		mod 2010/06/21 Y.Matsukawa
+//$list_pos = ((($pg-1) * 5)+1);		mod 2016/06/01 Y.Matsukawa
+$list_pos = ((($pg-1) * $D_NSHOP_MAP_LIST_PAGE)+1);
+$template = "map.tpl";
+$body["midashi"] = "@WORD@一覧";
+
+
+// パラメータ緯度経度情報取得
+$pos_param = $pos;		// add 2010/06/21 Y.Matsukawa
+// mod 2011/07/05 Y.Nakajima
+//$enc = split("_",$pos);
+$enc = explode("_",$pos);
+
+$ret = ZdcMakeMobileDec($enc[0], &$g, &$l, &$lv, &$lim);
+// add 2011/07/05 Y.Nakajima
+if (!isset($enc[1])) $enc[1] = "";
+$c = ZdcMakeUnPackLatLng($enc[1], &$mode, &$icon_num, 
+	&$lng1, &$lat1, &$icon1,
+	&$lng2, &$lat2, &$icon2,
+	&$lng3, &$lat3, &$icon3,
+	&$lng4, &$lat4, &$icon4,
+	&$lng5, &$lat5, &$icon5
+);
+
+
+if(!$ret || $lim < date("Ymd")){
+	$template = "err.tpl";
+	$body["errmsg"] = $D_ERR_LIMITCHK;
+	erl("有効期限が無効かチェックディジットエラー LIMIT[$lim] RET[$ret]");
+	ZdcMobileLogPut($D_SEARCH_CORPID, "", $D_LOG_LIMITERR_CD, 0);
+} else {
+	//拠点一覧CGI
+	$cgi = $D_SSAPI["nkyoten"];
+	// mod 2011/07/05 Y.Nakajima
+	if(isset($p) && $p == "move"){
+		$search_l = $lat1;
+		$search_g = $lng1;
+	} else {
+		$search_l = $l;
+		$search_g = $g;
+	}
+
+	$optwhere = "";
+	$exandopt = array();		// add 2010/05/17 Y.Matsukawa
+	//if($opt != "" || $opt_where != ""){	//@add 2009/02/10		mod 2010/08/23 Y.Matsukawa
+	// mod 2011/07/05 Y.Nakajima [
+	if((isset($opt) && $opt != '') || (isset($opt_where) && $opt_where != '') || (isset($optcd_where) && $optcd_where != '')){
+		if(isset($opt) && $opt != ""){
+			//$where_all = split("@", $opt);
+			$where_all = explode("@", $opt);
+			foreach($where_all as $where_val){
+				//$where = split("=", $where_val);
+				$where = explode("=", $where_val);
+	// mod 2011/07/05 Y.Nakajima ]
+				// del 2010/05/17 Y.Matsukawa [
+				//if($optwhere) $optwhere .= " AND ";
+				//$optwhere .= $where[0].":'".$where[1]."'";
+				// del 2010/05/17 Y.Matsukawa ]
+				// add 2010/05/17 Y.Matsukawa [
+				if (in_array($where[0], $D_OPT_EX_AND_COND)) {
+					$exandopt[] = $where[0].":'".$where[1]."'";
+				} else {
+					if ($optwhere) $optwhere .= " ".$D_OPT_U_COND." ";
+					$optwhere .= $where[0].":'".$where[1]."'";
+				}
+				// add 2010/05/17 Y.Matsukawa 
+			}
+			// add 2010/05/17 Y.Matsukawa [
+			if (count($exandopt) > 0) $optwhere = implode(" AND ", $exandopt).($optwhere?" AND (".$optwhere.")":"");
+			// mod 2011/07/05 Y.Nakajima 
+			if ($optwhere) $optwhere = "(".$optwhere.")";
+			// add 2010/05/17 Y.Matsukawa ]
+		}	 //@add 2009/02/10↓
+		// mod 2011/07/05 Y.Nakajima 
+		if($opt_where != "")$optwhere .=($optwhere? " AND " : "").$opt_where;
+		// add 2010/08/23 Y.Matsukawa [
+		// カスタマイズ絞り込み条件
+		// mod 2011/07/05 Y.Nakajima [
+		if (isset($optcd_where) && $optcd_where != '') {
+			if($optwhere != "") $optwhere .= " AND ";
+		// mod 2011/07/05 Y.Nakajima ]
+			$optwhere .= $optcd_where;
+		}
+		// add 2010/08/23 Y.Matsukawa ]
+		$optwhere = "&jkn=".urlencode($optwhere);
+	}//@add 2009/02/10　↑
+
+	// add 2015/06/09 Y.Uesugi [
+	// セブン&アイ専用最寄り検索対応(最寄り地図の場合)
+	if((!isset($opt_where) || $opt_where == '') && (isset($D_711OMNI_INIT_RAD) && $D_711OMNI_INIT_RAD)) {
+		$optwhere_omni = $optcd_where.'AND '.$D_711OMNI_INIT_JKN;
+		$optwhere_omni = "&jkn=".urlencode($optwhere_omni);
+
+		$url_omni = sprintf("%s?cid=%s&key=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&rad=%s&knsu=%d%s&opt=%s&z2h=%s",
+				$cgi, $D_DATA_CID, $D_SSAPI_KEY, $list_pos,5, "EUC", $search_l, $search_g, $D_711OMNI_INIT_RAD, $D_NSHOP_MAP_KNSU, $optwhere_omni, $D_LOG_CID, $D_Z2H_OPTION);
+
+		$dat_omni = ZdcHttpRead($url_omni,false,5);
+		$status_omni = explode("\t",$dat_omni[0]);
+		$cnt_omni = $status_omni[1];
+
+		if ($cnt_omni > 0) {
+			$D_SHOP_RAD = $D_711OMNI_INIT_RAD;
+		}
+		if ($cnt_omni <= 0) {
+			$D_SHOP_RAD = $D_711OMNI_ALT_RAD;
+		}
+	}
+	// add 2015/06/09 Y.Uesugi ]
+
+	// mod 2009/02/16 Y.Matsukawa [
+	//	$url = sprintf("%s?cid=%s&key=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&rad=%s&knsu=%d%s&opt=%s",
+	//				   $cgi,$D_CID,$D_SSAPI_KEY,$list_pos,5,"EUC",$search_l,$search_g,$D_SHOP_RAD,$D_SEARCH_LIST_PAGE,$optwhere, $D_LOG_CID);
+	$url = sprintf("%s?cid=%s&key=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&rad=%s&knsu=%d%s&opt=%s&z2h=%s",
+					//$cgi,$D_CID,$D_SSAPI_KEY,$list_pos,5,"EUC",$search_l,$search_g,$D_SHOP_RAD,$D_SEARCH_LIST_PAGE,$optwhere, $D_LOG_CID, $D_Z2H_OPTION);	mod 2010/06/21 Y.Matsukawa
+					//$cgi,$D_CID,$D_SSAPI_KEY,$list_pos,5,"EUC",$search_l,$search_g,$D_SHOP_RAD,$D_NSHOP_MAP_KNSU,$optwhere, $D_LOG_CID, $D_Z2H_OPTION);		mod 2012/01/04 Y.Matsukawa
+					//$cgi, $D_DATA_CID, $D_SSAPI_KEY, $list_pos,5, "EUC", $search_l, $search_g, $D_SHOP_RAD, $D_NSHOP_MAP_KNSU, $optwhere, $D_LOG_CID, $D_Z2H_OPTION);		mod 2016/06/01 Y.Matsukawa
+					$cgi, $D_DATA_CID, $D_SSAPI_KEY, $list_pos, $D_NSHOP_MAP_LIST_PAGE, "EUC", $search_l, $search_g, $D_SHOP_RAD, $D_NSHOP_MAP_KNSU, $optwhere, $D_LOG_CID, $D_Z2H_OPTION);
+	// mod 2009/02/16 Y.Matsukawa ]
+	// add 2012/10/15 H.Osamoto [
+	if (isset($D_ABS_DIST) && $D_ABS_DIST) {
+		$url .= "&absdist=".$D_ABS_DIST;
+	}
+	// add 2012/10/15 H.Osamoto ]
+	if(isset($D_NKYOTEN_CUST) && $D_NKYOTEN_CUST) $url .= "&cust=$D_NKYOTEN_CUST";// カスタマイズ仕様		add 2012/11/19 Y.Matsukawa
+	if(isset($D_POLY_COL) && $D_POLY_COL) $url .= "&polycol=$D_POLY_COL";		// add 2014/03/10 H.Osamoto
+
+	$dat = ZdcHttpRead($url,false,5);
+	// mod 2011/07/05 Y.Nakajima [
+	$status  = explode("\t",$dat[0]);
+	//$cnt = count($dat)-1;
+	$cnt = $status[1];
+	// mod 2011/07/05 Y.Nakajima ]
+
+	// add 2013/04/15 H.osamoto [
+	if ($cnt == 0 && isset($D_RESEARCH_CNT) && $D_RESEARCH_CNT) {
+		$url = sprintf("%s?cid=%s&key=%s&pos=%d&cnt=%d&enc=%s&lat=%s&lon=%s&rad=%s&knsu=%d%s&opt=%s&z2h=%s",
+					$cgi, $D_DATA_CID, $D_SSAPI_KEY, $list_pos, $D_RESEARCH_CNT, "EUC", $search_l, $search_g, 1000000, $D_RESEARCH_CNT, $optwhere, $D_LOG_CID, $D_Z2H_OPTION);
+		// add 2014/03/10 H.Osamoto [
+		if(isset($D_NKYOTEN_CUST) && $D_NKYOTEN_CUST) $url .= "&cust=$D_NKYOTEN_CUST";
+		if(isset($D_POLY_COL) && $D_POLY_COL) $url .= "&polycol=$D_POLY_COL";
+		// add 2014/03/10 H.Osamoto ]
+		$dat = ZdcHttpRead($url,false,5);
+		$status  = explode("\t",$dat[0]);
+		$cnt         = $status[1];
+	}
+	// add 2013/04/15 H.osamoto ]
+
+	$col_name = 6;
+	// add 2009/03/23 Y.Matsukawa [
+	if ($D_KYO_COL_NAME[0] && is_array($D_KYO_COL_NAME[0])) {
+		foreach ($D_KYO_COL_NAME[0] as $dispnum => $colnm) {
+			if (strtolower($colnm) == 'name') {
+				$col_name += $dispnum;
+				break;
+			}
+		}
+	}
+	// add 2009/03/23 Y.Matsukawa ]
+	$col_lat = 1;
+	$col_lon = 2;
+
+	// 該当データがない場合、エラー表示（基本的にはありえない）
+	if($cnt == 0){
+		$template = "err.tpl";
+		//$body["errmsg"] = $D_ERR_NOTFOUND;		mod 2008/08/28 matsukawa
+		$body["errmsg"] = (isset($D_ERR_NOTFOUND_N)?$D_ERR_NOTFOUND_N:$D_ERR_NOTFOUND);
+		ZdcMobileLogPut($D_SEARCH_CORPID, $stauts[0], $D_LOG_NOTFOUND_CD, 0);
+	}
+
+	// mod 2011/07/05 Y.Nakajima 
+	//if(!ereg("^[0-9]+$",$status[0])){
+	if(!preg_match("/^[0-9]+$/",$status[0], $matches)){
+		$template = "err.tpl";
+		$body["errmsg"] = $D_ERR_PARAMETER;
+		$cnt = 0;
+		// mod 2011/07/05 Y.Nakajima [
+		erl("サーバーＣＧＩの結果が無効です。[$url][$status[0]]");
+		ZdcMobileLogPut($D_SEARCH_CORPID, $status[0], $D_LOG_SVRERR_CD, 0);
+		//erl("サーバーＣＧＩの結果が無効です。[$url][$status_list[0]]");
+		//ZdcMobileLogPut($D_SEARCH_CORPID, $status_list[0], $D_LOG_SVRERR_CD, 0);
+		// mod 2011/07/05 Y.Nakajima ]
+	}
+
+	$icon_lng = array();
+	$icon_lat = array();
+	$icon_img = array();
+
+	//$body["icon_cgi"] = sprintf("%s?cid=%s&icon_id=",$D_SSAPI["icon_select_g"],$D_CID);	// アイコン画像CGI		add 2009/12/25 Y.Matsukawa	mod 2012/01/04 Y.Matsukawa
+	$body["icon_cgi"] = sprintf("%s?cid=%s&icon_id=", $D_SSAPI["icon_select_g"], $D_ICON_CID);
+
+	// 取得した一覧データを設定
+	for($i = 0;$i < $cnt;$i ++) {
+		$rec = explode("\t",$dat[$i + 1]);
+		$body["listdata"]["data"][$i]["no"] = $i+1;		// add 2010/10/20 Y.Matsukawa
+		//$body["listdata"]["data"][$i]["url"] = "d.htm?id=".$rec[0].($opt != "" ? "&opt=$opt" : "");    // mod 2011/07/05 Y.Nakajima 
+		$body["listdata"]["data"][$i]["url"] = "d.htm?id=".$rec[0].(isset($opt) && $opt != "" ? "&opt=$opt" : "");
+		
+		// add 2016/03/16 Winas Inc.
+		if(isset($SETTING["jcomtvflg"]) == '1'){
+			$body["listdata"]["data"][$i]["url"] = $body["listdata"]["data"][$i]["url"]."&pos=".$pos;
+			if(isset($adcd) && $adcd){
+				$body["listdata"]["data"][$i]["url"] = $body["listdata"]["data"][$i]["url"]."&adcd=".$adcd;
+			}
+			if(isset($C1) && $C1){
+				$body["listdata"]["data"][$i]["url"] = $body["listdata"]["data"][$i]["url"]."&C1=".$C1;
+			}
+			if(isset($C2) && $C2){
+				$body["listdata"]["data"][$i]["url"] = $body["listdata"]["data"][$i]["url"]."&C2=".$C2;
+			}
+			if(isset($C3) && $C3){
+				$body["listdata"]["data"][$i]["url"] = $body["listdata"]["data"][$i]["url"]."&C3=".$C3;
+			}
+			if(isset($C4) && $C4){
+				$body["listdata"]["data"][$i]["url"] = $body["listdata"]["data"][$i]["url"]."&C4=".$C4;
+			}
+			if(isset($C5) && $C5){
+				$body["listdata"]["data"][$i]["url"] = $body["listdata"]["data"][$i]["url"]."&C5=".$C5;
+			}
+		}
+
+		// add 2011/05/09 H.Osamoto [
+		// mod 2011/07/05 Y.Nakajima 
+		if (isset($D_MYAREA_USE)) {
+			//$body["listdata"]["data"][$i]["url"] .= "&myar=".$_GET["myar"]."&lm=".$lm;
+			$body["listdata"]["data"][$i]["url"] .= "&myar=".$myar."&lm=".$lm;
+		}
+		// add 2011/05/09 H.Osamoto ]
+		$body["listdata"]["data"][$i]["url"] .= ($freeparms_enc?"&".$freeparms_enc:"");		// add 2009/06/29 Y.Matsukawa
+		//$body["listdata"]["data"][$i]["url"] .= ($optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+		$body["listdata"]["data"][$i]["url"] .= (isset($optcd) && $optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+		if (isset($D_ICON[$rec[3]])) {		// add 2012/11/19 Y.Matsukawa
+			$body["listdata"]["data"][$i]["icon_id"] = $rec[3];	// アイコンID		add 2009/12/25 Y.Matsukawa
+			$body["listdata"]["data"][$i]["icon_id_".$rec[3]] = 1;		// add 2012/11/19 Y.Matsukawa
+		}
+		// add 2009/05/25 Y.Matsukawa [
+		foreach($D_KYO_COL_NAME[0] as $cidx => $val){
+			$key_name = strtoupper($val);
+			if($rec[$cidx+6] == "0"){
+			} else {
+				$det_value = $rec[$cidx+6];
+				if($det_value != ""){
+					//	$body["listdata"]["data"][$i][$key_name] = $det_value;		2012/08/03 H.osamoto mod
+					$body["listdata"]["data"][$i][$key_name] = zdcHtmlspecialchars($det_value, $key_name);
+					$body["listdata"]["data"][$i][$key_name."l".$det_value] = true;
+					// add 2012/11/21 H.Osamoto [
+					// 専用区分定義を適用
+					if ($key_name == $D_ORG_KBN_COL && $det_value && $D_ORG_KBN_NAME_LIST[$det_value]) {
+						$body["listdata"]["data"][$i][$key_name."_NAME"] = $D_ORG_KBN_NAME_LIST[$det_value];
+					}
+					// add 2012/11/21 H.Osamoto ]
+				}
+			}
+		}
+		// add 2009/05/25 Y.Matsukawa ]
+		//$shop = mb_convert_encoding($rec[$col_name],"EUC-JP","ASCII,JIS,UTF-8,EUC-JP,SJIS");		mod 2009/02/13 Y.Matsukawa
+		$shop = mb_convert_encoding($rec[$col_name],"EUC-JP","EUC-JP,ASCII,JIS,UTF-8,SJIS");
+		// 最寄検索中心からの距離を設定（1000mを越える場合km表記に）
+		// mod 2011/07/05 Y.Nakajima 
+		if (!isset($D_HIDE_NKYOTEN_DIST)) {		// add 2010/02/10 Y.Matsukawa
+			if($rec[4] > 1000){
+				$body["listdata"]["data"][$i]["rosen"] = "(".round($rec[4]/1000,2)."km)";
+			} else {
+				$body["listdata"]["data"][$i]["rosen"] = "(".round($rec[4],0)."m)";
+			}
+		}
+		// add 2012/01/11 N.Wada [
+		$body["listdata"]["data"][$i]["dist"] = $rec[4];
+		// add 2012/01/11 N.Wada ]
+		// add 2011/05/09 H.Osamoto [
+		if ($rec[5]) {
+			$body["listdata"]["data"][$i]["new"] = "1";
+		}
+		// add 2011/05/09 H.Osamoto ]
+		// 数字アイコン設定
+		$icon_lng[$i] = $rec[2];
+		$icon_lat[$i] = $rec[1];
+		$icon_img[$i] = sprintf("%06d", $i + $D_NUM_IMAGE_BASE + 1);	//@@TODO
+		//	$body["listdata"]["data"][$i]["name"] = $shop;		2012/08/03 H.osamoto mod
+		//	$body["listdata"]["data"][$i]["name"] = htmlspecialchars($shop);	2012/11/21 H.Osamoto mod
+		$body["listdata"]["data"][$i]["name"] = zdcHtmlspecialchars($shop, "NAME");
+		// アクセスキー利用設定の場合、数字アイコンとアクセスキー情報設定
+		// mod 2011/07/05 Y.Nakajima 
+		//true or 1なら表示
+		if(isset($SETTING["access_key"]) && $SETTING["access_key"] ){
+			$body["listdata"]["data"][$i]["icon_no"] = (($i+1) < 10) ? $carrier->getEmoji("#NO".($i+1)."#") : "□";
+			$body["listdata"]["data"][$i]["access_key"] = (($i+1) < 10) ? $carrier->makeAccessKeyTag($i+1) : "";
+		}
+	}
+
+	// add 2012/01/11 N.Wada [
+	// 表示する店舗を選別
+	if ( isset($D_SHOP_RAD_SCREENING) && $D_SHOP_RAD_SCREENING ) {
+		// リスト内には距離が近い順に店舗が格納されている前提で処理を行う
+		// アルゴリズムはn.htmと合わせておくこと
+		$shop_cnt_in = 0;
+		$shop_cnt_out = 0;
+		foreach( $body["listdata"]["data"] as $idx => $shopdata ) {
+			if( $shopdata["dist"] <= (float)$D_SHOP_RAD_INSIDE ) {	// 内部範囲内
+				// パターン１
+				if( $shop_cnt_in == $D_SHOP_RAD_PTN1_IN ) break;
+				$shop_cnt_in++;
+			} elseif( $shopdata["dist"] <= (float)$D_SHOP_RAD_OUTSIDE ) {	// 外部範囲内
+				// パターン１
+				if( $shop_cnt_in == $D_SHOP_RAD_PTN1_IN ) break;
+				// パターン２
+				if( $shop_cnt_in == $D_SHOP_RAD_PTN2_IN ) break;
+				// パターン３
+				if( $shop_cnt_in == $D_SHOP_RAD_PTN3_IN && $shop_cnt_out == $D_SHOP_RAD_PTN3_OUT ) break;
+				// パターン４
+				if( $shop_cnt_out == $D_SHOP_RAD_PTN4_OUT ) break;
+				$shop_cnt_out++;
+			} else {	// 範囲外
+				break;
+			}
+		}
+		// 表示させる店舗数を計算
+		$shop_cnt_total = $shop_cnt_in + $shop_cnt_out;
+		
+		// 表示店舗数よりリストの件数が多い場合は、その分をリストから削除
+		if( $shop_cnt_total < $cnt ) {
+			array_splice( $body["listdata"]["data"], $shop_cnt_total );
+			// 数字アイコン設定
+			array_splice( $icon_lng, $shop_cnt_total );
+			array_splice( $icon_lat, $shop_cnt_total );
+			array_splice( $icon_img, $shop_cnt_total );
+		}
+	
+		// 表示する店舗がなかった場合は、メッセージ表示
+		if( $shop_cnt_total == 0 ) {
+			$template = "err.tpl";
+			$body["errmsg"] = (isset($D_ERR_NOTFOUND_N)?$D_ERR_NOTFOUND_N:$D_ERR_NOTFOUND);
+			ZdcMobileLogPut($D_SEARCH_CORPID, $stauts[0], $D_LOG_NOTFOUND_CD, 0);
+		}
+	}
+	// add 2012/01/11 N.Wada ]
+	
+	// 全てのアイコンが入る縮尺レベルと中心緯度経度を算出
+	$mapw = $carrier->G_DISPLAY_W;
+	$maph = $carrier->G_DISPLAY_H;
+
+	$icon_lng[count($icon_lng)] = $g;
+	$icon_lat[count($icon_lat)] = $l;
+	$icon_img[count($icon_img)] = "";
+
+	// mod 2011/07/05 Y.Nakajima 
+	if(isset($p) && $p == "move"){
+		$level = $lv;
+	} else {
+		ZdcGetZoomLevel($mapw, $maph, $icon_lng, $icon_lat, &$cent_lng, &$cent_lat, &$level, 1);
+	}
+
+	array_pop($icon_lng);
+	array_pop($icon_lat);
+	array_pop($icon_img);
+
+	// 変更した緯度経度、アイコン情報を暗号化してリンクパラメータにセット
+	$pos  = ZdcMakeMobileEnc($g, $l, $level);
+	$icon = ZdcMakePackLatLng(3, count($icon_lng), 
+		$icon_lng[0], $icon_lat[0], $icon_img[0],
+		$icon_lng[1], $icon_lat[1], $icon_img[1],
+		$icon_lng[2], $icon_lat[2], $icon_img[2],
+		$icon_lng[3], $icon_lat[3], $icon_img[3],
+		$icon_lng[4], $icon_lat[4], $icon_img[4],
+		// add 2016/06/01 Y.Matsukawa [
+		$icon_lng[5], $icon_lat[5], $icon_img[5],
+		$icon_lng[6], $icon_lat[6], $icon_img[6],
+		$icon_lng[7], $icon_lat[7], $icon_img[7],
+		$icon_lng[8], $icon_lat[8], $icon_img[8],
+		$icon_lng[9], $icon_lat[9], $icon_img[9]
+		// add 2016/06/01 Y.Matsukawa ]
+	);
+	$body["mapurl"]  = $carrier->makeImageUrl("mi.htm?p=ns&pos=".$pos."_".$icon);
+
+	ZdcMobileLogPut($D_SEARCH_CORPID, "", $D_LOG_NORMAL_CD, 0);
+}
+
+// add 2011/05/09 H.Osamoto [
+// mod 2011/07/05 Y.Nakajima 
+if (isset($D_MYAREA_USE)) {
+
+	// 企業ID
+	$script_name_tmp = $_SERVER['SCRIPT_NAME'];
+	//$script_name_arr = split("/", $script_name_tmp);
+	$script_name_arr = explode("/", $script_name_tmp);
+	$corp_id = $script_name_arr[2];
+	$body["corp_id"] = $corp_id;
+	
+	// テスト環境フラグ
+	// mod 2011/07/05 Y.Nakajima 
+	//if (ereg('test', $D_CID)) {
+	//	if (strpos($D_CID, 'test')) {	mod 2011/12/12 H.Osamoto
+	if ($D_EMAP_ENV == "test") {
+		$body["test_flg"] = "1";
+		//	$domain = "test.e-map.ne.jp";	del 2011/12/12 H.osamoto
+	} else {
+		$body["test_flg"] = "";
+		//	$domain = "www.e-map.ne.jp";	del 2011/12/12 H.Osamoto
+	}
+	
+	// ユーザID
+	// mod 2011/07/05 Y.Nakajima 
+	//$user_id = urlencode(str_replace(" ", "+", $_GET["p_s2"]));
+	if (!isset($p_s2)) $p_s2 = "";
+	$user_id = urlencode(str_replace(" ", "+", $p_s2));
+	$body["user_id"] = $user_id;
+	
+	// TLSC有効期限
+	$body["lm"] = $lm;
+	
+	// T会員番号
+	// mod 2011/07/05 Y.Nakajima 
+	//$p_s3 = urlencode(str_replace(" ", "+", $_GET["p_s3"]));
+	if (!isset($p_s3)) $p_s3 = "";
+	$p_s3 = urlencode(str_replace(" ", "+", $p_s3));
+	$body["p_s3"] = $p_s3;
+	
+	// Myエリア表示フラグ
+	// mod 2011/07/05 Y.Nakajima [
+	if (isset($_GET["myardisp"])) {
+		$myardisp = $_GET["myardisp"];
+	} else {
+		$myardisp = "";
+	}
+	// mod 2011/07/05 Y.Nakajima ]
+	$body["myardisp"] = $myardisp;
+	
+	// 暗号化緯度経度(pos)から緯度経度を複合
+	ZdcMakeMobileDec($pos, &$lon, &$lat, &$level, &$limit);
+	$body["pos"]["lat"] = $lat;
+	$body["pos"]["lon"] = $lon;
+	
+	// URLエンコード済み緯度経度
+	$body["pos"]["enc_latlon"] = urlencode("&lat=".$lat."&lon=".$lon);
+	
+	// メール送信用URL
+	$mail_prm  = "p=nm&lat=".$lat."&lon=".$lon;
+	// mod 2011/07/05 Y.Nakajima 
+	//$mail_prm .= $opt != "" ? "&opt=$opt" : "";
+	$mail_prm .= isset($opt) && $opt != "" ? "&opt=$opt" : "";
+	// mod 2011/07/05 Y.Nakajima [
+	if (isset($mail_prm_enc)) {
+	$mail_prm_enc .= urlencode($mail_prm);
+	} else {
+	$mail_prm_enc = urlencode($mail_prm);
+	}
+	// mod 2011/07/05 Y.Nakajima ]
+	$body["mailurl"]  = "https://".$_SERVER['HTTP_HOST'].str_replace("nm.htm", "s.htm", $SCRIPT_NAME)."%3f".$mail_prm_enc;
+	
+	// URLエンコード済み緯度経度
+	$body["kyoten_list"] = "1";
+
+	// ログイン状態判定
+	// mod 2011/07/05 Y.Nakajima 
+	if (isset($user_id) && $user_id != "") {
+		// ログイン状態
+		
+		// Myエリアデータ取得
+		// mod 2011/07/05 Y.Nakajima 
+		//$cgi_url = "http://".$_SERVER['SERVER_NAME']."/cgi/myarea_select.cgi?corp_id=".$corp_id."&user_id=".$user_id;
+		//	$cgi_url = "http://".$EMAP_SSAPI_SRV."/cgi/myarea_select.cgi?corp_id=".$corp_id."&user_id=".$user_id;	mod 2011/12/12 H.osamoto
+		$cgi_url = $D_SSAPI["myarea_select"]."?corp_id=".$corp_id."&user_id=".$user_id;
+		$dat = ZdcHttpRead($cgi_url, 0, 10000);
+		// mod 2011/07/05 Y.Nakajima 
+		$myarea_cnt  = $dat[0];
+		//$myarea_cnt  = $status[0];
+		
+		if ($myarea_cnt == 5) {
+			$body["cntmax"] = "1";
+		} else {
+			$body["cntmax"] = "";
+		}
+		
+		// 追加登録した場合の表示順序
+		$body["cntnext"] = $myarea_cnt + 1;
+		
+		for($i = 0; $i < $myarea_cnt; $i++) {
+			$rec = explode("\t",$dat[$i+1]);
+			
+			$body["myarea_list"]["data"][$i]["myarea_id"]   = $rec[0];
+			$body["myarea_list"]["data"][$i]["corp_id"]     = $rec[1];
+			$body["myarea_list"]["data"][$i]["user_id"]     = $rec[2];
+			$body["myarea_list"]["data"][$i]["myarea_name"] = htmlspecialchars($rec[3]);
+			$body["myarea_list"]["data"][$i]["lat"]         = $rec[4];
+			$body["myarea_list"]["data"][$i]["lon"]         = $rec[5];
+			$body["myarea_list"]["data"][$i]["disp_order"]  = $rec[6];
+			if ($rec[6] != 1) {
+				$body["myarea_list"]["data"][$i]["disp_order_prev"] = $rec[6] - 1;
+			}
+			if ($rec[6] != $myarea_cnt) {
+				$body["myarea_list"]["data"][$i]["disp_order_next"] = $rec[6] + 1;
+			}
+			if ($rec[6] == $myarea_cnt) {
+				$body["myarea_list"]["data"][$i]["continue_flg"]    = "";
+			} else {
+				$body["myarea_list"]["data"][$i]["continue_flg"]    = "1";
+			}
+			if ($myardisp && $area_no == $rec[6]) {
+				$body["myarea_list"]["data"][$i]["disp_flg"]    = "1";
+			} else {
+				$body["myarea_list"]["data"][$i]["disp_flg"]    = "";
+			}
+		}
+	} else {
+		// 未ログイン状態
+	}
+}
+// add 2011/05/09 H.Osamoto ]
+
+// add 2015/06/08 Y.Uesugi [
+// 最寄地図表示にて一覧画面へ戻る機能利用の場合、遷移リンクを一覧の先頭に表示させる。
+if($SETTING["nearlist"] == "2"){
+	$body["nearlist"] = true;
+//	$pos  = ZdcMakeMobileEnc($g, $l, 8);
+//	$icon = ZdcMakePackLatLng(1, 1, $g, $l, 2000);
+	$body["nearlistlink"] = "n.htm?pos=".$pos."_".$icon.(isset($opt) && $opt != "" ? "&opt=$opt" : "")."&".$opt_link_prm;
+	$body["nearlistlink"] .= ($freeparms_enc?"&".$freeparms_enc:"");
+	$body["nearlistlink"] .= (isset($optcd) && $optcd != '' ? "&optcd=$optcd" : '');
+	$body["nearlistname"] = $D_CAPTION["nm.htm"]["SHOPLIST_TITLE"];
+}
+// add 2015/06/08 Y.Uesugi [
+
+// add 2010/06/21 Y.Matsukawa [
+//-------------------
+// ページング制御
+//-------------------
+// mod 2011/07/05 Y.Nakajima 
+if(isset($cnt) && $cnt > 0){
+	$body["now_page"] = $pg;
+	// mod 2011/07/05 Y.Nakajima 
+	$body["max_page"] = ceil($status[2]/$D_SEARCH_LIST_PAGE);
+	//$body["max_page"] = ceil($status_list[2]/$D_SEARCH_LIST_PAGE);
+	if($pg > 1){
+		$body["pre_link"] = "nm.htm?pos=$pos_param&pg=".($pg-1).($opt != "" ? "&opt=$opt" : "")."&".$opt_link_prm;
+		$body["pre_link"] .= ($freeparms_enc?"&".$freeparms_enc:"");
+		$body["pre_link"] .= ($optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+		$body["pre_name"] = $D_PAGE_BEFORE;
+	}
+	// mod 2011/07/05 Y.Nakajima 
+	if($status[2] >= ($list_pos+$cnt)){
+	//if($status_list[2] >= ($list_pos+$cnt)){
+		$pg=$pg+1; 
+		$body["next_link"] = "nm.htm?pos=$pos_param&pg=$pg".($opt != "" ? "&opt=$opt" : "")."&".$opt_link_prm;
+		$body["next_link"] .= ($freeparms_enc?"&".$freeparms_enc:"");
+		// mod 2011/07/05 Y.Nakajima 
+		$body["next_link"] .= (isset($optcd) && $optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+		$body["next_name"] = $D_PAGE_AFTER;
+	}
+	// mod 2011/07/05 Y.Nakajima 
+	if((isset($body["pre_link"]) && $body["pre_link"] != "") || (isset($body["next_link"]) && $body["next_link"] != "")) $body["page"] = "true";
+	if((isset($body["pre_link"]) && $body["pre_link"] != "") && (isset($body["next_link"]) && $body["next_link"] != "")) $body["separator"] = $D_PAGE_SEPARATOR;
+
+	ZdcMobileLogPut($D_SEARCH_CORPID, "", $D_LOG_NORMAL_CD, 0);
+}
+// add 2010/06/21 Y.Matsukawa ]
+
+// mod 2011/07/05 Y.Nakajima 
+if (isset($SETTING["showcolonmapl"]) && $SETTING["showcolonmapl"] == true) $body["showcolonmapl"] = true;		// add 2009/05/25 Y.Matsukawa
+
+$header["TITLE"] = $D_HEADER_TITLE;
+
+// フッター制御
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($D_CORP_NAME)) $D_CORP_NAME = "";
+if (!isset($D_TOP_TXT)) $D_TOP_TXT = "";
+if (!isset($D_COPYRIGHT_TXT)) $D_COPYRIGHT_TXT = "";
+// mod 2011/07/05 Y.Nakajima ]
+
+//$footer["search_top"] = $D_URL_BASE."s.htm";		mod 2009/06/29 Y.Matsukawa
+//$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc;		mod 2009/11/30 Y.Matsukawa
+//$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.($D_OPT_BACKTO_TOP && $opt != "" ? "&opt=$opt" : "");		// mod 2011/07/05 Y.Nakajima
+$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.(isset($D_OPT_BACKTO_TOP) && isset($opt) && $opt != "" ? "&opt=$opt" : "");
+// add 2011/05/09 H.Osamoto [
+// mod 2011/07/05 Y.Nakajima [
+if (isset($D_MYAREA_USE)) {
+/*
+	$footer["search_top"] .= "&myar=".$_GET["myar"]."&lm=".$lm;
+	$footer["p_s2"] = urlencode(str_replace(" ", "+", $_GET["p_s2"]));
+	$footer["p_s3"] = urlencode(str_replace(" ", "+", $_GET["p_s3"]));
+	$footer["lm"] = urlencode(str_replace(" ", "+", $_GET["lm"]));
+*/
+	$footer["search_top"] .= "&myar=".$myar."&lm=".$lm;
+	$footer["p_s2"] = urlencode(str_replace(" ", "+", $p_s2));
+	$footer["p_s3"] = urlencode(str_replace(" ", "+", $p_s3));
+	$footer["lm"]   = urlencode(str_replace(" ", "+", $lm));
+	// テスト環境フラグ
+	//if (ereg('test', $D_CID)) {
+// mod 2011/07/05 Y.Nakajima ]
+	//	if (strpos($D_CID, 'test')) {	mod 2011/12/12 H.osamoto
+	if ($D_EMAP_ENV == "test") {
+		$footer["test_flg"] = "1";
+	} else {
+		$footer["test_flg"] = "";
+	}
+}
+// add 2011/05/09 H.Osamoto ]
+//$footer["search_top"] .= ($D_OPTCD_BACKTO_TOP && $optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+$footer["search_top"] .= (isset($D_OPTCD_BACKTO_TOP) && isset($optcd) && $optcd != '' ? "&optcd=$optcd" : '');		// mod 2011/07/05 Y.Nakajima
+$footer["CORPNAME"] = $D_CORP_NAME;
+// mod 2011/07/05 Y.Nakajima [
+$footer["TOPTXT"] = $D_TOP_TXT;
+$footer["COPYTXT"] = $D_COPYRIGHT_TXT;
+// mod 2011/07/05 Y.Nakajima ]
+
+// 最寄地図で移動させる設定の場合、移動機能を有効にする。
+// mod 2011/07/05 Y.Nakajima 
+if(isset($D_NM_MOVE)){
+	$body["function"] = true;
+
+	// 移動モードなら、保持した検索中心を設定し、
+	// 初期モードなら、中心緯度経度を、検索中心緯度経度に設定
+	if($p != "move"){
+		$pos2 = ZdcMakePackLatLng(3, 1, $g, $l, 2000);
+	} else {
+		$pos2 = ZdcMakePackLatLng(3, 1, $lng1, $lat1, 2000);
+	}
+
+	// 拡大・縮小ＵＲＬ
+	if($lv < $D_MAXZOOM){
+		$body["tobig"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g, $l, $lv+1)."_".$pos2.$optparam;
+		$body["tobig"] .= ($freeparms_enc?"&".$freeparms_enc:"");		// add 2009/06/29 Y.Matsukawa
+		$body["tobig"] .= ($optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+		$body["tobigacc"]= $carrier->makeAccessKeyTag(5);
+	}
+	if($lv > $D_MINZOOM){
+		$body["tosmall"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g, $l, $lv-1)."_".$pos2.$optparam;
+		$body["tosmall"] .= ($freeparms_enc?"&".$freeparms_enc:"");		// add 2009/06/29 Y.Matsukawa
+		$body["tosmall"] .= ($optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+		$body["tosmallacc"]= $carrier->makeAccessKeyTag(0);
+	}
+
+	// 移動キーＵＲＬ
+	// 移動キーの移動比率は、縦横それぞれ半分の８５％とする。
+	$lv = intval($lv);
+	list($LBL, $LBG, $RTL, $RTG, $PXLAT, $PXLON) = getMapInfo($l, $g, $lv, $mapw, $maph);
+	$gz = ($PXLON * ($mapw / 2)) * 0.85;
+	$lz = ($PXLAT * ($maph / 2)) * 0.85;
+
+	$body["move1"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g-$gz, $l+$lz, $lv)."_".$pos2.$optparam;
+	$body["move2"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g    , $l+$lz, $lv)."_".$pos2.$optparam;
+	$body["move3"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g+$gz, $l+$lz, $lv)."_".$pos2.$optparam;
+	$body["move4"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g-$gz, $l    , $lv)."_".$pos2.$optparam;
+	$body["centerimg"] = "＊";
+	$body["move6"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g+$gz, $l    , $lv)."_".$pos2.$optparam;
+	$body["move7"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g-$gz, $l-$lz, $lv)."_".$pos2.$optparam;
+	$body["move8"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g    , $l-$lz, $lv)."_".$pos2.$optparam;
+	$body["move9"] = $D_URL_BASE."nm.htm?p=move&pos=".ZdcMakeMobileEnc($g+$gz, $l-$lz, $lv)."_".$pos2.$optparam;
+
+	// 任意パラメータ		add 2009/06/29 Y.Matsukawa
+	// mod 2011/07/05 Y.Nakajima 
+	if (isset($freeparms_enc) && $freeparms_enc != '') {
+		$body["move1"] .= "&".$freeparms_enc;
+		$body["move2"] .= "&".$freeparms_enc;
+		$body["move3"] .= "&".$freeparms_enc;
+		$body["move4"] .= "&".$freeparms_enc;
+		$body["move5"] .= "&".$freeparms_enc;
+		$body["move6"] .= "&".$freeparms_enc;
+		$body["move7"] .= "&".$freeparms_enc;
+		$body["move8"] .= "&".$freeparms_enc;
+		$body["move9"] .= "&".$freeparms_enc;
+	}
+	// add 2010/08/23 Y.Matsukawa [
+	// mod 2011/07/05 Y.Nakajima 
+	if (isset($optcd) && $optcd != '') {
+		$body["move1"] .= "&optcd=$optcd";
+		$body["move2"] .= "&optcd=$optcd";
+		$body["move3"] .= "&optcd=$optcd";
+		$body["move4"] .= "&optcd=$optcd";
+		$body["move5"] .= "&optcd=$optcd";
+		$body["move6"] .= "&optcd=$optcd";
+		$body["move7"] .= "&optcd=$optcd";
+		$body["move8"] .= "&optcd=$optcd";
+		$body["move9"] .= "&optcd=$optcd";
+	}
+	// add 2010/08/23 Y.Matsukawa ]
+
+	$body["move1acc"] = $carrier->makeAccessKeyTag(1);
+	$body["move2acc"] = $carrier->makeAccessKeyTag(2);
+	$body["move3acc"] = $carrier->makeAccessKeyTag(3);
+	$body["move4acc"] = $carrier->makeAccessKeyTag(4);
+	$body["move6acc"] = $carrier->makeAccessKeyTag(6);
+	$body["move7acc"] = $carrier->makeAccessKeyTag(7);
+	$body["move8acc"] = $carrier->makeAccessKeyTag(8);
+	$body["move9acc"] = $carrier->makeAccessKeyTag(9);
+
+	// 画面のデザイン項目の反映
+	$body["ZOOMIN_TITLE"] = $D_CAPTION["m.htm"]["ZOOMIN_TITLE"];
+	$body["ZOOMOUT_TITLE"] = $D_CAPTION["m.htm"]["ZOOMOUT_TITLE"];
+}
+
+// add 2009/07/06 Y.Matsukawa [
+// optを画面へ渡す
+// mod 2011/07/05 Y.Nakajima 
+if (isset($opt)) {
+	$body["srch_opt"]   = $opt;
+	$header["srch_opt"] = $opt;
+	$footer["srch_opt"] = $opt;
+	$opts = explode('@', $opt);
+	foreach ($opts as $op) {
+		list($opt_col, $opt_val) = explode('=', $op);
+		if (strlen($opt_val)) {
+			$body['opt_'.$opt_col.'l'.$opt_val] = 1;
+			$header['opt_'.$opt_col.'l'.$opt_val] = 1;
+			$footer['opt_'.$opt_col.'l'.$opt_val] = 1;
+		}
+	}
+}
+// add 2009/07/06 Y.Matsukawa ]
+
+// add 2010/08/23 Y.Matsukawa [
+// optcdを画面へ渡す
+// mod 2011/07/05 Y.Nakajima 
+if (isset($optcd) && $optcd != '') {
+	$body["optcd"]   = $optcd;
+	$header["optcd"] = $optcd;
+	$footer["optcd"] = $optcd;
+	$opts = explode('@', $optcd);
+	foreach ($opts as $opt_val) {
+		if (strlen($opt_val)) {
+			$body['optcd_l'.$opt_val] = 1;
+			$header['optcd_l'.$opt_val] = 1;
+			$footer['optcd_l'.$opt_val] = 1;
+		}
+	}
+}
+// add 2010/08/23 Y.Matsukawa ]
+
+// add 2009/06/29 Y.Matsukawa [
+// mod 2011/07/05 Y.Nakajima 
+if (isset($D_CAPTION["nm.htm"]) && is_array($D_CAPTION["nm.htm"])) {
+	foreach($D_CAPTION["nm.htm"] as $hash_key => $hash_val){
+		$body[$hash_key] = $hash_val;
+		if (substr($hash_key, 0, 2) == "P_") {
+			$header[$hash_key] = $hash_val;
+			$footer[$hash_key] = $hash_val;
+		}
+	}
+}
+
+// add 2009/06/29 Y.Matsukawa ]
+
+// add 2009/06/29 Y.Matsukawa [
+$header["TITLE"] = $D_HEADER_TITLE;
+// フッター制御
+// mod 2011/07/05 Y.Nakajima [
+if (!isset($D_CORP_NAME)) $D_CORP_NAME = "";
+if (!isset($D_TOP_TXT)) $D_TOP_TXT = "";
+if (!isset($D_COPYRIGHT_TXT)) $D_COPYRIGHT_TXT = "";
+// mod 2011/07/05 Y.Nakajima ]
+if($SETTING["noncpdata"] == "S"){
+	//$footer["search_top"] = $D_URL_BASE."s.htm";		mod 2009/06/29 Y.Matsukawa
+	//$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc;		mod 2009/11/30 Y.Matsukawa
+	//$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.($D_OPT_BACKTO_TOP && $opt != "" ? "&opt=$opt" : "");		// mod 2011/07/05 Y.Nakajima
+	$footer["search_top"] = $D_URL_BASE."s.htm?".$freeparms_enc.(isset($D_OPT_BACKTO_TOP) && isset($opt) && $opt != "" ? "&opt=$opt" : "");
+	// add 2011/05/09 H.Osamoto [
+	// mod 2011/07/05 Y.Nakajima [
+	if (isset($D_MYAREA_USE)) {
+/*
+		$footer["search_top"] .= "&myar=".$_GET["myar"]."&lm=".$lm;
+		$footer["p_s2"] = urlencode(str_replace(" ", "+", $_GET["p_s2"]));
+		$footer["p_s3"] = urlencode(str_replace(" ", "+", $_GET["p_s3"]));
+		$footer["lm"] = urlencode(str_replace(" ", "+", $_GET["lm"]));
+*/
+		$footer["search_top"] .= "&myar=".$myar."&lm=".$lm;
+		$footer["p_s2"] = urlencode(str_replace(" ", "+", $p_s2));
+		$footer["p_s3"] = urlencode(str_replace(" ", "+", $p_s3));
+		$footer["lm"]   = urlencode(str_replace(" ", "+", $lm));
+		// テスト環境フラグ
+		// mod 2011/07/05 Y.Nakajima 
+		//if (ereg('test', $D_CID)) {
+		//	if (strpos($D_CID, 'test')) {	mod 2011/12/12 H.Osamoto
+		if ($D_EMAP_ENV == "test") {
+	// mod 2011/07/05 Y.Nakajima ]
+			$footer["test_flg"] = "1";
+		} else {
+			$footer["test_flg"] = "";
+		}
+	}
+	// add 2011/05/09 H.Osamoto ]
+	//$footer["search_top"] .= ($D_OPTCD_BACKTO_TOP && $optcd != '' ? "&optcd=$optcd" : '');		// add 2010/08/23 Y.Matsukawa
+	$footer["search_top"] .= (isset($D_OPTCD_BACKTO_TOP) && isset($optcd) && $optcd != '' ? "&optcd=$optcd" : '');		// mod 2011/07/05 Y.Nakajima
+	$footer["TOPTXT"] = $D_TOP_TXT;
+}
+$footer["CORPNAME"] = $D_CORP_NAME;
+$footer["COPYTXT"] = $D_COPYRIGHT_TXT;
+// add 2009/06/29 Y.Matsukawa ]
+
+// add 2015/01/08 Y.Matsukawa [
+if ($body_cst) {
+	$header = array_merge($header, $body_cst);
+	$body = array_merge($body, $body_cst);
+	$footer = array_merge($footer, $body_cst);
+}
+// add 2015/01/08 Y.Matsukawa ]
+
+// add 2016/03/16 Winas Inc.
+if(isset($SETTING["jcomtvflg"]) == '1'){
+	$body["back_url"] = false;
+	if(isset($adcd) && $adcd){
+		$body["back_url"] = "a.htm?p=al&slg=1&adcd=".$adcd;
+		if(isset($C1) && $C1){
+			$body["back_url"] = $body["back_url"]."&C1=".$C1;
+		}
+		if(isset($C2) && $C2){
+			$body["back_url"] = $body["back_url"]."&C2=".$C2;
+		}
+		if(isset($C3) && $C3){
+			$body["back_url"] = $body["back_url"]."&C3=".$C3;
+		}
+		if(isset($C4) && $C4){
+			$body["back_url"] = $body["back_url"]."&C4=".$C4;
+		}
+		if(isset($C5) && $C5){
+			$body["back_url"] = $body["back_url"]."&C5=".$C5;
+		}
+	}
+}
+
+//-------------------
+// 画面出力
+//-------------------
+//header("Content-Type: text/html;charset=Shift_JIS");		mod 2009/07/01 Y.Matsukawa
+// mod 2011/07/05 Y.Nakajima 
+if (isset($D_XHTML)) header("Content-type: application/xhtml+xml;charset=Shift_JIS");
+else header("Content-Type: text/html;charset=Shift_JIS");
+// mod 2011/07/05 Y.Nakajima [
+//$head_html=HtmlTemplate::t_buffer($D_DIR_COMPANY."header.tpl",$header);
+$HtmlTemplate = new HtmlTemplate();
+$head_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."header.tpl",$header);
+// mod 2011/07/05 Y.Nakajima ]
+echo $carrier->ConvertPictString($head_html, "SJIS", "EUC-JP");
+// コンテンツ
+// mod 2011/07/05 Y.Nakajima 
+//$content_html=HtmlTemplate::t_buffer($D_DIR_COMPANY.$template,$body);
+$content_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY.$template,$body);
+echo $carrier->ConvertPictString($content_html, "SJIS", "EUC-JP");
+// フッタ
+// mod 2011/07/05 Y.Nakajima 
+//$foot_html=HtmlTemplate::t_buffer($D_DIR_COMPANY."footer.tpl",$footer);
+$foot_html = $HtmlTemplate->t_buffer($D_DIR_COMPANY."footer.tpl",$footer);
+echo $carrier->ConvertPictString($foot_html, "SJIS", "EUC-JP");
+
+?>

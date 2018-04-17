@@ -1,0 +1,119 @@
+<?PHP
+// ------------------------------------------------------------
+// PDFダウンロード（住宅保証機構専用）
+//
+// 開発履歴
+// 2014/07/30 F.Yokoi	新規作成
+// ------------------------------------------------------------
+
+require_once('/home/emap/src/p/inc/define.inc');
+
+include('/home/emap/src/p/inc/act_get_cp_img.inc');
+include('/home/emap/src/p/inc/define_get_icon.inc');
+
+define("D_PDF_DIR", "http://172.28.0.130/pdf/");
+
+//-------------------
+// Basic認証
+//-------------------
+//require_once('/home/emap/src/p/inc/act_basic_auth.inc');
+
+//-------------------
+// 動作許可チェック
+//-------------------
+require_once('/home/emap/src/p/inc/act_accept.inc');
+
+if(!$err) {
+	//-------------------
+	// 引き継ぎパラメータ
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_get_parm.inc');
+
+	//-------------------
+	// UA判定でリダイレクト
+	//-------------------
+	require_once('/home/emap/src/p/inc/act_redirect_ua.inc');
+
+	if(isset($kid) && $kid != "") {
+		//拠点接続
+		$arr = ZdcSearchCgiKyotenid($kid, 1, true, $jkn);
+		$arr = zdcHtmlspecialchars_arr($arr);
+//var_dump($arr);
+//exit();
+		if($arr == false) {
+	        echo "pdf not found";
+			exit();
+
+			// 拠点ID不正の場合にTOPへリダイレクト
+			//if ($D_KID_NF_REDIRECT) {
+			//	$url = $D_DIR_BASE_G.'?';
+			//	$url .= ($P_FREEPARAMS_ENC?'&'.$P_FREEPARAMS_ENC:'').($condprm?'&'.$condprm:'');
+			//	header('Location: '.$url);
+			//	exit;
+			//}
+
+			$err = $D_MSG_EMAPVIEW_NOKID;
+		} else {
+			$file = "";
+
+			if ($p_f1 == 1) {
+				$file = $arr["col_11"];
+			}
+			else {
+				$file = $arr["col_12"];
+			}
+//var_dump($file);
+//exit();
+			if ($file != "") {
+				$url = D_PDF_DIR.$file;
+
+				$ret_url = split("/", D_PDF_DIR);
+				$fp = fsockopen ($ret_url[2], 80, $errno, $errstr, 5);
+				if($fp){
+				    $success = FALSE;
+				    $content_length = 0;
+
+				    fputs ($fp, "HEAD ".$url." HTTP/1.0\r\n\r\n");
+				    while (!feof($fp)) {
+				        $read_str = fgets($fp,1000);
+				        if(strlen($read_str) <= 2) break;
+
+				        if(preg_match("/^HTTP\/[0-9]+\.[0-9]+ +200/", $read_str)){
+				            $success = TRUE;
+				        }
+
+				        if(ereg("^Content-Length: *([0-9]+)", $read_str, $regs)){
+				            $content_length = $regs[1];
+				        }
+				    }
+				    fclose ($fp);
+
+				    if($success && $content_length > 0){
+				        header("Content-type: application/pdf");
+				        header("Content-Length: " . $content_length);
+
+				        $fp = fopen ($url, "r");
+				        while (!feof($fp)) {
+				        	print fread ($fp, 1024);
+				        }
+				        fclose ($fp);
+				    }
+					else {
+				        echo "pdf not found";
+				    }
+				}
+				else {
+				    echo "site not answer";
+				}
+			}
+			else {
+		        echo "pdf not found";
+			}
+		}
+	} else {
+        echo "pdf not found";
+		exit();
+	}
+}
+
+?>

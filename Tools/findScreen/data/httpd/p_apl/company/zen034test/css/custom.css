@@ -1,0 +1,390 @@
+#wrapper {
+	margin-top: 0;
+	padding-top: 5px;
+}
+.main {
+	clear: both;
+	padding-top: 20px;
+}
+
+div.searchTopGroup {
+	padding-top: 0;
+	padding-bottom: 10px;
+	background-color: #ffffff;
+}
+#kyotenDtlTable th {
+	padding-top: 4px;
+	padding-bottom: 4px;
+}
+#kyotenDtlTable td {
+	width: 154px;
+	padding-top: 4px;
+	padding-bottom: 4px;
+}
+#kyotenDtlTable td.dtlspan2 {
+	padding-left: 9px;
+	padding-right: 9px;
+}
+
+#searchTopCondFrame {
+	padding-top: 4px;
+	padding-bottom: 10px;
+}
+#searchTopCondCap {
+	width: 100%;
+	margin-top: 8px;
+	margin-bottom: 4px;
+	text-align: left;
+	font-size: 12px;
+}
+#searchTopCondTabFrame {
+	width: 100%;
+	margin-bottom: 4px;
+	text-align: left;
+	font-size: 12px;
+}
+.searchTopCondTabOn {
+	display: inline-block;
+	margin-right: 4px;
+	width: 120px;
+	background-color: #E7C2A6;
+	border: solid 1px #E7C2A6;
+	text-align: center;
+	font-weight: bold;
+}
+.searchTopCondTabOn a {
+	display: block;
+	width: 100%;
+	line-height: 1.5;
+	color: #FFFFFF;
+}
+.searchTopCondTabOff {
+	display: inline-block;
+	margin-right: 4px;
+	width: 120px;
+	background-color: #FFFFFF;
+	border: solid 1px #E7C2A6;
+	text-align: center;
+	font-weight: bold;
+}
+.searchTopCondTabOff a {
+	display: block;
+	width: 100%;
+	line-height: 1.5;
+	color: #E7C2A6;
+}
+
+.yutaiOK {
+	color: #CD0707;
+}
+.yutaiNG {
+	color: #999999;
+}
+
+td.searchShopListDataNm a:link {
+	display: inline;
+}
+td.searchShopListDataNm a:visited {
+	display: inline;
+}
+td.searchShopListDataNm a:hover {
+	display: inline;
+}
+td.searchShopListDataNm a:active {
+	display: inline;
+}
+
+.custSearchTopCondTable{
+	width: 100%;
+	margin-left:auto;
+	margin-right:auto;
+	border-left: 1px solid #E7C2A6;
+	border-right: 1px solid #E7C2A6;
+	border-top: 1px solid #E7C2A6;
+	border-bottom: 1px solid #E7C2A6;
+	border-collapse: collapse;
+}
+.custSearchTopCondTable th {
+	padding-left: 9px;
+	padding-right: 9px;
+	padding-top: 11px;
+	padding-bottom: 4px;
+	border-bottom: 0px solid #DDE4F8;
+	background-color: #FFFFFF;
+	color: #0E3C91;
+	font-size: 11px;
+	font-weight: normal;
+	text-align: left;
+}
+/* ¥Õ¥é¥°¹àÌÜ */
+.custSearchTopCondTable td.condFlgTd {
+	width: 20%;
+	background-color: #FFFFFF;
+	text-align: left;
+	vertical-align: middle;
+}
+/* ¥ê¥¹¥È¹àÌÜ */
+.custSearchTopCondTable td.condKbnKeiT {
+	border-top: 0px solid #DDE4F8;
+	background-color: #FFFFFF;
+	font-size: 0px;
+}
+
+.custCondTable {
+	width: 100%;
+	border-collapse: collapse;
+}
+.custCondTable th {
+	padding-left: 9px;
+	padding-right: 9px;
+	padding-top: 11px;
+	padding-bottom: 4px;
+	border-bottom: 0px solid #DDE4F8;
+	background-color: #FFFFFF;
+	color: #0E3C91;
+	font-size: 11px;
+	font-weight: normal;
+	text-align: left;
+}
+/* ¥Õ¥é¥°¹àÌÜ */
+.custCondTable td.condFlgTd {
+	width: 33%;
+	background-color: #FFFFFF;
+	text-align: left;
+	vertical-align: middle;
+}
+
+#condFrame {
+	background-color: #FFFFFF;
+}
+
+#searchCondFrame {
+	padding-top: 4px;
+	padding-bottom: 10px;
+}
+#searchCondTabFrame {
+	width: 100%;
+	margin-top: 4px;
+	margin-bottom: 4px;
+	padding-left: 4px;
+	text-align: left;
+	font-size: 12px;
+}
+.searchCondTabOn {
+	display: inline-block;
+	margin-right: 4px;
+	width: 120px;
+	background-color: #E7C2A6;
+	border: solid 1px #E7C2A6;
+	text-align: center;
+	font-weight: bold;
+}
+.searchCondTabOn a {
+	display: block;
+	width: 100%;
+	line-height: 1.5;
+	color: #FFFFFF;
+}
+.searchCondTabOff {
+	display: inline-block;
+	margin-right: 4px;
+	width: 120px;
+	background-color: #FFFFFF;
+	border: solid 1px #E7C2A6;
+	text-align: center;
+	font-weight: bold;
+}
+.searchCondTabOff a {
+	display: block;
+	width: 100%;
+	line-height: 1.5;
+	color: #E7C2A6;
+}
+
+div#fukidashi {
+	overflow: hidden;
+}
+
+#fukidashi-name {
+	margin-bottom: 2px;
+}
+
+
+.kyotenListName img {
+	vertical-align: middle;
+}
+.searchShopListDataNm img {
+	vertical-align: middle;
+}
+#kyotenHd img {
+	vertical-align: middle;
+}
+#fukidashi-name img {
+	vertical-align: middle;
+}
+
+#searchCombListTitle {
+	border-bottom: 1px solid #E7C2A6;
+}
+#searchCombListTitle td {
+	color: #0E3C91;
+}
+.searchCombListPage {
+	color: #333333;
+}
+.searchCombListData {
+	border: 1px solid #E7C2A6;
+}
+.searchCombListData td {
+	border-bottom: 0;
+	background-color: #FFFFFF;
+}
+.searchCombListData a:link {
+	color: #007EE8;
+}
+.searchCombListData a:visited {
+	color: #007EE8;
+}
+.searchCombListData a:hover {
+	color: #007EE8;
+}
+.searchCombListData a:active {
+	color: #007EE8;
+}
+.searchCombListPage a:link {
+	color: #007EE8;
+}
+.searchCombListPage a:visited {
+	color: #007EE8;
+}
+.searchCombListPage a:hover {
+	color: #007EE8;
+}
+.searchCombListPage a:active {
+	color: #007EE8;
+}
+.searchCombListInnerTable a:link {
+	color: #007EE8;
+}
+.searchCombListInnerTable a:visited {
+	color: #007EE8;
+}
+.searchCombListInnerTable a:hover {
+	color: #007EE8;
+}
+.searchCombListInnerTable a:active {
+	color: #007EE8;
+}
+
+table.printDtlTable td {
+	width: 480px;
+}
+
+/* ÃÏ°è¿Þ ¥Ý¥Ã¥×¥¢¥Ã¥×(ËÌ³¤Æ») */
+div#mapLargeHokaido {
+	/*top: 585px;*/
+	top: 25px;
+}
+/* ÃÏ°è¿Þ ¥Ý¥Ã¥×¥¢¥Ã¥×(ÅìËÌ) */
+div#mapLargeTohoku {
+	/*top: 590px;*/
+	top: 30px;
+}
+/* ÃÏ°è¿Þ ¥Ý¥Ã¥×¥¢¥Ã¥×(´ØÅì) */
+div#mapLargeKanto {
+	/*top: 760px;*/
+	top: 200px;
+}
+/* ÃÏ°è¿Þ ¥Ý¥Ã¥×¥¢¥Ã¥×(ÃæÉô) */
+div#mapLargeChubu {
+	/*top: 710px;*/
+	top: 150px;
+}
+/* ÃÏ°è¿Þ ¥Ý¥Ã¥×¥¢¥Ã¥×(¶áµ¦) */
+div#mapLargeKinki {
+	/*top: 770px;*/
+	top: 210px;
+}
+/* ÃÏ°è¿Þ ¥Ý¥Ã¥×¥¢¥Ã¥×(Ãæ¹ñ) */
+div#mapLargeChugoku {
+	/*top: 740px;*/
+	top: 180px;
+}
+/* ÃÏ°è¿Þ ¥Ý¥Ã¥×¥¢¥Ã¥×(»Í¹ñ) */
+div#mapLargeShikoku {
+	/*top: 810px;*/
+	top: 250px;
+}
+/* ÃÏ°è¿Þ ¥Ý¥Ã¥×¥¢¥Ã¥×(¶å½£) */
+div#mapLargeKyushu {
+	/*top: 730px;*/
+	top: 180px;
+}
+
+/* ºÇ´ó¤êÅ¹ÊÞ°ìÍ÷ */
+.custKyotenListHd {
+	width: 100%;
+	margin: 0px;
+	padding: 0px;
+	border-left: 0px;
+	border-right: 0px;
+	border-top: 0px;
+	border-bottom: 2px solid #E7C2A6;
+	background-color: #EFE0CB;
+}
+.custKyotenListHeader {
+	width: 100%;
+	border-collapse: collapse;
+	border: 0px;
+}
+.custKyotenListHeader td.custKyotenListPage {
+	padding-left: 2px;
+	padding-right: 9px;
+	padding-top: 3px;
+	padding-bottom: 3px;
+	color: #993300;
+	font-size: 12px;
+	font-weight: normal;
+	text-align: right;
+	vertical-align: middle;
+}
+.custPageButton {
+	padding: 4px 8px;
+	font-size: 12px;
+}
+
+#history {
+	clear: both;
+	display: table-cell;
+	height: 24px;
+	layout-grid-line: 24px;/ *for IE7* /
+	vertical-align: middle;
+}
+
+#contents {
+	margin-top: 5px;
+}
+/*for IE6 */
+* html #contents{
+	margin-top: 0;
+}
+/*for IE7 */
+*:first-child+html #contents{
+	margin-top: 0;
+}
+
+#footer {
+	margin-top: 30px;
+}
+
+#fukidashi-name {
+	margin-bottom: 2px;
+	width: 195px;
+	font-weight: normal;
+}
+#fukidashi-data {
+	width: 190px;
+}
+#fukidashi-name img {
+	vertical-align: middle;
+}

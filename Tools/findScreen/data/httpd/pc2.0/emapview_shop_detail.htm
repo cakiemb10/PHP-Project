@@ -1,0 +1,98 @@
+<?PHP
+// ------------------------------------------------------------
+// 地図制御php 拠点詳細モジュール
+// 
+// 開発履歴
+//   2007/03/01 bando@D&I
+//     新規開発
+// 2009/12/10 Y.Matsukawa	詳細テンプレートにcondを渡す
+// 2011/02/17 K.Masuda		項目タイトル削除用にテンプレートにcondcheckを渡す
+// 2011/05/27 H.Osamoto		テスト環境フラグを追加
+// 2011/10/03 Y.Nakajima	VM化に伴うapache,phpVerUP対応改修
+// 2012/08/03 H.osamoto		禁則文字緩和対応(「'」「"」「>」「\」「`」（バッククォート）)を許可
+// ------------------------------------------------------------
+
+//------------------------------------------
+//    初期設定
+//------------------------------------------
+//------- 参照ファイル------------
+include("htmltemplate.inc");  // テンプレート関数
+include("./inc/define.inc");  // 基本設定
+
+//-------------------
+// 画面設定
+//-------------------
+//mod 2011/10/03 Y.Nakajima 
+///tplに取り込む前に取得した内容の判定を行うので、ここで取得する
+$kyotenid_arr = ZdcSearchCgiKyotenid($kid,1);
+$kyotenid_arr = zdcHtmlspecialchars_arr($kyotenid_arr);		// 2012/08/03 H.osamoto add
+
+//取得内容が配列で、かつ、すでに$tplが存在すれば、mergeを実施する
+//if (isset($tpl) && $tpl != "" && is_array($tpl)) {
+if (isset($tpl) && $tpl != "" && is_array($tpl) && isset($kyotenid_arr) && is_array($kyotenid_arr)) {
+	//$tpl = array_merge($tpl,ZdcSearchCgiKyotenid($kid,1));//拠点情報の取得
+	$tpl = array_merge($tpl,$kyotenid_arr);//拠点情報の取得
+} else {
+	$tpl = $kyotenid_arr;//拠点情報の取得
+}
+// add 2009/12/10 Y.Matsukawa
+//-------------------
+// cond条件をテンプレートに渡す
+//-------------------
+for($i = 1; $i <= 200; $i++) {
+	$cond = "cond".$i;
+	//mod 2011/10/03 Y.Nakajima [
+	if(isset($_VARS[$cond])) {
+		$tpl[$cond] = $_VARS[$cond];
+		$tpl[$cond."_".$_VARS[$cond]] = 1;
+	} else {
+		$tpl[$cond] = "";
+		$tpl[$cond."_"] = NULL;
+	}
+	//mod 2011/10/03 Y.Nakajima ]
+}
+// 2011/02/17 K.Masuda add [
+//mod 2011/10/03 Y.Nakajima
+if( isset($D_COND_CHECK) && is_array($D_COND_CHECK) && count($D_COND_CHECK) ){
+	foreach($D_COND_CHECK as $g => $grp){
+		$arr_cnd = explode(",", $grp);
+		foreach($arr_cnd as $cnd) {
+			$CND_TMP[$g][] = $cnd;
+		}
+	}
+	foreach( $CND_TMP as $one_k => $one_v ){
+		foreach( $one_v as $value ){
+			//mod 2011/10/03 Y.Nakajima
+			if( !isset($tpl[strtolower($value)]) || ($tpl[strtolower($value)] == "" || $tpl[strtolower($value)] == "0") ) {
+				$tpl["condcheck".$one_k] = NULL;
+			} else {
+				$tpl["condcheck".$one_k] = 1;
+				break;
+			}
+		}
+	}
+}
+// 2011/02/17 K.Masuda add ]
+
+// add 2011/05/27 H.Osamoto [
+//mod 2011/10/03 Y.Nakajima [
+if (isset($D_MYAREA_USE) && $D_MYAREA_USE) {
+	// テスト環境フラグ
+	//if (ereg('test', $D_CID)) {
+	if (strpos($D_CID, 'test')) {
+//mod 2011/10/03 Y.Nakajima ]
+		$tpl["test_flg"] = "1";
+	} else {
+		$tpl["test_flg"] = "";
+	}
+}
+// add 2011/05/27 H.Osamoto ]
+
+
+//-------------------
+// 画面出力
+//-------------------
+// コンテンツ
+ZdcLogPut(0);
+@HtmlTemplate::t_include($D_SYSDIR_COMPANY."emapview_shop_detail.tpl",$tpl);
+?>
